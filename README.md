@@ -1,39 +1,26 @@
 # InstrumentalSW AI Module
 
-Reproducible Python/FastAPI foundation for the InstrumentalSW project (Saxo). This iteration provides only the starter contracts and in-memory behavior required by **SAX-000**.
+Python/FastAPI module for InstrumentalSW (Saxo), developed through reproducible TDD iterations.
 
 ## Requirements
 
 - Python `>=3.11,<3.14`
 - `pip`
+- FFmpeg for real canonical-audio integration tests
+
+Verify the external tool with:
+
+```bash
+ffmpeg -version
+```
+
+The unit suite does not require FFmpeg. Real conversion tests are marked `integration`; when FFmpeg is unavailable locally they are skipped with a clear reason. CI installs FFmpeg explicitly and sets `SAXO_REQUIRE_FFMPEG=1`, so absence of the tool fails the workflow.
 
 ## Install
 
-All runtime and development dependencies are installed with one command:
-
 ```bash
 python -m pip install -e ".[dev]"
 ```
-
-### Unix (bash/zsh)
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -e ".[dev]"
-```
-
-### Windows (PowerShell)
-
-```powershell
-py -3.11 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-python -m pip install -e ".[dev]"
-```
-
-Python 3.12 or 3.13 can be selected instead when installed.
 
 ## Run locally
 
@@ -41,55 +28,37 @@ Python 3.12 or 3.13 can be selected instead when installed.
 python -m uvicorn saxo_ai.main:app --reload
 ```
 
-PowerShell uses the same command. The service is available at `http://127.0.0.1:8000`; the OpenAPI UI is at `/docs`.
-
 ## Minimal API
 
 - `GET /health`
 - `POST /api/v1/transcriptions`
 - `GET /api/v1/transcriptions/{job_id}`
 
-The POST endpoint accepts multipart fields:
+Jobs are stored only in memory and begin with status `UPLOADED`. Each job includes `audio_sha256`, the lowercase 64-character SHA-256 digest calculated from the uploaded content in bounded 64 KiB reads. Uploaded bytes are not persisted and matching hashes do not deduplicate jobs.
 
-- `file`: non-empty `.mp3` or `.wav` file;
-- `saxophone_type`: `soprano`, `alto`, `tenor`, or `baritone`;
-- `input_mode`: `solo` or `mixture`.
+SAX-011 does not change these endpoints or invoke preprocessing from job creation.
 
-Jobs are stored only in memory and begin with status `UPLOADED`.
+## Canonical audio capability
 
-## Quality commands
-
-```bash
-python -m pytest
-python -m pytest --cov=saxo_ai --cov-report=term-missing
-python -m ruff check src tests
-python -m mypy
-```
-
-On Unix systems with `make`, `make check` runs the full local quality gate.
-
-## Architecture
+The internal canonical converter accepts a generic non-seekable binary source and writes to a destination supplied by the caller. Its default representation is:
 
 ```text
-src/saxo_ai/
-├── api/             # FastAPI routes and transport schemas
-├── application/     # Use cases and repository ports
-├── domain/          # Domain models and transposition rules
-├── infrastructure/  # In-memory repository adapter
-└── main.py          # Application composition root
+container:                 wav
+codec:                     pcm_s16le
+sample_rate_hz:            16000
+channels:                  1
+sample_width_bits:         16
+amplitude_normalization:   none
+preprocessing schema:      1.0
 ```
 
-Dependencies point inward: API and infrastructure depend on application/domain contracts; the domain has no FastAPI or storage dependency.
+`sample_rate_hz` is configurable with positive integer values and `channels` supports `1` or `2`. Container, codec, sample width, and the explicit absence of amplitude normalization remain fixed in SAX-011.
 
-## Scope boundaries
+The FFmpeg adapter materializes the input and output inside an automatically cleaned temporary workspace, copies both directions in bounded 64 KiB blocks, validates the result semantically with Python's `wave` module, and returns metadata without exposing temporary paths. It does not provide loudness, peak, LUFS, or volume normalization.
 
-This starter does **not** decode or process audio, invoke FFmpeg, download models, run inference, train models, persist jobs, or use cloud services. Those capabilities belong to later stories.
+## Quality and tests
 
-Tests use only synthetic byte strings generated in code. Real audio, datasets, models, checkpoints, caches, virtual environments, local secrets, and generated artifacts are excluded by `.gitignore`.
-
-## Automated quality gate
-
-Run the same quality gate used by GitHub Actions with one command on Windows PowerShell or Unix:
+Run the same complete quality gate used by GitHub Actions on Windows PowerShell or Unix:
 
 ```bash
 python scripts/check_quality.py
@@ -97,15 +66,36 @@ python scripts/check_quality.py
 
 The command runs, in order:
 
-1. pytest with statement and branch coverage, a terminal missing-lines report, XML output, and a 90% minimum threshold;
+1. pytest with statement and branch coverage, XML output, and a 90% minimum threshold;
 2. Ruff lint;
 3. Ruff format in check-only mode;
 4. mypy with the project's strict configuration.
 
-GitHub Actions runs this command on pull requests targeting `main`, pushes to `main`, and manual dispatches. The matrix verifies Python 3.11, 3.12, and 3.13.
+Useful focused commands:
 
-The runner stops at the first failed control and returns that tool's non-zero exit code. Read the last named control and its output to identify whether the failure came from tests or coverage, Ruff lint, Ruff format, or mypy. Fix the reported issue and rerun the same command locally before pushing.
+```bash
+# Tests that do not require the external FFmpeg executable
+python -m pytest -m "not integration"
 
-## Audio content traceability
+# Real WAV and MP3 conversion through FFmpeg
+python -m pytest -m integration
+```
 
-Each transcription job includes `audio_sha256`, the lowercase 64-character SHA-256 digest of the uploaded content. The service reads the upload once in bounded 64 KiB blocks and calculates `size_bytes` from those same blocks. The filename does not affect the digest, identical hashes do not deduplicate jobs, and uploaded bytes are not persisted.
+GitHub Actions runs the full command on pull requests targeting `main`, pushes to `main`, and manual dispatches. The matrix verifies Python 3.11, 3.12, and 3.13. The runner stops at the first failed control and returns that tool's non-zero exit code.
+
+## Architecture
+
+```text
+src/saxo_ai/
+├── api/             # Existing FastAPI transport only
+├── application/     # Use cases and small ports
+├── domain/          # Immutable job and canonical-audio contracts
+├── infrastructure/  # SHA-256 and FFmpeg adapters
+└── main.py          # Existing API composition root
+```
+
+Dependencies point inward. FastAPI does not participate in canonical conversion; application and domain do not import FastAPI, and only infrastructure imports `subprocess`, `tempfile`, and FFmpeg-specific concerns.
+
+## Scope boundaries
+
+The current module does not connect canonical conversion to transcription jobs, classify corrupt audio, change job states, persist original or converted audio, enforce duration/size limits, download or run models, train models, generate MIDI/MusicXML, or use cloud services. Those capabilities belong to later stories.
