@@ -93,6 +93,7 @@ def test_yaml_contract_parser_has_explicit_runtime_and_typing_dependencies() -> 
 
     assert "pyyaml" in normalized
     assert "types-pyyaml" in normalized
+    assert "httpx2" in normalized
 
 
 def test_coverage_and_warning_gate_are_centralized_in_pyproject() -> None:
