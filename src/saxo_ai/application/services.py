@@ -6,34 +6,42 @@ from saxo_ai.application.errors import (
     TranscriptionJobNotFoundError,
     UnsupportedAudioFormatError,
 )
-from saxo_ai.application.ports import TranscriptionJobRepository
+from saxo_ai.application.ports import AudioContentHasher, BinaryStream, TranscriptionJobRepository
 from saxo_ai.domain.models import InputMode, JobStatus, SaxophoneType, TranscriptionJob
 
 _ALLOWED_EXTENSIONS = {".mp3", ".wav"}
 
 
 class CreateTranscriptionJob:
-    def __init__(self, repository: TranscriptionJobRepository) -> None:
+    def __init__(
+        self,
+        repository: TranscriptionJobRepository,
+        content_hasher: AudioContentHasher,
+    ) -> None:
         self._repository = repository
+        self._content_hasher = content_hasher
 
     def execute(
         self,
         *,
         filename: str,
-        content: bytes,
+        content: BinaryStream,
         saxophone_type: SaxophoneType,
         input_mode: InputMode,
     ) -> TranscriptionJob:
         if Path(filename).suffix.lower() not in _ALLOWED_EXTENSIONS:
             raise UnsupportedAudioFormatError
-        if not content:
+
+        metadata = self._content_hasher.inspect(content)
+        if metadata.size_bytes == 0:
             raise EmptyAudioFileError
 
         job = TranscriptionJob(
             job_id=uuid4(),
             status=JobStatus.UPLOADED,
             filename=filename,
-            size_bytes=len(content),
+            size_bytes=metadata.size_bytes,
+            audio_sha256=metadata.audio_sha256,
             saxophone_type=saxophone_type,
             input_mode=input_mode,
         )

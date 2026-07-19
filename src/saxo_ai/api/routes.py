@@ -28,16 +28,15 @@ def build_router(
         response_model=TranscriptionJobResponse,
         status_code=status.HTTP_202_ACCEPTED,
     )
-    async def create_transcription(
+    def create_transcription(
         file: Annotated[UploadFile, File()],
         saxophone_type: Annotated[SaxophoneType, Form()],
         input_mode: Annotated[InputMode, Form()],
     ) -> TranscriptionJobResponse:
-        content = await file.read()
         try:
             job = create_job.execute(
                 filename=file.filename or "",
-                content=content,
+                content=file.file,
                 saxophone_type=saxophone_type,
                 input_mode=input_mode,
             )

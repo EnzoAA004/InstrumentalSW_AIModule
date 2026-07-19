@@ -20,10 +20,17 @@ class JobStatus(StrEnum):
 
 
 @dataclass(frozen=True, slots=True)
+class AudioContentMetadata:
+    size_bytes: int
+    audio_sha256: str
+
+
+@dataclass(frozen=True, slots=True)
 class TranscriptionJob:
     job_id: UUID
     status: JobStatus
     filename: str
     size_bytes: int
+    audio_sha256: str
     saxophone_type: SaxophoneType
     input_mode: InputMode
