@@ -27,7 +27,7 @@ Content is invalid only when all conditions are true:
 2. the real canonical conversion command is invoked;
 3. FFmpeg exits non-zero because it cannot interpret or decode the supplied content.
 
-The stable functional code is the domain enum value:
+The stable domain code is:
 
 ```text
 AUDIO_CONTENT_INVALID
@@ -37,17 +37,9 @@ FFmpeg stderr is diagnostic only and never becomes a functional code.
 
 ## Differentiation
 
-### Unsupported extension
-
-A name such as `audio.flac` produces `UnsupportedAudioFormatError`. `CreateTranscriptionJob` rejects it before consuming the stream, creating a job, or involving FFmpeg.
-
-### Invalid supported content
-
-An existing `.mp3` or `.wav` job whose trusted source cannot be decoded becomes a new immutable `FAILED` job with `failure_code=AUDIO_CONTENT_INVALID`. No canonical result is returned and the destination remains empty.
-
-### Technical failure
-
-Unavailable FFmpeg, timeout, non-zero `ffmpeg -version`, executor failure, missing output, invalid generated WAV, and destination-write failure propagate unchanged. The job remains `UPLOADED`, retains `failure_code=None`, and remains retryable.
+- **Unsupported extension:** `audio.flac` produces `UnsupportedAudioFormatError` before consuming the stream, creating a job, or invoking FFmpeg.
+- **Invalid accepted content:** the existing job becomes a new immutable `FAILED/AUDIO_CONTENT_INVALID` job; no result or destination bytes are produced.
+- **Technical failure:** missing FFmpeg, timeout, non-zero version command, executor failure, missing output, invalid generated WAV, and destination-write failure propagate; the job stays `UPLOADED` and retryable.
 
 ## State model
 
@@ -58,8 +50,8 @@ Unavailable FFmpeg, timeout, non-zero `ffmpeg -version`, executor failure, missi
 - `FAILED` requires a failure code;
 - non-failed jobs reject a failure code;
 - `mark_failed(...)` returns a new object;
-- filename, size, hash, saxophone type, input mode, and job ID are preserved;
-- no stderr, path, stack trace, timestamp, retry counter, or state history enters the entity.
+- job ID, filename, size, SHA-256, saxophone type, and input mode are preserved;
+- stderr, paths, binary data, stack traces, timestamps, retries, and state history are not stored.
 
 ## Architecture
 
@@ -78,7 +70,7 @@ TranscriptionJobRepository   CanonicalAudioConverter
           └──── FAILED only on AudioContentInvalidError
 ```
 
-The use case obtains the job, constructs `OriginalAudioReference` from filename/size/SHA-256, invokes canonical conversion, and translates only `AudioContentInvalidError` into the stable failed state. Future orchestration may retrieve the trusted source from private storage; object storage is outside this story.
+The use case obtains the job, constructs `OriginalAudioReference` from filename/size/SHA-256, invokes conversion, and saves a failed replacement only for `AudioContentInvalidError`. Future orchestration may retrieve the trusted source from private storage; object storage is outside this story.
 
 ## RED
 
@@ -98,8 +90,6 @@ RED_EXIT_CODE=2
 
 The missing behavior also included `JobStatus.FAILED`, `JobFailureCode`, the immutable transition, and the validation use case.
 
-Remote test-only commits preceded production:
-
 ```text
 7850562  test(SAX-012): define invalid audio failure behavior
 c9ca45e  test(SAX-012): add real corrupt audio contracts
@@ -107,24 +97,16 @@ c9ca45e  test(SAX-012): add real corrupt audio contracts
 
 ## GREEN
 
-The minimum implementation added:
-
-- immutable failed-job state and invariants;
-- `AudioContentInvalidError` only for non-zero real conversion commands;
-- `TranscriptionAudioValidationError` containing `job_id` and stable failure code;
-- `ValidateTranscriptionAudio` orchestration;
-- real corrupt and valid WAV integration paths.
-
-The focused GREEN suite passed 29 tests.
+The minimum implementation added immutable failed-job invariants, content-specific FFmpeg classification, `TranscriptionAudioValidationError`, `ValidateTranscriptionAudio`, and real corrupt/valid integration paths. The focused GREEN suite passed 29 tests.
 
 ## REFACTOR
 
 - version-command failures remain technical `FfmpegConversionError` values;
-- all non-content technical errors propagate without repository updates;
-- destination and executor failures are covered explicitly;
-- output is copied only after FFmpeg success and semantic WAV validation;
-- no stderr, path, binary data, or infrastructure detail enters the job;
-- API routes, schemas, and composition root remain disconnected and unchanged.
+- every non-content technical error propagates without repository updates;
+- destination and executor failures are explicitly covered;
+- output reaches the caller only after command success and semantic WAV validation;
+- no infrastructure detail enters the job;
+- routes, schemas, and composition root remain disconnected and unchanged.
 
 ## Fixtures
 
@@ -135,26 +117,22 @@ filename: corrupt.wav
 content: b"these bytes are not a wav file"
 ```
 
-FFmpeg attempts real conversion and returns non-zero. The adapter raises `AudioContentInvalidError`; the use case persists `FAILED/AUDIO_CONTENT_INVALID`; the stable application error is raised; destination length remains zero; tracked temporary workspaces no longer exist after failure.
+Real FFmpeg attempts conversion and exits non-zero. The adapter raises `AudioContentInvalidError`; the use case persists `FAILED/AUDIO_CONTENT_INVALID`; the stable application error is raised; destination length remains zero; tracked temporary workspaces no longer exist.
 
 ### Valid
 
-A one-second 440 Hz WAV is generated with `wave`, `math`, and `struct`. Validation returns a canonical 16 kHz mono PCM16 WAV, preserves the original reference, leaves the job `UPLOADED`, and keeps `failure_code=None`.
+A one-second 440 Hz WAV is generated with `wave`, `math`, and `struct`. Validation returns a readable 16 kHz mono PCM16 result, preserves the original reference, leaves the job `UPLOADED`, and keeps `failure_code=None`.
 
 ## Partial-artifact guarantee
 
-The converter copies to the caller destination only after conversion success, output existence, and semantic WAV validation. For invalid content, `destination.write` is not invoked. Temporary files live inside `TemporaryDirectory` and are removed on both success and failure.
+The converter copies to the caller destination only after command success, output existence, and semantic WAV validation. Invalid content never invokes `destination.write`. Temporary files are owned by `TemporaryDirectory` and are removed on success and failure.
 
-## Local environment
+## Local environment and results
 
 ```text
 Python 3.13.5
 ffmpeg version 7.1.3-0+deb13u1 Copyright (c) 2000-2025 the FFmpeg developers
-```
 
-## Exact local results
-
-```text
 python -m pip install -e ".[dev]"
 Successfully built instrumentalsw-ai-module
 Successfully installed instrumentalsw-ai-module-0.1.0
@@ -195,15 +173,17 @@ Success: no issues found in 30 source files
 
 ## CI
 
-The workflow retains `SAXO_REQUIRE_FFMPEG=1` and the protected check names. Final workflow run **#22**, run ID `29708263236`, completed successfully:
+The original workflow remains restored and retains `SAXO_REQUIRE_FFMPEG=1` and the protected names.
+
+Final functional run **#25**, run ID `29708379386`, completed successfully:
 
 ```text
-Python 3.11  success
-Python 3.12  success
-Python 3.13  success
+Python 3.11 — success
+Python 3.12 — success
+Python 3.13 — success
 ```
 
-Every job completed checkout, Python setup, explicit FFmpeg installation, editable project installation, and the shared quality gate. The real corrupt and valid fixtures ran in the matrix; no third-party FFmpeg action was used.
+Every job completed checkout, Python setup, explicit FFmpeg installation, editable project installation, and the shared quality gate. A prior run failed transiently in the quality step; the same code passed the diagnostic rerun and the final uninstrumented workflow. No diagnostic artifact step remains in the final diff.
 
 ## Limitations and not implemented
 
