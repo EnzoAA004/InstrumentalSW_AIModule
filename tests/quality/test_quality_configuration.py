@@ -57,6 +57,16 @@ def test_quality_workflow_installs_project_and_invokes_single_runner() -> None:
     assert any("python scripts/check_quality.py" in command for command in commands)
 
 
+def test_quality_workflow_installs_and_requires_ffmpeg_for_integration() -> None:
+    workflow = load_workflow()
+    job = workflow["jobs"]["quality"]
+    commands = [step["run"] for step in job["steps"] if "run" in step]
+
+    assert job["env"]["SAXO_REQUIRE_FFMPEG"] == "1"
+    assert any("apt-get install --yes ffmpeg" in command for command in commands)
+    assert any("ffmpeg -version" in command for command in commands)
+
+
 def test_cross_platform_runner_contains_all_required_checks() -> None:
     module = load_quality_runner()
 
