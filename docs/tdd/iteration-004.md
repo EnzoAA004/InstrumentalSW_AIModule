@@ -347,7 +347,17 @@ Python 3.12
 Python 3.13
 ```
 
-Each matrix job installs FFmpeg using Ubuntu's package manager, prints `ffmpeg -version`, exports `SAXO_REQUIRE_FFMPEG=1`, installs the project, and runs the unchanged shared quality command. Final remote results are recorded in the pull request after the draft workflow completes.
+Each matrix job installs FFmpeg using Ubuntu's package manager, prints `ffmpeg -version`, exports `SAXO_REQUIRE_FFMPEG=1`, installs the project, and runs the unchanged shared quality command.
+
+GitHub Actions run **#17** (run ID `29706548853`) completed successfully on the draft pull request:
+
+```text
+Python 3.11  success
+Python 3.12  success
+Python 3.13  success
+```
+
+For every version, checkout, Python setup, FFmpeg installation, editable project installation, and the shared quality gate completed successfully. The documentation-only execution created by recording this result must remain green and is reported in the PR.
 
 ## Limitations and stories not implemented
 
