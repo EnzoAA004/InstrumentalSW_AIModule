@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import importlib.util
 import tomllib
 from collections.abc import Iterator
@@ -16,6 +17,7 @@ QUALITY_SCRIPT_PATH = ROOT / "scripts" / "check_quality.py"
 PYPROJECT_PATH = ROOT / "pyproject.toml"
 MAKEFILE_PATH = ROOT / "Makefile"
 README_PATH = ROOT / "README.md"
+TRANSCRIPTION_TEST_PATH = ROOT / "tests" / "api" / "test_transcriptions.py"
 
 
 def test_quality_workflow_declares_supported_events_and_python_matrix() -> None:
@@ -86,7 +88,19 @@ def test_cross_platform_runner_stops_and_propagates_failed_exit_code(
     assert len(executed) == 1
 
 
-def test_yaml_contract_parser_has_explicit_runtime_and_typing_dependencies() -> None:
+def test_test_helpers_do_not_depend_on_http_client_response_implementation() -> None:
+    tree = ast.parse(TRANSCRIPTION_TEST_PATH.read_text(encoding="utf-8"))
+    imported_modules = {
+        node.module
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ImportFrom) and node.module is not None
+    }
+
+    assert "httpx" not in imported_modules
+    assert "httpx2" not in imported_modules
+
+
+def test_contract_parser_has_explicit_runtime_and_typing_dependencies() -> None:
     configuration = tomllib.loads(PYPROJECT_PATH.read_text(encoding="utf-8"))
     dev_dependencies = configuration["project"]["optional-dependencies"]["dev"]
     normalized = {dependency.lower().split(">", maxsplit=1)[0] for dependency in dev_dependencies}
@@ -94,6 +108,7 @@ def test_yaml_contract_parser_has_explicit_runtime_and_typing_dependencies() -> 
     assert "pyyaml" in normalized
     assert "types-pyyaml" in normalized
     assert "httpx2" in normalized
+    assert "httpx" not in normalized
 
 
 def test_coverage_and_warning_gate_are_centralized_in_pyproject() -> None:
