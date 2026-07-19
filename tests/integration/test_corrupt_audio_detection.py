@@ -10,6 +10,8 @@ from collections.abc import Iterator
 from io import BytesIO
 from pathlib import Path
 from tempfile import TemporaryDirectory as RealTemporaryDirectory
+from types import TracebackType
+from typing import ClassVar
 from uuid import uuid4
 
 import pytest
@@ -40,18 +42,23 @@ def require_ffmpeg() -> Iterator[None]:
 
 
 class TrackingTemporaryDirectory:
-    paths: list[Path] = []
+    paths: ClassVar[list[Path]] = []
 
-    def __init__(self, *args: object, **kwargs: object) -> None:
-        self._delegate = RealTemporaryDirectory(*args, **kwargs)
+    def __init__(self, *, prefix: str | None = None) -> None:
+        self._delegate = RealTemporaryDirectory(prefix=prefix)
 
     def __enter__(self) -> str:
-        path = self._delegate.__enter__()
+        path = str(self._delegate.__enter__())
         self.paths.append(Path(path))
         return path
 
-    def __exit__(self, *args: object) -> None:
-        self._delegate.__exit__(*args)
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        self._delegate.__exit__(exc_type, exc, traceback)
 
 
 def make_job(filename: str, content: bytes) -> TranscriptionJob:
