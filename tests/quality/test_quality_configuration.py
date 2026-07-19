@@ -86,6 +86,15 @@ def test_cross_platform_runner_stops_and_propagates_failed_exit_code(
     assert len(executed) == 1
 
 
+def test_yaml_contract_parser_has_explicit_runtime_and_typing_dependencies() -> None:
+    configuration = tomllib.loads(PYPROJECT_PATH.read_text(encoding="utf-8"))
+    dev_dependencies = configuration["project"]["optional-dependencies"]["dev"]
+    normalized = {dependency.lower().split(">", maxsplit=1)[0] for dependency in dev_dependencies}
+
+    assert "pyyaml" in normalized
+    assert "types-pyyaml" in normalized
+
+
 def test_coverage_and_warning_gate_are_centralized_in_pyproject() -> None:
     configuration = tomllib.loads(PYPROJECT_PATH.read_text(encoding="utf-8"))
 
