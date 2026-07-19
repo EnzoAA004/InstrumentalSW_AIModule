@@ -1,0 +1,56 @@
+[build-system]
+requires = ["hatchling>=1.25,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "instrumentalsw-ai-module"
+version = "0.1.0"
+description = "FastAPI service for the InstrumentalSW (Saxo) AI module."
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+  "fastapi>=0.115,<0.139",
+  "python-multipart>=0.0.9,<1",
+  "uvicorn[standard]>=0.30,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "hatchling>=1.25,<2",
+  "httpx>=0.27,<1",
+  "mypy>=1.13,<2",
+  "pytest>=8,<10",
+  "pytest-cov>=5,<8",
+  "ruff>=0.9,<1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/saxo_ai"]
+dev-mode-dirs = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["--strict-config", "--strict-markers"]
+filterwarnings = ["error"]
+
+[tool.coverage.run]
+branch = true
+source = ["saxo_ai"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["src", "tests"]
+mypy_path = "src"

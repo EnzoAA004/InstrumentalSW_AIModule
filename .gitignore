@@ -1,0 +1,54 @@
+# Python environments and caches
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Build outputs
+build/
+dist/
+*.egg-info/
+
+# IDE and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+secrets/
+*.pem
+*.key
+*.p12
+
+# Audio, datasets, artifacts, models, and checkpoints
+*.mp3
+*.wav
+*.flac
+*.aac
+*.m4a
+*.ogg
+data/
+datasets/
+audio/
+audios/
+artifacts/
+models/
+checkpoints/
+runs/
+*.ckpt
+*.h5
+*.onnx
+*.pt
+*.pth
+*.safetensors
