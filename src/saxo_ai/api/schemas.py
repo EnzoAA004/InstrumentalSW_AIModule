@@ -16,5 +16,6 @@ class TranscriptionJobResponse(BaseModel):
     status: JobStatus
     filename: str
     size_bytes: int
+    audio_sha256: str
     saxophone_type: SaxophoneType
     input_mode: InputMode
