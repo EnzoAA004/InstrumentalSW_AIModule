@@ -195,15 +195,15 @@ Success: no issues found in 30 source files
 
 ## CI
 
-The workflow retains `SAXO_REQUIRE_FFMPEG=1` and the protected check names:
+The workflow retains `SAXO_REQUIRE_FFMPEG=1` and the protected check names. Final workflow run **#22**, run ID `29708263236`, completed successfully:
 
 ```text
-Python 3.11
-Python 3.12
-Python 3.13
+Python 3.11  success
+Python 3.12  success
+Python 3.13  success
 ```
 
-Remote results will be recorded after the draft pull request workflow completes. The matrix must run the real corrupt and valid fixtures; no third-party FFmpeg action is used.
+Every job completed checkout, Python setup, explicit FFmpeg installation, editable project installation, and the shared quality gate. The real corrupt and valid fixtures ran in the matrix; no third-party FFmpeg action was used.
 
 ## Limitations and not implemented
 
