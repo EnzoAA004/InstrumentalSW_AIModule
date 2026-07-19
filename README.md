@@ -86,3 +86,22 @@ Dependencies point inward: API and infrastructure depend on application/domain c
 This starter does **not** decode or process audio, invoke FFmpeg, hash content, download models, run inference, train models, persist jobs, or use cloud services. Those capabilities belong to later stories.
 
 Tests use only synthetic byte strings generated in code. Real audio, datasets, models, checkpoints, caches, virtual environments, local secrets, and generated artifacts are excluded by `.gitignore`.
+
+## Automated quality gate
+
+Run the same quality gate used by GitHub Actions with one command on Windows PowerShell or Unix:
+
+```bash
+python scripts/check_quality.py
+```
+
+The command runs, in order:
+
+1. pytest with statement and branch coverage, a terminal missing-lines report, XML output, and a 90% minimum threshold;
+2. Ruff lint;
+3. Ruff format in check-only mode;
+4. mypy with the project's strict configuration.
+
+GitHub Actions runs this command on pull requests targeting `main`, pushes to `main`, and manual dispatches. The matrix verifies Python 3.11, 3.12, and 3.13.
+
+The runner stops at the first failed control and returns that tool's non-zero exit code. Read the last named control and its output to identify whether the failure came from tests or coverage, Ruff lint, Ruff format, or mypy. Fix the reported issue and rerun the same command locally before pushing.

@@ -15,7 +15,8 @@ lint:
 type:
 	python -m mypy
 
-check: test coverage lint type
+check:
+	python scripts/check_quality.py
 
 run:
 	python -m uvicorn saxo_ai.main:app --reload

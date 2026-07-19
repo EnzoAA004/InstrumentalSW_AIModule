@@ -1,8 +1,15 @@
+from typing import Any, Protocol
 from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
-from httpx import Response
+
+
+class ResponseLike(Protocol):
+    @property
+    def status_code(self) -> int: ...
+
+    def json(self) -> Any: ...
 
 
 @pytest.mark.parametrize("filename", ["take.wav", "take.WAV", "take.mp3", "take.MP3"])
@@ -109,7 +116,7 @@ def create_transcription(
     content: bytes,
     saxophone_type: str = "alto",
     input_mode: str = "solo",
-) -> Response:
+) -> ResponseLike:
     return client.post(
         "/api/v1/transcriptions",
         files={"file": (filename, content, "application/octet-stream")},
