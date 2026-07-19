@@ -83,7 +83,7 @@ Dependencies point inward: API and infrastructure depend on application/domain c
 
 ## Scope boundaries
 
-This starter does **not** decode or process audio, invoke FFmpeg, hash content, download models, run inference, train models, persist jobs, or use cloud services. Those capabilities belong to later stories.
+This starter does **not** decode or process audio, invoke FFmpeg, download models, run inference, train models, persist jobs, or use cloud services. Those capabilities belong to later stories.
 
 Tests use only synthetic byte strings generated in code. Real audio, datasets, models, checkpoints, caches, virtual environments, local secrets, and generated artifacts are excluded by `.gitignore`.
 
@@ -105,3 +105,7 @@ The command runs, in order:
 GitHub Actions runs this command on pull requests targeting `main`, pushes to `main`, and manual dispatches. The matrix verifies Python 3.11, 3.12, and 3.13.
 
 The runner stops at the first failed control and returns that tool's non-zero exit code. Read the last named control and its output to identify whether the failure came from tests or coverage, Ruff lint, Ruff format, or mypy. Fix the reported issue and rerun the same command locally before pushing.
+
+## Audio content traceability
+
+Each transcription job includes `audio_sha256`, the lowercase 64-character SHA-256 digest of the uploaded content. The service reads the upload once in bounded 64 KiB blocks and calculates `size_bytes` from those same blocks. The filename does not affect the digest, identical hashes do not deduplicate jobs, and uploaded bytes are not persisted.
