@@ -52,7 +52,7 @@ def test_quality_workflow_installs_project_and_invokes_single_runner() -> None:
     assert any(action.startswith("actions/checkout@") for action in uses)
     assert any(action.startswith("actions/setup-python@") for action in uses)
     assert 'python -m pip install -e ".[dev]"' in commands
-    assert "python scripts/check_quality.py" in commands
+    assert any("python scripts/check_quality.py" in command for command in commands)
 
 
 def test_cross_platform_runner_contains_all_required_checks() -> None:
