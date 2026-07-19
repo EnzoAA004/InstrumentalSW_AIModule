@@ -13,7 +13,11 @@ from pathlib import Path
 import pytest
 
 from saxo_ai.application.audio_preprocessing import ConvertToCanonicalAudio
-from saxo_ai.domain.audio import CanonicalAudioSettings, OriginalAudioReference
+from saxo_ai.domain.audio import (
+    CanonicalAudioResult,
+    CanonicalAudioSettings,
+    OriginalAudioReference,
+)
 from saxo_ai.infrastructure.ffmpeg import FfmpegCanonicalAudioConverter
 
 pytestmark = pytest.mark.integration
@@ -103,7 +107,7 @@ def convert_file(
     source_path: Path,
     destination_path: Path,
     settings: CanonicalAudioSettings,
-) -> tuple[object, list[int]]:
+) -> tuple[CanonicalAudioResult, list[int]]:
     converter = FfmpegCanonicalAudioConverter()
     with NonSeekableFileSource(source_path) as source, destination_path.open("wb") as destination:
         result = ConvertToCanonicalAudio(converter).execute(
