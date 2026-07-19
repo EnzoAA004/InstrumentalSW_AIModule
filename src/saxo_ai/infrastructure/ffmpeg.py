@@ -9,6 +9,7 @@ from tempfile import TemporaryDirectory
 from typing import Protocol
 
 from saxo_ai.application.errors import (
+    AudioContentInvalidError,
     CanonicalAudioOutputInvalidError,
     CanonicalAudioOutputMissingError,
     FfmpegConversionError,
@@ -97,7 +98,7 @@ class FfmpegCanonicalAudioConverter:
             command = self._build_conversion_command(source_path, output_path, settings)
             result = self._execute(command)
             if result.return_code != 0:
-                raise FfmpegConversionError(
+                raise AudioContentInvalidError(
                     return_code=result.return_code,
                     stderr=self._sanitize_stderr(result.stderr, workspace_path),
                 )

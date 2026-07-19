@@ -1,0 +1,196 @@
+# TDD iteration 005 — SAX-012
+
+## Scope
+
+Implement an internal application capability that distinguishes accepted MP3/WAV content that FFmpeg cannot decode from unsupported extensions and technical conversion failures. Only a non-zero result from the real content conversion command creates the functional failed-job state.
+
+This iteration does not connect validation to FastAPI, does not add HTTP behavior, does not persist audio, and does not implement SAX-013.
+
+## Traceability
+
+```text
+SAX-012
+→ detection of non-decodable accepted audio content
+→ JobStatus.FAILED
+→ JobFailureCode.AUDIO_CONTENT_INVALID
+→ tests/unit/test_audio_validation.py
+→ tests/integration/test_corrupt_audio_detection.py
+```
+
+The repository has no central traceability matrix, so this relationship is recorded here and in the pull request.
+
+## Exact definition of invalid audio
+
+Content is invalid only when all conditions are true:
+
+1. its filename extension was already accepted as `.mp3` or `.wav`;
+2. the real canonical conversion command is invoked;
+3. FFmpeg exits non-zero because it cannot interpret or decode the supplied content.
+
+The stable domain code is:
+
+```text
+AUDIO_CONTENT_INVALID
+```
+
+FFmpeg stderr is diagnostic only and never becomes a functional code.
+
+## Differentiation
+
+- **Unsupported extension:** `audio.flac` produces `UnsupportedAudioFormatError` before consuming the stream, creating a job, or invoking FFmpeg.
+- **Invalid accepted content:** the existing job becomes a new immutable `FAILED/AUDIO_CONTENT_INVALID` job; no result or destination bytes are produced.
+- **Technical failure:** missing FFmpeg, timeout, non-zero version command, executor failure, missing output, invalid generated WAV, and destination-write failure propagate; the job stays `UPLOADED` and retryable.
+
+## State model
+
+`JobStatus` contains `UPLOADED` and `FAILED`. `JobFailureCode` currently contains only `AUDIO_CONTENT_INVALID`.
+
+`TranscriptionJob` remains frozen and enforces:
+
+- `FAILED` requires a failure code;
+- non-failed jobs reject a failure code;
+- `mark_failed(...)` returns a new object;
+- job ID, filename, size, SHA-256, saxophone type, and input mode are preserved;
+- stderr, paths, binary data, stack traces, timestamps, retries, and state history are not stored.
+
+## Architecture
+
+```text
+trusted BinaryStream + caller BinaryDestination
+                  │
+                  ▼
+       ValidateTranscriptionAudio
+          │                  │
+          ▼                  ▼
+TranscriptionJobRepository   CanonicalAudioConverter
+          │                  │
+          │                  ▼
+          │       FfmpegCanonicalAudioConverter
+          │                  │
+          └──── FAILED only on AudioContentInvalidError
+```
+
+The use case obtains the job, constructs `OriginalAudioReference` from filename/size/SHA-256, invokes conversion, and saves a failed replacement only for `AudioContentInvalidError`. Future orchestration may retrieve the trusted source from private storage; object storage is outside this story.
+
+## RED
+
+Tests were published before production changes.
+
+```text
+python -m pytest \
+  tests/unit/test_audio_validation.py \
+  tests/integration/test_corrupt_audio_detection.py \
+  tests/unit/test_audio_preprocessing.py
+
+collected 0 items / 3 errors
+ModuleNotFoundError: No module named 'saxo_ai.application.audio_validation'
+ImportError: cannot import name 'AudioContentInvalidError'
+RED_EXIT_CODE=2
+```
+
+The missing behavior also included `JobStatus.FAILED`, `JobFailureCode`, the immutable transition, and the validation use case.
+
+```text
+7850562  test(SAX-012): define invalid audio failure behavior
+c9ca45e  test(SAX-012): add real corrupt audio contracts
+```
+
+## GREEN
+
+The minimum implementation added immutable failed-job invariants, content-specific FFmpeg classification, `TranscriptionAudioValidationError`, `ValidateTranscriptionAudio`, and real corrupt/valid integration paths. The focused GREEN suite passed 29 tests.
+
+## REFACTOR
+
+- version-command failures remain technical `FfmpegConversionError` values;
+- every non-content technical error propagates without repository updates;
+- destination and executor failures are explicitly covered;
+- output reaches the caller only after command success and semantic WAV validation;
+- no infrastructure detail enters the job;
+- routes, schemas, and composition root remain disconnected and unchanged.
+
+## Fixtures
+
+### Corrupt
+
+```text
+filename: corrupt.wav
+content: b"these bytes are not a wav file"
+```
+
+Real FFmpeg attempts conversion and exits non-zero. The adapter raises `AudioContentInvalidError`; the use case persists `FAILED/AUDIO_CONTENT_INVALID`; the stable application error is raised; destination length remains zero; tracked temporary workspaces no longer exist.
+
+### Valid
+
+A one-second 440 Hz WAV is generated with `wave`, `math`, and `struct`. Validation returns a readable 16 kHz mono PCM16 result, preserves the original reference, leaves the job `UPLOADED`, and keeps `failure_code=None`.
+
+## Partial-artifact guarantee
+
+The converter copies to the caller destination only after command success, output existence, and semantic WAV validation. Invalid content never invokes `destination.write`. Temporary files are owned by `TemporaryDirectory` and are removed on success and failure.
+
+## Local environment and results
+
+```text
+Python 3.13.5
+ffmpeg version 7.1.3-0+deb13u1 Copyright (c) 2000-2025 the FFmpeg developers
+
+python -m pip install -e ".[dev]"
+Successfully built instrumentalsw-ai-module
+Successfully installed instrumentalsw-ai-module-0.1.0
+
+python scripts/check_quality.py
+73 passed in 3.24s
+391 statements, 5 missed; 74 branches, 5 partial
+Total coverage: 97.85%
+All checks passed!
+30 files already formatted
+Success: no issues found in 30 source files
+Quality gate passed.
+
+python -m pytest
+73 passed in 3.38s
+
+python -m pytest -m "not integration"
+68 passed, 5 deselected in 0.36s
+
+python -m pytest -m integration
+5 passed, 68 deselected in 2.62s
+skips: 0
+
+python -m pytest --cov=saxo_ai --cov-report=term-missing --cov-report=xml
+73 passed in 4.08s
+Coverage XML written to file coverage.xml
+Total coverage: 97.85%
+
+python -m ruff check src tests scripts
+All checks passed!
+
+python -m ruff format --check src tests scripts
+30 files already formatted
+
+python -m mypy
+Success: no issues found in 30 source files
+```
+
+## CI
+
+The original workflow remains restored and retains `SAXO_REQUIRE_FFMPEG=1` and the protected names.
+
+Final functional run **#25**, run ID `29708379386`, completed successfully:
+
+```text
+Python 3.11 — success
+Python 3.12 — success
+Python 3.13 — success
+```
+
+Every job completed checkout, Python setup, explicit FFmpeg installation, editable project installation, and the shared quality gate. A prior run failed transiently in the quality step; the same code passed the diagnostic rerun and the final uninstrumented workflow. No diagnostic artifact step remains in the final diff.
+
+## Limitations and not implemented
+
+- no FastAPI integration or new HTTP status code;
+- no original/canonical permanent storage or object storage;
+- no retries, workers, queues, or orchestration states;
+- no `VALID`, `PREPROCESSING`, or `PREPROCESSED` state;
+- no size or duration limits and no SAX-013;
+- no database, Redis, Docker, amplitude normalization, models, inference, training, datasets, MIDI, or MusicXML;
+- Backend and Frontend are unchanged.
