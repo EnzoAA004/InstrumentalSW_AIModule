@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import FrozenInstanceError
 from io import BytesIO
+from pathlib import Path
 from typing import Protocol
 from uuid import UUID, uuid4
 
@@ -133,6 +134,7 @@ def test_new_job_is_uploaded_without_failure_code_and_is_immutable() -> None:
 def test_mark_failed_returns_new_job_and_preserves_original_fields() -> None:
     original = build_job()
     failed = original.mark_failed(JobFailureCode.AUDIO_CONTENT_INVALID)
+
     assert failed is not original
     assert original.status is JobStatus.UPLOADED
     assert original.failure_code is None
@@ -176,12 +178,14 @@ def test_success_returns_result_without_resaving_or_changing_job() -> None:
     repository = RecordingRepository(job)
     converter = FakeConverter()
     destination = BytesIO()
+
     result = ValidateTranscriptionAudio(repository, converter).execute(
         job_id=job.job_id,
         source=BytesIO(b"a"),
         destination=destination,
         settings=CanonicalAudioSettings(),
     )
+
     assert result.original == OriginalAudioReference(
         filename=job.filename,
         size_bytes=job.size_bytes,
@@ -200,6 +204,7 @@ def test_invalid_content_marks_job_failed_and_raises_stable_application_error() 
     repository = RecordingRepository(job)
     converter = FakeConverter(error=AudioContentInvalidError(return_code=1, stderr="decoder"))
     destination = BytesIO()
+
     with pytest.raises(TranscriptionAudioValidationError) as captured:
         ValidateTranscriptionAudio(repository, converter).execute(
             job_id=job.job_id,
@@ -207,6 +212,7 @@ def test_invalid_content_marks_job_failed_and_raises_stable_application_error() 
             destination=destination,
             settings=CanonicalAudioSettings(),
         )
+
     assert captured.value.job_id == job.job_id
     assert captured.value.failure_code is JobFailureCode.AUDIO_CONTENT_INVALID
     assert destination.getvalue() == b""
@@ -227,12 +233,15 @@ def test_invalid_content_marks_job_failed_and_raises_stable_application_error() 
         FfmpegTimeoutError("timeout"),
         CanonicalAudioOutputMissingError("missing output"),
         CanonicalAudioOutputInvalidError("bad output"),
+        OSError("destination write failed"),
+        RuntimeError("executor failed"),
     ],
 )
 def test_technical_errors_propagate_without_marking_job_failed(technical_error: Exception) -> None:
     job = build_job()
     repository = RecordingRepository(job)
     destination = BytesIO()
+
     with pytest.raises(type(technical_error)):
         ValidateTranscriptionAudio(repository, FakeConverter(error=technical_error)).execute(
             job_id=job.job_id,
@@ -240,6 +249,7 @@ def test_technical_errors_propagate_without_marking_job_failed(technical_error: 
             destination=destination,
             settings=CanonicalAudioSettings(),
         )
+
     assert repository.saved == []
     assert repository.get(job.job_id) == job
     assert job.status is JobStatus.UPLOADED
@@ -261,20 +271,42 @@ def test_unknown_job_uses_existing_not_found_error_without_conversion() -> None:
 
 
 def test_version_failure_is_technical_but_conversion_nonzero_is_content_invalid() -> None:
-    common = dict(
-        source=BytesIO(b"invalid"),
-        destination=BytesIO(),
-        settings=CanonicalAudioSettings(),
-        original=OriginalAudioReference(
-            filename="take.wav", size_bytes=7, audio_sha256=KNOWN_SHA256
-        ),
+    original = OriginalAudioReference(
+        filename="take.wav",
+        size_bytes=7,
+        audio_sha256=KNOWN_SHA256,
     )
+
     with pytest.raises(Exception) as version_error:
         FfmpegCanonicalAudioConverter(
             executor=DifferentiatingExecutor(version_code=2),
-        ).convert(**common)
+        ).convert(
+            source=BytesIO(b"invalid"),
+            destination=BytesIO(),
+            settings=CanonicalAudioSettings(),
+            original=original,
+        )
     assert not isinstance(version_error.value, AudioContentInvalidError)
+
     with pytest.raises(AudioContentInvalidError):
         FfmpegCanonicalAudioConverter(
             executor=DifferentiatingExecutor(conversion_code=2),
-        ).convert(**common)
+        ).convert(
+            source=BytesIO(b"invalid"),
+            destination=BytesIO(),
+            settings=CanonicalAudioSettings(),
+            original=original,
+        )
+
+
+def test_api_contract_remains_disconnected_from_audio_validation() -> None:
+    root = Path(__file__).resolve().parents[2]
+    for relative_path in (
+        "src/saxo_ai/api/routes.py",
+        "src/saxo_ai/api/schemas.py",
+        "src/saxo_ai/main.py",
+    ):
+        source = (root / relative_path).read_text(encoding="utf-8")
+        assert "ValidateTranscriptionAudio" not in source
+        assert "AUDIO_CONTENT_INVALID" not in source
+        assert "failure_code" not in source
