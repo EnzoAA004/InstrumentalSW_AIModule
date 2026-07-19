@@ -34,6 +34,9 @@ dev-mode-dirs = ["src"]
 testpaths = ["tests"]
 addopts = ["--strict-config", "--strict-markers"]
 filterwarnings = ["error"]
+markers = [
+  "integration: tests that require the external FFmpeg executable",
+]
 
 [tool.coverage.run]
 branch = true
