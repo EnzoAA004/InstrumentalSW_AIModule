@@ -4,12 +4,12 @@ import ast
 import re
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Protocol
 
 import pytest
 from fastapi.testclient import TestClient
 
 from saxo_ai.application.errors import EmptyAudioFileError, UnsupportedAudioFormatError
+from saxo_ai.application.ports import AudioContentHasher, BinaryStream, TranscriptionJobRepository
 from saxo_ai.application.services import CreateTranscriptionJob
 from saxo_ai.domain.models import InputMode, SaxophoneType, TranscriptionJob
 from saxo_ai.infrastructure.repositories import InMemoryTranscriptionJobRepository
@@ -17,10 +17,6 @@ from saxo_ai.infrastructure.repositories import InMemoryTranscriptionJobReposito
 EXPECTED_ABC_SHA256 = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
 ROOT = Path(__file__).resolve().parents[2]
 ROUTES_PATH = ROOT / "src" / "saxo_ai" / "api" / "routes.py"
-
-
-class BinaryStream(Protocol):
-    def read(self, size: int) -> bytes: ...
 
 
 class RecordingStream:
@@ -60,14 +56,16 @@ class RecordingRepository:
         return None
 
 
-def build_hasher(*, chunk_size: int = 4) -> object:
+def build_hasher(*, chunk_size: int = 4) -> AudioContentHasher:
     from saxo_ai.infrastructure.hashing import Sha256AudioContentHasher
 
     return Sha256AudioContentHasher(chunk_size=chunk_size)
 
 
-def build_create_job(repository: object, *, chunk_size: int = 4) -> CreateTranscriptionJob:
-    return CreateTranscriptionJob(repository, build_hasher(chunk_size=chunk_size))  # type: ignore[arg-type]
+def build_create_job(
+    repository: TranscriptionJobRepository, *, chunk_size: int = 4
+) -> CreateTranscriptionJob:
+    return CreateTranscriptionJob(repository, build_hasher(chunk_size=chunk_size))
 
 
 def create_job(
@@ -180,6 +178,31 @@ def test_post_and_get_expose_expected_audio_sha256_without_local_path(client: Te
     queried_response = client.get(f"/api/v1/transcriptions/{created['job_id']}")
     assert queried_response.status_code == 200
     assert queried_response.json() == created
+
+
+def test_hasher_rejects_non_positive_chunk_size() -> None:
+    from saxo_ai.infrastructure.hashing import Sha256AudioContentHasher
+
+    with pytest.raises(ValueError, match="greater than zero"):
+        Sha256AudioContentHasher(chunk_size=0)
+
+
+def test_architecture_keeps_framework_and_hashlib_dependencies_outward() -> None:
+    application_and_domain = [
+        *sorted((ROOT / "src" / "saxo_ai" / "application").glob("*.py")),
+        *sorted((ROOT / "src" / "saxo_ai" / "domain").glob("*.py")),
+    ]
+
+    for path in application_and_domain:
+        source = path.read_text(encoding="utf-8")
+        assert "fastapi" not in source
+        if "domain" in path.parts:
+            assert "hashlib" not in source
+
+    hashing_source = (ROOT / "src" / "saxo_ai" / "infrastructure" / "hashing.py").read_text(
+        encoding="utf-8"
+    )
+    assert "import hashlib" in hashing_source
 
 
 def test_api_route_does_not_await_unbounded_upload_read() -> None:
