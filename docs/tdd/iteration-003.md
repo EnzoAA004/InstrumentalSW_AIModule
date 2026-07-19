@@ -103,7 +103,15 @@ GET created job                                            HTTP 200; same SHA-25
 
 ## CI
 
-GitHub Actions results for Python 3.11, 3.12, and 3.13 will be recorded in the pull request after the draft PR workflow completes.
+GitHub Actions run **#14** (run ID `29699732459`) completed successfully on the draft pull request:
+
+```text
+Python 3.11  success
+Python 3.12  success
+Python 3.13  success
+```
+
+Each matrix job completed checkout, Python setup, editable installation, and `python scripts/check_quality.py` successfully. A final documentation-only execution is expected after recording this evidence and must remain green.
 
 ## Limitations and stories not implemented
 
