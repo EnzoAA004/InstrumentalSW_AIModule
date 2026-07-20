@@ -26,9 +26,7 @@ def serialize_confidence_annotated_result(
             "event_count": result.report.input_event_count,
             "low_confidence_count": result.report.low_confidence_count,
         },
-        "events": [
-            _serialize_annotation(annotation) for annotation in result.annotated_events
-        ],
+        "events": [_serialize_annotation(annotation) for annotation in result.annotated_events],
     }
     return json.dumps(
         document,
