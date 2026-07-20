@@ -21,6 +21,7 @@ from saxo_ai.domain.transcription import (
 from saxo_ai.infrastructure.hf_baseline_contract import (
     BASELINE_PACKAGE_NAME,
     BASELINE_PACKAGE_VERSION,
+    BASELINE_SOURCE_REVISION,
     BEGIN_MIDI_NOTE,
     CHECKPOINT_FILENAME,
     CHECKPOINT_SHA256,
@@ -45,6 +46,7 @@ from saxo_ai.infrastructure.hf_runtime import HfMidiRuntimeFactory
 __all__ = [
     "BASELINE_PACKAGE_NAME",
     "BASELINE_PACKAGE_VERSION",
+    "BASELINE_SOURCE_REVISION",
     "BEGIN_MIDI_NOTE",
     "CHECKPOINT_FILENAME",
     "CHECKPOINT_SHA256",
@@ -106,6 +108,7 @@ class HfSaxophoneTranscriptionEngine:
             model=TranscriptionModelIdentity(
                 engine_name=BASELINE_PACKAGE_NAME,
                 engine_version=engine_version,
+                engine_source_revision=BASELINE_SOURCE_REVISION,
                 model_id=MODEL_ID,
                 model_revision=MODEL_REVISION,
                 checkpoint_filename=CHECKPOINT_FILENAME,

@@ -36,6 +36,7 @@ def _unit_interval(field_name: str, value: object) -> float:
 class TranscriptionModelIdentity:
     engine_name: str
     engine_version: str
+    engine_source_revision: str
     model_id: str
     model_revision: str
     checkpoint_filename: str
@@ -45,6 +46,7 @@ class TranscriptionModelIdentity:
         for field_name in (
             "engine_name",
             "engine_version",
+            "engine_source_revision",
             "model_id",
             "model_revision",
             "checkpoint_filename",

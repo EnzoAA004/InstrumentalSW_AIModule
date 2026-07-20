@@ -9,6 +9,12 @@ from saxo_ai.domain.transcription import TranscriptionSettings
 
 BASELINE_PACKAGE_NAME = "hf-midi-transcription"
 BASELINE_PACKAGE_VERSION = "0.1.1"
+BASELINE_SOURCE_URL = "https://github.com/xavriley/hf_midi_transcription.git"
+BASELINE_SOURCE_REVISION = "96f6797881e9497cbfc8f8e5deccea9c1f2f7adc"
+PIANO_TRANSCRIPTION_PACKAGE_NAME = "piano-transcription-inference"
+PIANO_TRANSCRIPTION_PACKAGE_VERSION = "0.0.5"
+PIANO_TRANSCRIPTION_SOURCE_URL = "https://github.com/xavriley/piano_transcription_inference.git"
+PIANO_TRANSCRIPTION_SOURCE_REVISION = "7568dc7f78b625e40cf9776e2806d164006610e3"
 MODEL_ID = "xavriley/midi-transcription-models"
 MODEL_REVISION = "982ce108d7010bc3c4f36cf851caea8d4c94763d"
 CHECKPOINT_FILENAME = "filosax_25k.pth"
@@ -24,6 +30,31 @@ FRAMES_PER_SECOND = 100
 BEGIN_MIDI_NOTE = 21
 DEFAULT_COPY_CHUNK_SIZE = 64 * 1024
 DEFAULT_CHECKPOINT_CHUNK_SIZE = 1024 * 1024
+
+
+@dataclass(frozen=True, slots=True)
+class RuntimeDistributionRequirement:
+    package_name: str
+    package_version: str
+    source_url: str
+    source_revision: str
+
+
+BASELINE_RUNTIME_REQUIREMENTS = (
+    RuntimeDistributionRequirement(
+        package_name=BASELINE_PACKAGE_NAME,
+        package_version=BASELINE_PACKAGE_VERSION,
+        source_url=BASELINE_SOURCE_URL,
+        source_revision=BASELINE_SOURCE_REVISION,
+    ),
+    RuntimeDistributionRequirement(
+        package_name=PIANO_TRANSCRIPTION_PACKAGE_NAME,
+        package_version=PIANO_TRANSCRIPTION_PACKAGE_VERSION,
+        source_url=PIANO_TRANSCRIPTION_SOURCE_URL,
+        source_revision=PIANO_TRANSCRIPTION_SOURCE_REVISION,
+    ),
+)
+
 
 DEFAULT_SETTINGS = TranscriptionSettings(
     sample_rate_hz=SAMPLE_RATE_HZ,

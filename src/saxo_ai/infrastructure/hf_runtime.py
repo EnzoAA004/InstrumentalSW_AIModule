@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import re
 import warnings
 from importlib import import_module, metadata
 from pathlib import Path
@@ -13,8 +15,9 @@ from saxo_ai.application.transcription_errors import (
 from saxo_ai.domain.transcription import TranscriptionSettings
 from saxo_ai.infrastructure.hf_baseline_contract import (
     BASELINE_PACKAGE_NAME,
-    BASELINE_PACKAGE_VERSION,
+    BASELINE_RUNTIME_REQUIREMENTS,
     BaselineRuntime,
+    RuntimeDistributionRequirement,
 )
 
 _AUDIOREAD_STDLIB_DEPRECATION = (
@@ -51,20 +54,56 @@ class _HfMidiRuntime:
         return returned[1]
 
 
+_FULL_GIT_REVISION = re.compile(r"[0-9a-f]{40}\Z")
+
+
+def _verify_distribution(requirement: RuntimeDistributionRequirement) -> str:
+    try:
+        distribution = metadata.distribution(requirement.package_name)
+    except metadata.PackageNotFoundError as error:
+        raise TranscriptionEngineUnavailableError(
+            f"Required baseline runtime package {requirement.package_name!r} is not installed"
+        ) from error
+
+    if distribution.version != requirement.package_version:
+        raise TranscriptionEngineUnavailableError(
+            f"Baseline runtime package {requirement.package_name!r} has incompatible version"
+        )
+
+    try:
+        raw_direct_url = distribution.read_text("direct_url.json")
+        if raw_direct_url is None:
+            raise ValueError("missing direct_url.json")
+        direct_url = json.loads(raw_direct_url)
+        vcs_info = direct_url["vcs_info"]
+        source_url = direct_url["url"]
+        vcs = vcs_info["vcs"]
+        commit_id = vcs_info["commit_id"]
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
+        raise TranscriptionEngineUnavailableError(
+            f"Baseline runtime source provenance is unavailable for {requirement.package_name!r}"
+        ) from error
+
+    if (
+        source_url != requirement.source_url
+        or vcs != "git"
+        or not isinstance(commit_id, str)
+        or _FULL_GIT_REVISION.fullmatch(commit_id) is None
+        or commit_id != requirement.source_revision
+    ):
+        raise TranscriptionEngineUnavailableError(
+            f"Baseline runtime source provenance is incompatible for {requirement.package_name!r}"
+        )
+    return distribution.version
+
+
 class HfMidiRuntimeFactory:
     def ensure_available(self) -> str:
-        try:
-            version = metadata.version(BASELINE_PACKAGE_NAME)
-        except metadata.PackageNotFoundError as error:
-            raise TranscriptionEngineUnavailableError(
-                "Optional baseline extra hf-midi-transcription==0.1.1 is not installed"
-            ) from error
-        if version != BASELINE_PACKAGE_VERSION:
-            raise TranscriptionEngineUnavailableError(
-                f"Baseline package version {version!r} is incompatible; "
-                f"expected {BASELINE_PACKAGE_VERSION!r}"
-            )
-        return version
+        versions = {
+            requirement.package_name: _verify_distribution(requirement)
+            for requirement in BASELINE_RUNTIME_REQUIREMENTS
+        }
+        return versions[BASELINE_PACKAGE_NAME]
 
     def create(
         self,
