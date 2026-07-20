@@ -116,13 +116,16 @@ class ConfidenceAnnotatedTranscriptionResult:
             raise InvalidLowConfidenceContractError(
                 "report input_event_count must equal the postprocessed note count"
             )
+
+        low_confidence_count = 0
         for index, annotation in enumerate(self.annotated_events):
             if annotation.event is not self.original.notes.events[index]:
                 raise InvalidLowConfidenceContractError(
                     "annotations must preserve postprocessed event references and order"
                 )
-        low_count = sum(annotation.is_low_confidence for annotation in self.annotated_events)
-        if low_count != self.report.low_confidence_count:
+            if annotation.is_low_confidence:
+                low_confidence_count += 1
+        if low_confidence_count != self.report.low_confidence_count:
             raise InvalidLowConfidenceContractError(
                 "report low_confidence_count must match annotations"
             )
