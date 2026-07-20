@@ -73,6 +73,12 @@ Invalid values fail startup instead of silently using defaults. Tests may inject
 
 An upload above the size limit stops after at most `maximum + 1` returned bytes and responds with HTTP 413 and code `AUDIO_SIZE_LIMIT_EXCEEDED`; no job is created. A semantically valid canonical WAV above the duration limit becomes an internal failed job with `AUDIO_DURATION_LIMIT_EXCEEDED`. Duration validation is not connected to HTTP yet.
 
+## Versioned NoteEvent contract
+
+SAX-020 defines a model-independent `NoteEvent` and ordered `NoteEventBatch` with current schema version `"1.0"`. The contract uses concert-pitch MIDI, onset/offset seconds, MIDI-compatible velocity, and confidence, with strict standard-library JSON round trips.
+
+The complete schema is documented in [`docs/contracts/note-event-v1.md`](docs/contracts/note-event-v1.md). No transcription engine, model, checkpoint, or inference integration exists yet; those belong to SAX-021.
+
 ## Quality and tests
 
 ```bash
@@ -88,8 +94,8 @@ The quality command runs pytest with statement/branch coverage and a 90% thresho
 ```text
 src/saxo_ai/
 ├── api/             # FastAPI transport and HTTP error translation
-├── application/     # Use cases, ports, and stable errors
-├── domain/          # Immutable jobs, audio contracts, and limit policy
+├── application/     # Use cases, ports, stable errors, and JSON contracts
+├── domain/          # Immutable jobs, audio policy, and NoteEvent contract
 ├── infrastructure/  # Environment, SHA-256, FFmpeg, and in-memory repository
 └── main.py          # Composition root and dependency injection
 ```
@@ -98,4 +104,4 @@ Dependencies point inward. FastAPI does not appear in domain or application. Env
 
 ## Scope boundaries
 
-The module does not connect duration validation to endpoints, persist audio, implement retries/workers/queues, download or run models, train models, generate MIDI/MusicXML, or use cloud services. SAX-020 and musical transcription have not started.
+The module does not connect duration validation to endpoints, persist audio, implement retries/workers/queues, download or run models, train models, generate MIDI/MusicXML, or use cloud services. SAX-020 defines data contracts only; SAX-021 and musical inference have not started.
