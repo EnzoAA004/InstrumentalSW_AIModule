@@ -35,7 +35,9 @@ def test_settings_normalize_integer_minimum_duration_to_float() -> None:
 )
 def test_settings_reject_invalid_minimum_duration(invalid_value: object) -> None:
     with pytest.raises(InvalidNoteEventPostProcessingContractError):
-        NoteEventPostProcessingSettings(minimum_duration_seconds=invalid_value)  # type: ignore[arg-type]
+        NoteEventPostProcessingSettings(
+            minimum_duration_seconds=invalid_value  # type: ignore[arg-type]
+        )
 
 
 @pytest.mark.parametrize(
