@@ -23,9 +23,15 @@ class WarningModel:
         return midi_path, {"events": []}
 
 
-def test_runtime_suppresses_only_known_audioread_stdlib_deprecation(tmp_path: Path) -> None:
+@pytest.mark.parametrize("module_name", ["aifc", "audioop", "sunau"])
+def test_runtime_suppresses_only_known_audioread_stdlib_deprecations(
+    module_name: str,
+    tmp_path: Path,
+) -> None:
     runtime = _HfMidiRuntime(
-        WarningModel("'aifc' is deprecated and slated for removal in Python 3.13")
+        WarningModel(
+            f"'{module_name}' is deprecated and slated for removal in Python 3.13"
+        )
     )
     assert runtime.transcribe(
         audio_path=tmp_path / "canonical.wav",
