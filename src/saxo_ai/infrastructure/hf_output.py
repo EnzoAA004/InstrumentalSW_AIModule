@@ -5,9 +5,14 @@ from collections.abc import Sequence
 from numbers import Real
 from typing import Any, cast
 
-from saxo_ai.application.transcription_errors import InvalidTranscriptionEngineOutputError
+from saxo_ai.application.transcription_errors import (
+    InvalidTranscriptionEngineOutputError,
+)
 from saxo_ai.domain.note_events import InvalidNoteEventError, NoteEvent, NoteEventBatch
-from saxo_ai.infrastructure.hf_baseline_contract import BEGIN_MIDI_NOTE, FRAMES_PER_SECOND
+from saxo_ai.infrastructure.hf_baseline_contract import (
+    BEGIN_MIDI_NOTE,
+    FRAMES_PER_SECOND,
+)
 
 
 def convert_baseline_output(external_output: object) -> NoteEventBatch:
@@ -85,18 +90,14 @@ class _OnsetMatrix:
             self._pitches = int(shape[1])
             self._numpy_style = True
         elif isinstance(matrix, (list, tuple)):
-            if not matrix or not all(
-                isinstance(row, (list, tuple)) for row in matrix
-            ):
+            if not matrix or not all(isinstance(row, (list, tuple)) for row in matrix):
                 raise InvalidTranscriptionEngineOutputError(
                     "reg_onset_output must be a non-empty two-dimensional matrix"
                 )
             rows = cast(Sequence[Sequence[object]], matrix)
             self._frames = len(rows)
             self._pitches = len(rows[0])
-            if self._pitches == 0 or any(
-                len(row) != self._pitches for row in rows
-            ):
+            if self._pitches == 0 or any(len(row) != self._pitches for row in rows):
                 raise InvalidTranscriptionEngineOutputError(
                     "reg_onset_output rows must have a consistent positive width"
                 )
@@ -127,8 +128,7 @@ class _OnsetMatrix:
         if window_start >= window_end:
             raise ValueError("onset activation window contains no frames")
         return max(
-            self._value(frame, pitch_index)
-            for frame in range(window_start, window_end)
+            self._value(frame, pitch_index) for frame in range(window_start, window_end)
         )
 
     def _value(self, frame: int, pitch: int) -> float:
@@ -141,7 +141,5 @@ class _OnsetMatrix:
             raise ValueError("onset activation must be numeric")
         value = float(raw)
         if not math.isfinite(value) or not 0.0 <= value <= 1.0:
-            raise ValueError(
-                "onset activation must be finite and between 0.0 and 1.0"
-            )
+            raise ValueError("onset activation must be finite and between 0.0 and 1.0")
         return value
