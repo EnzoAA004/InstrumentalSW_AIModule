@@ -25,6 +25,8 @@ def test_install_commands_use_current_python_no_cache_and_exact_commits() -> Non
     )
     assert "--no-deps" in commands[2]
     assert "--no-deps" in commands[3]
+    assert "--force-reinstall" in commands[2]
+    assert "--force-reinstall" in commands[3]
     assert commands[2][-1].endswith("@" + contract.PIANO_TRANSCRIPTION_SOURCE_REVISION)
     assert commands[3][-1].endswith("@" + contract.BASELINE_SOURCE_REVISION)
 
