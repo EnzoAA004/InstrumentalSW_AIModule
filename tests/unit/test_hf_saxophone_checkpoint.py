@@ -4,12 +4,6 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import pytest
-from tests.unit.hf_saxophone_fakes import (
-    FakeDownloader,
-    FakeRuntimeFactory,
-    SpyStream,
-    make_checkpoint,
-)
 
 from saxo_ai.application.transcription_errors import (
     TranscriptionCheckpointDownloadError,
@@ -22,6 +16,12 @@ from saxo_ai.infrastructure.hf_saxophone import (
     MODEL_REVISION,
     HfSaxophoneTranscriptionEngine,
     PinnedFiloSaxCheckpointResolver,
+)
+from tests.unit.hf_saxophone_fakes import (
+    FakeDownloader,
+    FakeRuntimeFactory,
+    SpyStream,
+    make_checkpoint,
 )
 
 
