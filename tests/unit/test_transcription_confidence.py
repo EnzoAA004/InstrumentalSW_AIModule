@@ -183,9 +183,7 @@ def test_report_counts_marked_and_regular_without_removing_events() -> None:
 
 
 def test_result_rejects_annotation_count_mismatch() -> None:
-    processed = make_processed(
-        (make_event(pitch=60, onset=0.0, offset=0.5, confidence=0.4),)
-    )
+    processed = make_processed((make_event(pitch=60, onset=0.0, offset=0.5, confidence=0.4),))
     report = LowConfidenceReport(
         settings=LowConfidenceSettings(),
         input_event_count=1,
