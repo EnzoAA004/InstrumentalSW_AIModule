@@ -4,15 +4,6 @@ import math
 from pathlib import Path
 
 import pytest
-from tests.unit.hf_saxophone_fakes import (
-    FakeDownloader,
-    FakeRuntime,
-    FakeRuntimeFactory,
-    SpyStream,
-    WorkspaceTracker,
-    make_checkpoint,
-    valid_external_output,
-)
 
 from saxo_ai.application.transcription_errors import (
     InvalidTranscriptionEngineOutputError,
@@ -25,6 +16,15 @@ from saxo_ai.application.transcription_errors import (
 from saxo_ai.infrastructure.hf_saxophone import (
     HfSaxophoneTranscriptionEngine,
     PinnedFiloSaxCheckpointResolver,
+)
+from tests.unit.hf_saxophone_fakes import (
+    FakeDownloader,
+    FakeRuntime,
+    FakeRuntimeFactory,
+    SpyStream,
+    WorkspaceTracker,
+    make_checkpoint,
+    valid_external_output,
 )
 
 
