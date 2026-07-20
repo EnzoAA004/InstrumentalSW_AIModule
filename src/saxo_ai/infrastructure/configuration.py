@@ -21,9 +21,7 @@ def load_audio_processing_limits(
     defaults = AudioProcessingLimits()
 
     size = _load_size(values.get(MAX_SIZE_ENV), defaults.max_size_bytes)
-    duration = _load_duration(
-        values.get(MAX_DURATION_ENV), defaults.max_duration_seconds
-    )
+    duration = _load_duration(values.get(MAX_DURATION_ENV), defaults.max_duration_seconds)
     return AudioProcessingLimits(
         max_size_bytes=size,
         max_duration_seconds=duration,
@@ -40,9 +38,7 @@ def _load_size(raw: str | None, default: int) -> int:
             f"{MAX_SIZE_ENV} must be a positive integer"
         ) from error
     if value <= 0:
-        raise AudioProcessingConfigurationError(
-            f"{MAX_SIZE_ENV} must be a positive integer"
-        )
+        raise AudioProcessingConfigurationError(f"{MAX_SIZE_ENV} must be a positive integer")
     return value
 
 
