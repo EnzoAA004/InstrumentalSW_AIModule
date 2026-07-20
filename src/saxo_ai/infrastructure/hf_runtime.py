@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from importlib import import_module, metadata
 from pathlib import Path
 from typing import Protocol, cast
@@ -14,6 +15,10 @@ from saxo_ai.infrastructure.hf_baseline_contract import (
     BASELINE_PACKAGE_NAME,
     BASELINE_PACKAGE_VERSION,
     BaselineRuntime,
+)
+
+_AUDIOREAD_STDLIB_DEPRECATION = (
+    r"'(?:aifc|sunau)' is deprecated and slated for removal in Python 3\.13"
 )
 
 
@@ -32,7 +37,13 @@ class _HfMidiRuntime:
         self._model = cast(_ExternalTranscriptionModel, model)
 
     def transcribe(self, *, audio_path: Path, midi_path: Path) -> object:
-        returned = self._model.transcribe(audio_path, midi_path, activations=True)
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message=_AUDIOREAD_STDLIB_DEPRECATION,
+                category=DeprecationWarning,
+            )
+            returned = self._model.transcribe(audio_path, midi_path, activations=True)
         if not isinstance(returned, tuple) or len(returned) != 2:
             raise InvalidTranscriptionEngineOutputError(
                 "baseline runtime must return a MIDI path and activation result"
