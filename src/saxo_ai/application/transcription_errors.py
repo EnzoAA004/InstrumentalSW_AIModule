@@ -51,9 +51,7 @@ class InvalidTranscriptionEngineOutputError(TranscriptionError):
 
     def __init__(self, message: str, *, event_index: int | None = None) -> None:
         rendered = (
-            message
-            if event_index is None
-            else f"Invalid event at index {event_index}: {message}"
+            message if event_index is None else f"Invalid event at index {event_index}: {message}"
         )
         super().__init__(rendered)
         self.event_index = event_index
