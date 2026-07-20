@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 from saxo_ai.domain.note_event_postprocessing import (
     NoteEventPostProcessingReport,
     NoteEventPostProcessingSettings,
@@ -11,11 +9,6 @@ from saxo_ai.domain.note_events import NoteEvent, NoteEventBatch
 from saxo_ai.domain.transcription import TranscriptionResult
 
 DuplicateKey = tuple[int, float, float]
-
-
-@dataclass(frozen=True, slots=True)
-class _DuplicateSlot:
-    output_index: int
 
 
 def _duplicate_key(event: NoteEvent) -> DuplicateKey:
@@ -46,27 +39,30 @@ class PostProcessTranscriptionEvents:
                 surviving_events.append(event)
 
         output_events: list[NoteEvent] = []
-        slots: dict[DuplicateKey, _DuplicateSlot] = {}
+        slots: dict[DuplicateKey, int] = {}
         duplicate_keys: set[DuplicateKey] = set()
         duplicate_removed_count = 0
 
         for event in surviving_events:
             key = _duplicate_key(event)
-            slot = slots.get(key)
-            if slot is None:
-                slots[key] = _DuplicateSlot(output_index=len(output_events))
+            output_index = slots.get(key)
+            if output_index is None:
+                slots[key] = len(output_events)
                 output_events.append(event)
                 continue
 
             duplicate_removed_count += 1
             duplicate_keys.add(key)
-            current = output_events[slot.output_index]
+            current = output_events[output_index]
             if _candidate_is_preferred(event, current):
-                output_events[slot.output_index] = event
+                output_events[output_index] = event
 
         changed = short_duration_removed_count > 0 or duplicate_removed_count > 0
         notes = (
-            NoteEventBatch(events=tuple(output_events), schema_version=original.notes.schema_version)
+            NoteEventBatch(
+                events=tuple(output_events),
+                schema_version=original.notes.schema_version,
+            )
             if changed
             else original.notes
         )
