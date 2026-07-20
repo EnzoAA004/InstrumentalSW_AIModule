@@ -79,6 +79,12 @@ SAX-020 defines a model-independent `NoteEvent` and ordered `NoteEventBatch` wit
 
 The complete schema is documented in [`docs/contracts/note-event-v1.md`](docs/contracts/note-event-v1.md).
 
+## Deterministic NoteEvent postprocessing
+
+SAX-022 adds the internal `PostProcessTranscriptionEvents` use case. Its immutable policy defaults to a minimum duration of `0.030` seconds, removes only events strictly shorter than that boundary, and reduces exact duplicates identified by concert pitch plus exact onset/offset times. The retained representative is selected by confidence, then velocity, then first appearance.
+
+A no-op returns the original `NoteEventBatch` object. The report remains separate from NoteEvent JSON schema `1.0`. There is no low-confidence filtering or marker yet; that remains SAX-023. See [`docs/contracts/note-event-postprocessing-v1.md`](docs/contracts/note-event-postprocessing-v1.md).
+
 ## Optional FiloSax baseline
 
 SAX-021 provides an internal, replaceable FiloSax audio-to-note baseline behind
@@ -118,9 +124,14 @@ endpoint.
 
 ```bash
 python scripts/check_quality.py
+python -m pytest
 python -m pytest -m "not integration"
 python -m pytest -m integration
 python -m pytest -m baseline_integration
+python -m pytest --cov=saxo_ai --cov-report=term-missing --cov-report=xml
+python -m ruff check src tests scripts
+python -m ruff format --check src tests scripts
+python -m mypy
 ```
 
 The quality command runs pytest with statement/branch coverage and a 90% threshold, Ruff lint, Ruff format check, and strict mypy. GitHub Actions runs it for Python 3.11, 3.12, and 3.13. The runner stops at the first failed control and returns a non-zero exit code.
@@ -142,4 +153,4 @@ Dependencies point inward. FastAPI does not appear in domain or application. Env
 
 ## Scope boundaries
 
-The module does not connect duration validation or model inference to endpoints, persist audio, implement retries/workers/queues, train models, generate final MIDI/MusicXML, or use product cloud storage. SAX-021 does not implement deduplication, event merging, minimum-duration policy, overlap correction, or low-confidence policy; those belong to SAX-022 and SAX-023.
+The module does not connect duration validation, model inference, or NoteEvent postprocessing to endpoints; persist audio; implement retries/workers/queues; train models; generate final MIDI/MusicXML; or use product cloud storage. SAX-022 does not classify low confidence, resolve overlaps, deduplicate approximately, or change the baseline.
