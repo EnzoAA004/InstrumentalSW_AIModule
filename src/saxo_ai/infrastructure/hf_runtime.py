@@ -84,15 +84,25 @@ def _verify_distribution(requirement: RuntimeDistributionRequirement) -> str:
             f"Baseline runtime source provenance is unavailable for {requirement.package_name!r}"
         ) from error
 
-    if (
-        source_url != requirement.source_url
-        or vcs != "git"
-        or not isinstance(commit_id, str)
-        or _FULL_GIT_REVISION.fullmatch(commit_id) is None
-        or commit_id != requirement.source_revision
-    ):
+    if source_url != requirement.source_url:
         raise TranscriptionEngineUnavailableError(
-            f"Baseline runtime source provenance is incompatible for {requirement.package_name!r}"
+            f"Baseline runtime source provenance URL is incompatible for "
+            f"{requirement.package_name!r}"
+        )
+    if vcs != "git":
+        raise TranscriptionEngineUnavailableError(
+            f"Baseline runtime source provenance VCS is incompatible for "
+            f"{requirement.package_name!r}"
+        )
+    if not isinstance(commit_id, str) or _FULL_GIT_REVISION.fullmatch(commit_id) is None:
+        raise TranscriptionEngineUnavailableError(
+            f"Baseline runtime source provenance revision is not a full commit for "
+            f"{requirement.package_name!r}"
+        )
+    if commit_id != requirement.source_revision:
+        raise TranscriptionEngineUnavailableError(
+            f"Baseline runtime source provenance revision is incompatible for "
+            f"{requirement.package_name!r}"
         )
     return distribution.version
 
