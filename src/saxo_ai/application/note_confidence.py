@@ -24,25 +24,31 @@ class MarkLowConfidenceEvents:
         self,
         original: PostProcessedTranscriptionResult,
     ) -> ConfidenceAnnotatedTranscriptionResult:
-        annotations = tuple(
-            ConfidenceAnnotatedNoteEvent(
-                event=event,
-                is_low_confidence=_is_low_confidence(
-                    event,
-                    self._settings.low_confidence_threshold,
-                ),
+        annotations: list[ConfidenceAnnotatedNoteEvent] = []
+        low_confidence_count = 0
+        for event in original.notes.events:
+            is_low_confidence = _is_low_confidence(
+                event,
+                self._settings.low_confidence_threshold,
             )
-            for event in original.notes.events
-        )
-        low_confidence_count = sum(annotation.is_low_confidence for annotation in annotations)
+            annotations.append(
+                ConfidenceAnnotatedNoteEvent(
+                    event=event,
+                    is_low_confidence=is_low_confidence,
+                )
+            )
+            if is_low_confidence:
+                low_confidence_count += 1
+
+        annotated_events = tuple(annotations)
         report = LowConfidenceReport(
             settings=self._settings,
-            input_event_count=len(annotations),
+            input_event_count=len(annotated_events),
             low_confidence_count=low_confidence_count,
-            regular_confidence_count=len(annotations) - low_confidence_count,
+            regular_confidence_count=len(annotated_events) - low_confidence_count,
         )
         return ConfidenceAnnotatedTranscriptionResult(
             original=original,
-            annotated_events=annotations,
+            annotated_events=annotated_events,
             report=report,
         )
