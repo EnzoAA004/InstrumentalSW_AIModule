@@ -113,9 +113,13 @@ def test_deserializer_rejects_malformed_or_non_object_roots(payload: str) -> Non
 
 
 def test_deserializer_rejects_missing_and_unknown_root_fields() -> None:
-    missing_version = {"events": []}
-    missing_events = {"schema_version": "1.0"}
-    unknown = {"schema_version": "1.0", "events": [], "model": "future"}
+    missing_version: dict[str, Any] = {"events": []}
+    missing_events: dict[str, Any] = {"schema_version": "1.0"}
+    unknown: dict[str, Any] = {
+        "schema_version": "1.0",
+        "events": [],
+        "model": "future",
+    }
 
     for document in (missing_version, missing_events, unknown):
         with pytest.raises(InvalidNoteEventPayloadError):
