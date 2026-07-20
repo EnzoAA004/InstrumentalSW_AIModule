@@ -5,7 +5,10 @@ import re
 from dataclasses import dataclass
 from hashlib import sha256
 
-from saxo_ai.domain.written_pitch import WrittenPitchNoteEvent, WrittenPitchTranscriptionResult
+from saxo_ai.domain.written_pitch import (
+    WrittenPitchNoteEvent,
+    WrittenPitchTranscriptionResult,
+)
 
 MIDI_EXPORT_POLICY_VERSION = "1.0"
 MIDI_FILE_TYPE = 1
@@ -47,7 +50,11 @@ def _positive_midi_integer(field_name: str, value: object) -> int:
 
 def _tempo_microseconds_per_beat(tempo_bpm: float) -> int:
     tempo = round(60_000_000 / tempo_bpm)
-    if not MIDI_TEMPO_MIN_MICROSECONDS_PER_BEAT <= tempo <= MIDI_TEMPO_MAX_MICROSECONDS_PER_BEAT:
+    if (
+        not MIDI_TEMPO_MIN_MICROSECONDS_PER_BEAT
+        <= tempo
+        <= MIDI_TEMPO_MAX_MICROSECONDS_PER_BEAT
+    ):
         raise InvalidMidiExportSettingsError(
             "tempo_bpm produces an unrepresentable MIDI tempo value"
         )
@@ -60,7 +67,9 @@ class MidiExportSettings:
     policy_version: str = MIDI_EXPORT_POLICY_VERSION
 
     def __post_init__(self) -> None:
-        if isinstance(self.tempo_bpm, bool) or not isinstance(self.tempo_bpm, (int, float)):
+        if isinstance(self.tempo_bpm, bool) or not isinstance(
+            self.tempo_bpm, (int, float)
+        ):
             raise InvalidMidiExportSettingsError(
                 "tempo_bpm must be a finite number greater than zero"
             )
@@ -99,7 +108,9 @@ class MidiNotePlan:
             or not isinstance(self.pitch_concert_midi, int)
             or self.pitch_concert_midi != self.source.source.event.pitch_concert_midi
         ):
-            raise InvalidMidiPlanError("pitch_concert_midi must match the source concert pitch")
+            raise InvalidMidiPlanError(
+                "pitch_concert_midi must match the source concert pitch"
+            )
         velocity = _positive_midi_integer("velocity", self.velocity)
         onset_tick = _non_negative_integer("onset_tick", self.onset_tick)
         offset_tick = _non_negative_integer("offset_tick", self.offset_tick)
@@ -132,7 +143,9 @@ class MidiExportReport:
         ):
             _non_negative_integer(field_name, getattr(self, field_name))
         if self.input_event_count != self.exported_note_count:
-            raise InvalidMidiPlanError("input_event_count must equal exported_note_count")
+            raise InvalidMidiPlanError(
+                "input_event_count must equal exported_note_count"
+            )
         if self.minimum_tick_adjustment_count > self.exported_note_count:
             raise InvalidMidiPlanError(
                 "minimum_tick_adjustment_count cannot exceed exported_note_count"
@@ -162,24 +175,32 @@ class MidiArtifact:
         if not self.content:
             raise InvalidMidiArtifactError("content must not be empty")
         if not self.content.startswith(b"MThd"):
-            raise InvalidMidiArtifactError("content must begin with the Standard MIDI File header")
+            raise InvalidMidiArtifactError(
+                "content must begin with the Standard MIDI File header"
+            )
         if self.media_type != MIDI_MEDIA_TYPE:
             raise InvalidMidiArtifactError(f"media_type must be {MIDI_MEDIA_TYPE!r}")
         if self.file_extension != MIDI_FILE_EXTENSION:
-            raise InvalidMidiArtifactError(f"file_extension must be {MIDI_FILE_EXTENSION!r}")
+            raise InvalidMidiArtifactError(
+                f"file_extension must be {MIDI_FILE_EXTENSION!r}"
+            )
         if (
             isinstance(self.size_bytes, bool)
             or not isinstance(self.size_bytes, int)
             or self.size_bytes != len(self.content)
         ):
-            raise InvalidMidiArtifactError("size_bytes must equal the encoded content length")
+            raise InvalidMidiArtifactError(
+                "size_bytes must equal the encoded content length"
+            )
         expected_digest = sha256(self.content).hexdigest()
         if (
             not isinstance(self.sha256, str)
             or _SHA256_PATTERN.fullmatch(self.sha256) is None
             or self.sha256 != expected_digest
         ):
-            raise InvalidMidiArtifactError("sha256 must match the lowercase content SHA-256")
+            raise InvalidMidiArtifactError(
+                "sha256 must match the lowercase content SHA-256"
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -191,7 +212,9 @@ class MidiExportResult:
 
     def __post_init__(self) -> None:
         if not isinstance(self.original, WrittenPitchTranscriptionResult):
-            raise InvalidMidiPlanError("original must be a WrittenPitchTranscriptionResult")
+            raise InvalidMidiPlanError(
+                "original must be a WrittenPitchTranscriptionResult"
+            )
         if not isinstance(self.plan, tuple) or not all(
             isinstance(item, MidiNotePlan) for item in self.plan
         ):
@@ -201,16 +224,27 @@ class MidiExportResult:
         if not isinstance(self.report, MidiExportReport):
             raise InvalidMidiPlanError("report must be a MidiExportReport")
         expected_count = len(self.original.events)
-        if len(self.plan) != expected_count or self.report.exported_note_count != expected_count:
-            raise InvalidMidiPlanError("plan and report counts must match the written result")
+        if (
+            len(self.plan) != expected_count
+            or self.report.exported_note_count != expected_count
+        ):
+            raise InvalidMidiPlanError(
+                "plan and report counts must match the written result"
+            )
         seen_indexes: set[int] = set()
         for item in self.plan:
             if item.source_index >= expected_count:
-                raise InvalidMidiPlanError("source_index must reference an original written event")
+                raise InvalidMidiPlanError(
+                    "source_index must reference an original written event"
+                )
             if item.source is not self.original.events[item.source_index]:
-                raise InvalidMidiPlanError("plan sources must preserve original event references")
+                raise InvalidMidiPlanError(
+                    "plan sources must preserve original event references"
+                )
             if item.source_index in seen_indexes:
                 raise InvalidMidiPlanError("source_index values must be unique")
             seen_indexes.add(item.source_index)
         if seen_indexes != set(range(expected_count)):
-            raise InvalidMidiPlanError("plan must contain every original event exactly once")
+            raise InvalidMidiPlanError(
+                "plan must contain every original event exactly once"
+            )
