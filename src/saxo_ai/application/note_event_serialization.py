@@ -33,16 +33,7 @@ def serialize_note_event_batch(batch: NoteEventBatch) -> str:
 
     document = {
         "schema_version": batch.schema_version,
-        "events": [
-            {
-                "pitch_concert_midi": event.pitch_concert_midi,
-                "onset_seconds": event.onset_seconds,
-                "offset_seconds": event.offset_seconds,
-                "velocity": event.velocity,
-                "confidence": event.confidence,
-            }
-            for event in batch.events
-        ],
+        "events": [_serialize_event(event) for event in batch.events],
     }
     return json.dumps(
         document,
@@ -50,6 +41,10 @@ def serialize_note_event_batch(batch: NoteEventBatch) -> str:
         allow_nan=False,
         separators=(",", ":"),
     )
+
+
+def _serialize_event(event: NoteEvent) -> dict[str, object]:
+    return {field_name: getattr(event, field_name) for field_name in NOTE_EVENT_FIELDS}
 
 
 def deserialize_note_event_batch(payload: str) -> NoteEventBatch:
