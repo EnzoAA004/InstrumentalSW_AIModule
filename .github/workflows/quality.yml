@@ -47,38 +47,16 @@ jobs:
       - name: Upgrade pip
         run: python -m pip install --upgrade pip
       - name: Install project with pinned baseline
-        id: baseline_install
         if: matrix.python-version == '3.11'
-        continue-on-error: true
-        run: python -m pip install -e ".[dev,baseline]" > baseline-install.log 2>&1
+        run: python -m pip install -e "[dev,baseline]"
       - name: Install project
         if: matrix.python-version != '3.11'
-        run: python -m pip install -e ".[dev]"
+        run: python -m pip install -e "[dev]"
       - name: Run quality gate with real baseline
-        id: baseline_quality
-        if: always() && matrix.python-version == '3.11'
-        continue-on-error: true
+        if: matrix.python-version == '3.11'
         env:
           SAXO_REQUIRE_BASELINE: "1"
-        run: python scripts/check_quality.py > quality.log 2>&1
+        run: python scripts/check_quality.py
       - name: Run quality gate
-        id: core_quality
         if: matrix.python-version != '3.11'
-        continue-on-error: true
-        run: python scripts/check_quality.py > quality.log 2>&1
-      - name: Upload isolated diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: saxo-diagnostics-${{ matrix.python-version }}
-          path: |
-            baseline-install.log
-            quality.log
-          if-no-files-found: ignore
-          retention-days: 1
-      - name: Propagate diagnostic failure
-        if: >-
-          steps.baseline_install.outcome == 'failure' ||
-          steps.baseline_quality.outcome == 'failure' ||
-          steps.core_quality.outcome == 'failure'
-        run: exit 1
+        run: python scripts/check_quality.py
