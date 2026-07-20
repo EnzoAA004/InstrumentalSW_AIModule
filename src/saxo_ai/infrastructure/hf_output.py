@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Sequence
-from numbers import Real
+from numbers import Integral, Real
 from typing import Any, cast
 
 from saxo_ai.application.transcription_errors import (
@@ -47,6 +47,21 @@ def convert_baseline_output(external_output: object) -> NoteEventBatch:
     return NoteEventBatch(events=ordered)
 
 
+def _external_float(field_name: str, value: object) -> float:
+    if isinstance(value, bool) or not isinstance(value, Real):
+        raise ValueError(f"{field_name} must be a finite number")
+    normalized = float(value)
+    if not math.isfinite(normalized):
+        raise ValueError(f"{field_name} must be a finite number")
+    return normalized
+
+
+def _external_int(field_name: str, value: object) -> int:
+    if isinstance(value, bool) or not isinstance(value, Integral):
+        raise ValueError(f"{field_name} must be an integer")
+    return int(value)
+
+
 def _convert_event(raw_event: object, matrix: _OnsetMatrix, index: int) -> NoteEvent:
     if not isinstance(raw_event, dict):
         raise InvalidTranscriptionEngineOutputError(
@@ -61,13 +76,15 @@ def _convert_event(raw_event: object, matrix: _OnsetMatrix, index: int) -> NoteE
             event_index=index,
         )
     try:
-        onset = raw_event["onset_time"]
-        pitch = raw_event["midi_note"]
+        onset = _external_float("onset_time", raw_event["onset_time"])
+        offset = _external_float("offset_time", raw_event["offset_time"])
+        pitch = _external_int("midi_note", raw_event["midi_note"])
+        velocity = _external_int("velocity", raw_event["velocity"])
         return NoteEvent(
             pitch_concert_midi=pitch,
             onset_seconds=onset,
-            offset_seconds=raw_event["offset_time"],
-            velocity=raw_event["velocity"],
+            offset_seconds=offset,
+            velocity=velocity,
             confidence=matrix.confidence(onset=onset, pitch=pitch),
         )
     except (InvalidNoteEventError, ValueError, TypeError) as error:
@@ -111,18 +128,13 @@ class _OnsetMatrix:
                 "reg_onset_output must contain frames and pitch classes"
             )
 
-    def confidence(self, *, onset: object, pitch: object) -> float:
-        if isinstance(onset, bool) or not isinstance(onset, Real):
-            raise ValueError("onset_time must be a finite number")
-        onset_value = float(onset)
-        if not math.isfinite(onset_value) or onset_value < 0:
+    def confidence(self, *, onset: float, pitch: int) -> float:
+        if onset < 0:
             raise ValueError("onset_time must be a finite non-negative number")
-        if isinstance(pitch, bool) or not isinstance(pitch, int):
-            raise ValueError("midi_note must be a Python integer")
         pitch_index = pitch - BEGIN_MIDI_NOTE
         if not 0 <= pitch_index < self._pitches:
             raise ValueError("midi_note has no corresponding onset activation")
-        center_frame = round(onset_value * FRAMES_PER_SECOND)
+        center_frame = round(onset * FRAMES_PER_SECOND)
         window_start = max(0, center_frame - 2)
         window_end = min(self._frames, center_frame + 3)
         if window_start >= window_end:
