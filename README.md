@@ -91,6 +91,21 @@ SAX-023 adds the internal `MarkLowConfidenceEvents` use case and a versioned JSO
 
 Confidence is an engine signal, not calibrated accuracy: `0.8` does not mean 80% accuracy. The view adds only `is_low_confidence` and is documented in [`docs/contracts/note-confidence-v1.md`](docs/contracts/note-confidence-v1.md). It is not connected to FastAPI or a frontend yet.
 
+## Written saxophone pitch
+
+SAX-030 adds the internal `TransposeWrittenPitchEvents` use case. It preserves every concert-pitch `NoteEvent` and derives a separate integer `written_pitch_midi` through the existing instrument rule:
+
+```text
+soprano Bb   +2
+alto Eb      +9
+tenor Bb    +14
+baritone Eb +21
+```
+
+The scalar function rejects invalid concert pitches, invalid saxophone types, and any attempted written pitch outside `0..127`; it never clips or changes octave. The complete immutable contract, atomic batch behavior, and exact MIDI boundaries are documented in [`docs/contracts/written-pitch-v1.md`](docs/contracts/written-pitch-v1.md).
+
+This capability is not connected to FastAPI and does not generate MIDI files, note names, quantization, or MusicXML.
+
 ## Optional FiloSax baseline
 
 SAX-021 provides an internal, replaceable FiloSax audio-to-note baseline behind
@@ -159,4 +174,4 @@ Dependencies point inward. FastAPI does not appear in domain or application. Env
 
 ## Scope boundaries
 
-The module does not connect duration validation, model inference, NoteEvent postprocessing, or confidence annotations to endpoints; persist audio; implement retries/workers/queues; train models; generate final MIDI/MusicXML; or use product cloud storage. SAX-023 does not filter events, calibrate confidence, modify the baseline, start transposition, or expose a frontend feature.
+The module does not connect duration validation, model inference, NoteEvent postprocessing, confidence annotations, or written-pitch transposition to endpoints; persist audio; implement retries/workers/queues; train models; generate final MIDI/MusicXML; or use product cloud storage. SAX-030 preserves concert pitch and does not implement SAX-031, MIDI export, note spelling, quantization, or frontend behavior.
