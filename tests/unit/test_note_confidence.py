@@ -79,7 +79,10 @@ def test_annotation_preserves_event_reference_and_bool_marker() -> None:
 
 def test_annotation_rejects_non_note_event() -> None:
     with pytest.raises(InvalidLowConfidenceContractError):
-        ConfidenceAnnotatedNoteEvent(event=object(), is_low_confidence=True)  # type: ignore[arg-type]
+        ConfidenceAnnotatedNoteEvent(
+            event=object(),  # type: ignore[arg-type]
+            is_low_confidence=True,
+        )
 
 
 @pytest.mark.parametrize("marker", [0, 1, "true", None, object()])
