@@ -41,34 +41,44 @@ jobs:
           cache-dependency-path: pyproject.toml
       - name: Install FFmpeg
         run: |
-          sudo apt-get update
-          sudo apt-get install --yes ffmpeg
-          ffmpeg -version
+          sudo apt-get update -qq
+          sudo apt-get install --yes --quiet ffmpeg >/dev/null
+          ffmpeg -version | head -n 1
       - name: Upgrade pip
-        run: python -m pip install --upgrade pip
+        run: python -m pip install --upgrade pip --quiet
       - name: Install project with pinned baseline
+        id: baseline_install
         if: matrix.python-version == '3.11'
-        run: |
-          python -m pip install -e ".[dev,baseline]" > baseline-install.log 2>&1 || {
-            tail -n 160 baseline-install.log
-            exit 1
-          }
+        continue-on-error: true
+        run: python -m pip install -e ".[dev,baseline]" > baseline-install.log 2>&1
       - name: Install project
         if: matrix.python-version != '3.11'
-        run: python -m pip install -e ".[dev]"
+        run: python -m pip install -e ".[dev]" --quiet
       - name: Run quality gate with real baseline
-        if: matrix.python-version == '3.11'
+        id: baseline_quality
+        if: matrix.python-version == '3.11' && steps.baseline_install.outcome == 'success'
+        continue-on-error: true
         env:
           SAXO_REQUIRE_BASELINE: "1"
-        run: |
-          python scripts/check_quality.py > quality.log 2>&1 || {
-            tail -n 200 quality.log
-            exit 1
-          }
+        run: python scripts/check_quality.py > quality.log 2>&1
       - name: Run quality gate
+        id: core_quality
         if: matrix.python-version != '3.11'
-        run: |
-          python scripts/check_quality.py > quality.log 2>&1 || {
-            tail -n 200 quality.log
-            exit 1
-          }
+        continue-on-error: true
+        run: python scripts/check_quality.py > quality.log 2>&1
+      - name: Upload isolated diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: saxo-diagnostics-${{ matrix.python-version }}
+          path: |
+            baseline-install.log
+            quality.log
+          if-no-files-found: ignore
+          retention-days: 1
+      - name: Propagate diagnostic failure
+        if: >-
+          steps.baseline_install.outcome == 'failure' ||
+          steps.baseline_quality.outcome == 'failure' ||
+          steps.core_quality.outcome == 'failure'
+        run: exit 1
