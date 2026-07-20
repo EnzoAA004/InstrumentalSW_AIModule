@@ -250,7 +250,17 @@ Python 3.12
 Python 3.13
 ```
 
-Final remote results will be recorded after the draft pull request matrix completes.
+Final functional workflow run:
+
+```text
+Quality #36
+run ID: 29712048132
+Python 3.11: success
+Python 3.12: success
+Python 3.13: success
+```
+
+Every job completed checkout, Python setup, explicit FFmpeg installation, editable project installation, and the shared quality gate. The 86 new unit cases and all nine existing real FFmpeg integrations executed in every supported Python version.
 
 ## Coverage
 
