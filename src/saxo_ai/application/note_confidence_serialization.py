@@ -40,8 +40,7 @@ def _serialize_annotation(
     annotation: ConfidenceAnnotatedNoteEvent,
 ) -> dict[str, object]:
     event_document: dict[str, object] = {
-        field_name: getattr(annotation.event, field_name)
-        for field_name in NOTE_EVENT_FIELDS
+        field_name: getattr(annotation.event, field_name) for field_name in NOTE_EVENT_FIELDS
     }
     event_document["is_low_confidence"] = annotation.is_low_confidence
     return event_document
