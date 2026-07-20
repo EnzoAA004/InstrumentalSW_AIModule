@@ -46,7 +46,9 @@ def settings(**overrides: Any) -> TranscriptionSettings:
 
 
 def result() -> TranscriptionResult:
-    return TranscriptionResult(notes=NoteEventBatch(events=()), model=model_identity(), settings=settings())
+    return TranscriptionResult(
+        notes=NoteEventBatch(events=()), model=model_identity(), settings=settings()
+    )
 
 
 def test_model_identity_records_exact_pinned_provenance_and_is_immutable() -> None:
@@ -133,7 +135,7 @@ def test_result_rejects_wrong_contract_types(field: str, value: object) -> None:
     }
     values[field] = value
     with pytest.raises(InvalidTranscriptionContractError, match=field):
-        TranscriptionResult(**values)
+        TranscriptionResult(**values)  # type: ignore[arg-type]
 
 
 class FakeEngine:
