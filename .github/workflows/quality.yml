@@ -64,9 +64,18 @@ jobs:
         run: >-
           python -c "from scripts.install_baseline import install_commands, run_command;
           raise SystemExit(run_command(install_commands()[3]).returncode)"
-      - name: Verify installed runtime provenance
+      - name: Verify FiloSax PEP 610 provenance
         if: matrix.python-version == '3.11'
-        run: python -c "from scripts.install_baseline import verify_installed_runtime; verify_installed_runtime()"
+        run: >-
+          python -c "from saxo_ai.infrastructure.hf_baseline_contract import BASELINE_RUNTIME_REQUIREMENTS;
+          from saxo_ai.infrastructure.hf_runtime import _verify_distribution;
+          _verify_distribution(BASELINE_RUNTIME_REQUIREMENTS[0])"
+      - name: Verify piano PEP 610 provenance
+        if: matrix.python-version == '3.11'
+        run: >-
+          python -c "from saxo_ai.infrastructure.hf_baseline_contract import BASELINE_RUNTIME_REQUIREMENTS;
+          from saxo_ai.infrastructure.hf_runtime import _verify_distribution;
+          _verify_distribution(BASELINE_RUNTIME_REQUIREMENTS[1])"
       - name: Install project
         if: matrix.python-version != '3.11'
         run: python -m pip install -e ".[dev]"
