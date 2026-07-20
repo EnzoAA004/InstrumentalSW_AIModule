@@ -4,7 +4,7 @@ import io
 import struct
 from pathlib import Path
 
-import mido
+import mido  # type: ignore[import-untyped]
 import pytest
 
 from saxo_ai.application.midi_export import ExportWrittenPitchToMidi
