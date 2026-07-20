@@ -83,7 +83,13 @@ The complete schema is documented in [`docs/contracts/note-event-v1.md`](docs/co
 
 SAX-022 adds the internal `PostProcessTranscriptionEvents` use case. Its immutable policy defaults to a minimum duration of `0.030` seconds, removes only events strictly shorter than that boundary, and reduces exact duplicates identified by concert pitch plus exact onset/offset times. The retained representative is selected by confidence, then velocity, then first appearance.
 
-A no-op returns the original `NoteEventBatch` object. The report remains separate from NoteEvent JSON schema `1.0`. There is no low-confidence filtering or marker yet; that remains SAX-023. See [`docs/contracts/note-event-postprocessing-v1.md`](docs/contracts/note-event-postprocessing-v1.md).
+A no-op returns the original `NoteEventBatch` object. The report remains separate from NoteEvent JSON schema `1.0`. See [`docs/contracts/note-event-postprocessing-v1.md`](docs/contracts/note-event-postprocessing-v1.md).
+
+## Low-confidence review view
+
+SAX-023 adds the internal `MarkLowConfidenceEvents` use case and a versioned JSON review view. The initial configurable threshold is `0.50`; an event is marked only when `confidence < threshold`. Every postprocessed note remains present with its original object reference and order.
+
+Confidence is an engine signal, not calibrated accuracy: `0.8` does not mean 80% accuracy. The view adds only `is_low_confidence` and is documented in [`docs/contracts/note-confidence-v1.md`](docs/contracts/note-confidence-v1.md). It is not connected to FastAPI or a frontend yet.
 
 ## Optional FiloSax baseline
 
@@ -153,4 +159,4 @@ Dependencies point inward. FastAPI does not appear in domain or application. Env
 
 ## Scope boundaries
 
-The module does not connect duration validation, model inference, or NoteEvent postprocessing to endpoints; persist audio; implement retries/workers/queues; train models; generate final MIDI/MusicXML; or use product cloud storage. SAX-022 does not classify low confidence, resolve overlaps, deduplicate approximately, or change the baseline.
+The module does not connect duration validation, model inference, NoteEvent postprocessing, or confidence annotations to endpoints; persist audio; implement retries/workers/queues; train models; generate final MIDI/MusicXML; or use product cloud storage. SAX-023 does not filter events, calibrate confidence, modify the baseline, start transposition, or expose a frontend feature.
