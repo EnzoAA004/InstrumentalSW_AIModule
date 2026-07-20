@@ -10,22 +10,44 @@ The capability is internal. It is not connected to FastAPI, job state, permanent
 
 The selected checkpoint is specifically trained for saxophone, so it is a more relevant first baseline for the saxophone-focused MVP than a generic multi-instrument checkpoint. The adapter remains replaceable behind the common application port, allowing later comparison without changing the use case or `NoteEvent` consumers.
 
-## Pinned identity
+## Complete reproducibility chain
+
+SAX-021 is reproducible only when four independent kinds of provenance remain fixed:
 
 ```text
-package:            hf-midi-transcription
-reported version:   0.1.1
-source commit:      96f6797881e9497cbfc8f8e5deccea9c1f2f7adc
-model ID:           xavriley/midi-transcription-models
-model revision:     982ce108d7010bc3c4f36cf851caea8d4c94763d
-checkpoint:         filosax_25k.pth
-checkpoint size:    99341469 bytes
-checkpoint SHA-256: 448cf2c8ea6d4b77f7435f5b9a496211ea60300c5c17fa9c754da764f75f3a6a
-sample rate:        16000 Hz
-device:             CPU
+runtime package:
+  name:               hf-midi-transcription
+  installed version:  0.1.1
+  source revision:    96f6797881e9497cbfc8f8e5deccea9c1f2f7adc
+
+transitive runtime package:
+  name:               piano-transcription-inference
+  installed version:  0.1.0
+  source revision:    7568dc7f78b625e40cf9776e2806d164006610e3
+
+model repository:
+  model ID:           xavriley/midi-transcription-models
+  model revision:     982ce108d7010bc3c4f36cf851caea8d4c94763d
+
+checkpoint:
+  filename:           filosax_25k.pth
+  size:               99341469 bytes
+  SHA-256:            448cf2c8ea6d4b77f7435f5b9a496211ea60300c5c17fa9c754da764f75f3a6a
+
+execution:
+  sample rate:        16000 Hz
+  device:             CPU
 ```
 
-Version `0.1.1` is installed from the fixed official source commit because no usable PyPI distribution exists for this integration. The installed distribution reports version `0.1.1`; neither the package source nor the model revision follows a floating branch.
+A package version identifies the distribution metadata. A source revision identifies the exact Git
+tree used to build that distribution. A model revision identifies the immutable Hugging Face
+repository snapshot. The checkpoint checksum authenticates the exact downloaded file. None of
+these values substitutes for another.
+
+The FiloSax distribution reports version `0.1.1`. The piano runtime's old `setup.py` still contains
+`0.0.5`, but the authoritative PEP 621 `pyproject.toml` at the pinned commit declares `0.1.0`, and
+modern pip installs that metadata. Runtime verification therefore requires the actually installed
+version `0.1.0` together with the exact URL and commit. The source revision was never relaxed.
 
 ## Declared license
 
@@ -39,17 +61,55 @@ Core development remains:
 python -m pip install -e ".[dev]"
 ```
 
-The validated baseline environment is Python 3.11:
+The validated baseline environment is Python 3.11. Install it with the single controlled command:
 
 ```bash
-python -m pip install -e ".[dev,baseline]"
+python scripts/install_baseline.py
 ```
 
-The model is not downloaded while the project is installed. Hugging Face resolves it only when inference or the real baseline integration test runs. A first execution downloads the checkpoint into the Hugging Face cache; later executions may obtain a cache hit, but size and SHA-256 verification are repeated before loading.
+The upstream FiloSax metadata contains a floating Git dependency on
+`piano-transcription-inference`. Declaring both direct references in the same optional extra causes
+pip to report a direct-reference conflict, so the public installer deliberately:
 
-Python 3.12 and 3.13 remain supported for the Saxo core. Their real baseline test is skipped with an explicit compatibility reason because the optional dependency is constrained to Python 3.11.
+1. uses `sys.executable` and never uses `shell=True`;
+2. installs the project development environment without pip cache;
+3. installs the numerical/audio runtime dependencies;
+4. force-reinstalls `piano-transcription-inference` from its exact commit with `--no-deps`;
+5. force-reinstalls `hf-midi-transcription` from its exact commit with `--no-deps`;
+6. reads each installed distribution's PEP 610 `direct_url.json`;
+7. requires the exact package version, source URL, Git VCS, and 40-character commit;
+8. propagates the first installation or provenance failure.
 
-The optional stack includes PyTorch and its transitive numerical/audio dependencies. Its installation is significantly larger and slower than the core development environment; this is why it is isolated in the `baseline` extra and required only in the Python 3.11 CI job.
+The model is not downloaded during installation. Hugging Face resolves it only when inference or
+the real integration test runs. A first execution downloads the checkpoint into the Hugging Face
+cache; later executions may obtain a cache hit, but size and SHA-256 verification are repeated
+before loading.
+
+Python 3.12 and 3.13 remain supported for the Saxo core. Their real baseline test is skipped with an
+explicit compatibility reason. PyTorch and its transitive numerical/audio dependencies make the
+Python 3.11 installation significantly larger and slower than the core environment.
+
+## PEP 610 runtime gate
+
+`HfMidiRuntimeFactory.ensure_available()` verifies both distributions before checkpoint download,
+temporary workspace creation, PyTorch model construction, or inference:
+
+```text
+hf-midi-transcription
+  version:   0.1.1
+  URL:       https://github.com/xavriley/hf_midi_transcription.git
+  commit_id: 96f6797881e9497cbfc8f8e5deccea9c1f2f7adc
+
+piano-transcription-inference
+  version:   0.1.0
+  URL:       https://github.com/xavriley/piano_transcription_inference.git
+  commit_id: 7568dc7f78b625e40cf9776e2806d164006610e3
+```
+
+Missing or malformed `direct_url.json`, another URL, a branch name, a non-40-character revision, a
+different commit, or an incompatible package version raises
+`TranscriptionEngineUnavailableError`. Errors identify the package and failed provenance stage
+without exposing `site-packages` paths or the complete JSON document.
 
 ## Adapter architecture
 
