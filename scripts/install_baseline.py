@@ -49,7 +49,7 @@ def vcs_requirement(package_name: str, source_url: str, source_revision: str) ->
 
 def install_commands() -> tuple[tuple[str, ...], ...]:
     python = sys.executable
-    pip = (python, "-m", "pip", "install", "--no-cache-dir")
+    pip = (python, "-m", "pip", "install", "--no-cache-dir", "--quiet")
     baseline, piano = runtime_requirements()
     return (
         (*pip, "-e", f"{ROOT}[dev]"),
@@ -85,9 +85,19 @@ def main(*, python_version: tuple[int, int] | None = None) -> int:
         print("The pinned FiloSax baseline is validated only on Python 3.11.", file=sys.stderr)
         return 2
 
-    for command in install_commands():
+    stages = (
+        "core development environment",
+        "runtime dependencies",
+        "pinned piano runtime",
+        "pinned FiloSax runtime",
+    )
+    for stage, command in zip(stages, install_commands(), strict=True):
         result = run_command(command)
         if result.returncode != 0:
+            print(
+                f"Baseline installation failed during {stage} with exit code {result.returncode}.",
+                file=sys.stderr,
+            )
             return result.returncode
 
     _ensure_source_path()
