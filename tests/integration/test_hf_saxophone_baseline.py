@@ -63,17 +63,12 @@ def test_real_pinned_filosax_baseline_transcribes_generated_a4(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     if not _baseline_available():
-        reason = (
-            "hf-midi-transcription baseline extra is not installed; "
-            "Python 3.11 CI requires it"
-        )
+        reason = "hf-midi-transcription baseline extra is not installed; Python 3.11 CI requires it"
         if os.getenv("SAXO_REQUIRE_BASELINE") == "1":
             pytest.fail(reason)
         pytest.skip(reason)
 
-    cache_root = Path(
-        os.getenv("HF_HOME", str(Path.home() / ".cache" / "huggingface"))
-    )
+    cache_root = Path(os.getenv("HF_HOME", str(Path.home() / ".cache" / "huggingface")))
     checkpoint_was_cached = (
         cache_root.exists() and next(cache_root.rglob(CHECKPOINT_FILENAME), None) is not None
     )
