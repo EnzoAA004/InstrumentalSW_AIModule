@@ -25,13 +25,10 @@ def convert_baseline_output(external_output: object) -> NoteEventBatch:
     if not isinstance(raw_output_dict, dict):
         raise InvalidTranscriptionEngineOutputError("output_dict must be an object")
     if "reg_onset_output" not in raw_output_dict:
-        raise InvalidTranscriptionEngineOutputError(
-            "output_dict.reg_onset_output is required"
-        )
+        raise InvalidTranscriptionEngineOutputError("output_dict.reg_onset_output is required")
     onset_matrix = _OnsetMatrix(raw_output_dict["reg_onset_output"])
     notes = tuple(
-        _convert_event(raw_event, onset_matrix, index)
-        for index, raw_event in enumerate(raw_events)
+        _convert_event(raw_event, onset_matrix, index) for index, raw_event in enumerate(raw_events)
     )
     ordered = tuple(
         sorted(
@@ -139,9 +136,7 @@ class _OnsetMatrix:
         window_end = min(self._frames, center_frame + 3)
         if window_start >= window_end:
             raise ValueError("onset activation window contains no frames")
-        return max(
-            self._value(frame, pitch_index) for frame in range(window_start, window_end)
-        )
+        return max(self._value(frame, pitch_index) for frame in range(window_start, window_end))
 
     def _value(self, frame: int, pitch: int) -> float:
         try:
