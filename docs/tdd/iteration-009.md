@@ -77,7 +77,7 @@ The minimum implementation added:
 Focused result on Python 3.13.5:
 
 ```text
-52 passed in 0.34s
+52 passed in 0.29s
 ```
 
 ## REFACTOR
@@ -93,7 +93,7 @@ Focused result on Python 3.13.5:
 After refactor:
 
 ```text
-52 passed in 0.34s
+52 passed
 python -m compileall -q src tests  PASS
 ```
 
@@ -151,11 +151,35 @@ The local environment did not contain Ruff or mypy, and a complete repository ch
 
 ## CI results
 
-Pending the draft PR matrix.
+Functional draft-PR run:
 
-## Coverage
+```text
+Quality #104
+run ID: 29767153405
+Python 3.11: success
+Python 3.12: success
+Python 3.13: success
+```
 
-Pending the complete matrix. Focused behavior covers settings, all duration boundaries, exact/approximate duplicate distinctions, tie-breakers, phase order, output order, report invariants, no-op identity, provenance, serialization, and forbidden imports.
+Python 3.11 completed `python scripts/install_baseline.py`, exact PEP 610 verification for both pinned Git distributions, checkpoint size/SHA validation, real CPU inference, all 333 tests, coverage, Ruff lint, Ruff format, and strict mypy. Python 3.12 and 3.13 installed the core, explicitly skipped only the real baseline integration, and passed the complete core and FFmpeg gate.
+
+The final documentation-head matrix is recorded in the pull request after this document commit.
+
+## Coverage and quality
+
+The complete Python 3.11 gate reported:
+
+```text
+333 passed
+1176 statements, 60 missed
+286 branches, 45 missing
+coverage: 92.82%
+Ruff: all checks passed
+Ruff format: 62 files already formatted
+mypy: no issues in 62 source files
+```
+
+The focused behavior covers settings, all duration boundaries, exact/approximate duplicate distinctions, tie-breakers, phase order, output order, report invariants, no-op identity, provenance, serialization, and forbidden imports.
 
 ## Limitations and stories not implemented
 
