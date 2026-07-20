@@ -138,8 +138,15 @@ def test_marking_preserves_all_event_references_order_and_count() -> None:
     assert result.original is processed
     assert len(result.annotated_events) == len(events)
     assert tuple(annotation.event for annotation in result.annotated_events) == events
-    assert all(annotation.event is events[index] for index, annotation in enumerate(result.annotated_events))
-    assert [annotation.is_low_confidence for annotation in result.annotated_events] == [True, False, True]
+    assert all(
+        annotation.event is events[index]
+        for index, annotation in enumerate(result.annotated_events)
+    )
+    assert [annotation.is_low_confidence for annotation in result.annotated_events] == [
+        True,
+        False,
+        True,
+    ]
 
 
 def test_marking_preserves_complete_provenance_and_sax022_report() -> None:
@@ -176,7 +183,9 @@ def test_report_counts_marked_and_regular_without_removing_events() -> None:
 
 
 def test_result_rejects_annotation_count_mismatch() -> None:
-    processed = make_processed((make_event(pitch=60, onset=0.0, offset=0.5, confidence=0.4),))
+    processed = make_processed(
+        (make_event(pitch=60, onset=0.0, offset=0.5, confidence=0.4),)
+    )
     report = LowConfidenceReport(
         settings=LowConfidenceSettings(),
         input_event_count=1,
