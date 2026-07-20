@@ -56,7 +56,19 @@ jobs:
         if: matrix.python-version == '3.11'
         env:
           SAXO_REQUIRE_BASELINE: "1"
-        run: python scripts/check_quality.py
+        run: |
+          set -o pipefail
+          python scripts/check_quality.py 2>&1 | tee quality.log
       - name: Run quality gate
         if: matrix.python-version != '3.11'
-        run: python scripts/check_quality.py
+        run: |
+          set -o pipefail
+          python scripts/check_quality.py 2>&1 | tee quality.log
+      - name: Upload one-run quality diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: saxo-quality-${{ matrix.python-version }}
+          path: quality.log
+          if-no-files-found: ignore
+          retention-days: 1
