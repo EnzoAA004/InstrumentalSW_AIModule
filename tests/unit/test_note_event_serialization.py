@@ -199,9 +199,9 @@ def test_contract_modules_and_existing_runtime_remain_disconnected_from_models_a
     root = Path(__file__).resolve().parents[2]
     contract_sources = [
         (root / "src/saxo_ai/domain/note_events.py").read_text(encoding="utf-8").lower(),
-        (root / "src/saxo_ai/application/note_event_serialization.py").read_text(
-            encoding="utf-8"
-        ).lower(),
+        (root / "src/saxo_ai/application/note_event_serialization.py")
+        .read_text(encoding="utf-8")
+        .lower(),
     ]
     for source in contract_sources:
         for forbidden in ("fastapi", "ffmpeg", "subprocess", "tempfile", "pydantic"):
