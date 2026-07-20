@@ -92,7 +92,7 @@ def test_serialization_has_exact_versioned_root_and_event_shape() -> None:
         "confidence": 0.4,
         "is_low_confidence": True,
     }
-    assert type(payload["events"][0]["is_low_confidence"]) is bool
+    assert isinstance(payload["events"][0]["is_low_confidence"], bool)
 
 
 def test_serialization_preserves_order_and_original_values() -> None:
