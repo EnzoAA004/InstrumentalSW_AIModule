@@ -41,8 +41,7 @@ def written_result(
     specs: tuple[tuple[int, float, float, int], ...],
 ) -> WrittenPitchTranscriptionResult:
     notes = tuple(
-        NoteEvent(pitch, onset, offset, velocity, 0.8)
-        for pitch, onset, offset, velocity in specs
+        NoteEvent(pitch, onset, offset, velocity, 0.8) for pitch, onset, offset, velocity in specs
     )
     batch = NoteEventBatch(notes)
     raw = TranscriptionResult(
@@ -97,23 +96,19 @@ def absolute_messages(track: Any) -> list[tuple[int, Any]]:
 def test_real_mido_encoder_produces_type_one_concert_pitch_file() -> None:
     original = written_result(((60, 0.0, 0.5, 100),))
 
-    result = ExportWrittenPitchToMidi(MidoMidiFileEncoder()).execute(
-        original, MidiExportSettings()
-    )
+    result = ExportWrittenPitchToMidi(MidoMidiFileEncoder()).execute(original, MidiExportSettings())
     midi = parse(result.artifact.content)
 
     assert midi.type == 1
     assert midi.ticks_per_beat == 480
     assert len(midi.tracks) == 2
-    assert [
-        message.name for message in midi.tracks[0] if message.type == "track_name"
-    ] == ["Saxo Metadata"]
-    assert [
-        message.tempo for message in midi.tracks[0] if message.type == "set_tempo"
-    ] == [500_000]
-    assert [
-        message.name for message in midi.tracks[1] if message.type == "track_name"
-    ] == ["Saxo Concert Pitch"]
+    assert [message.name for message in midi.tracks[0] if message.type == "track_name"] == [
+        "Saxo Metadata"
+    ]
+    assert [message.tempo for message in midi.tracks[0] if message.type == "set_tempo"] == [500_000]
+    assert [message.name for message in midi.tracks[1] if message.type == "track_name"] == [
+        "Saxo Concert Pitch"
+    ]
     note_ons = [message for message in midi.tracks[1] if message.type == "note_on"]
     note_offs = [message for message in midi.tracks[1] if message.type == "note_off"]
     assert len(note_ons) == len(note_offs) == 1
@@ -130,15 +125,9 @@ def test_time_conversion_delta_order_and_velocity_adjustment() -> None:
         )
     )
 
-    result = ExportWrittenPitchToMidi(MidoMidiFileEncoder()).execute(
-        original, MidiExportSettings()
-    )
+    result = ExportWrittenPitchToMidi(MidoMidiFileEncoder()).execute(original, MidiExportSettings())
     events = absolute_messages(parse(result.artifact.content).tracks[1])
-    notes = [
-        (tick, message)
-        for tick, message in events
-        if message.type in {"note_on", "note_off"}
-    ]
+    notes = [(tick, message) for tick, message in events if message.type in {"note_on", "note_off"}]
 
     assert [(tick, message.type, message.note) for tick, message in notes] == [
         (0, "note_on", 60),
@@ -150,9 +139,7 @@ def test_time_conversion_delta_order_and_velocity_adjustment() -> None:
         1,
         127,
     ]
-    assert all(
-        message.time >= 0 for message in parse(result.artifact.content).tracks[1]
-    )
+    assert all(message.time >= 0 for message in parse(result.artifact.content).tracks[1])
     assert result.report.zero_velocity_adjustment_count == 1
 
 
@@ -164,9 +151,7 @@ def test_overlaps_are_preserved_as_independent_note_pairs() -> None:
         )
     )
 
-    result = ExportWrittenPitchToMidi(MidoMidiFileEncoder()).execute(
-        original, MidiExportSettings()
-    )
+    result = ExportWrittenPitchToMidi(MidoMidiFileEncoder()).execute(original, MidiExportSettings())
     track = parse(result.artifact.content).tracks[1]
 
     assert sum(message.type == "note_on" for message in track) == 2
