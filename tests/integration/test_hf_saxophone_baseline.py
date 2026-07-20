@@ -17,6 +17,7 @@ from saxo_ai.infrastructure.hf_saxophone import (
     CHECKPOINT_SIZE,
     MODEL_ID,
     MODEL_REVISION,
+    BaselineExecutionDiagnostics,
     HfSaxophoneTranscriptionEngine,
 )
 
@@ -34,17 +35,11 @@ def _synthetic_saxophone_like_wav() -> bytes:
     frames = bytearray()
     for index in range(frame_count):
         time_seconds = index / sample_rate
-        fade = min(
-            1.0,
-            index / (sample_rate * 0.08),
-            (frame_count - index) / (sample_rate * 0.08),
-        )
+        fade = min(1.0, index / (sample_rate * 0.08), (frame_count - index) / (sample_rate * 0.08))
         vibrato = 1.0 + 0.003 * math.sin(2.0 * math.pi * 5.2 * time_seconds)
         phase = 2.0 * math.pi * 440.0 * vibrato * time_seconds
         sample = fade * (
-            0.70 * math.sin(phase)
-            + 0.20 * math.sin(2.0 * phase)
-            + 0.10 * math.sin(3.0 * phase)
+            0.70 * math.sin(phase) + 0.20 * math.sin(2.0 * phase) + 0.10 * math.sin(3.0 * phase)
         )
         integer = max(-32768, min(32767, round(sample * 24000)))
         frames.extend(struct.pack("<h", integer))
@@ -59,15 +54,12 @@ def _synthetic_saxophone_like_wav() -> bytes:
 
 def test_real_pinned_filosax_baseline_transcribes_generated_a4() -> None:
     if not _baseline_available():
-        reason = (
-            "hf-midi-transcription baseline extra is not installed; "
-            "Python 3.11 CI requires it"
-        )
+        reason = "hf-midi-transcription baseline extra is not installed; Python 3.11 CI requires it"
         if os.getenv("SAXO_REQUIRE_BASELINE") == "1":
             pytest.fail(reason)
         pytest.skip(reason)
 
-    diagnostics = []
+    diagnostics: list[BaselineExecutionDiagnostics] = []
     engine = HfSaxophoneTranscriptionEngine(diagnostics_observer=diagnostics.append)
     result = engine.transcribe(io.BytesIO(_synthetic_saxophone_like_wav()))
 
