@@ -51,12 +51,12 @@ def install_commands() -> tuple[tuple[str, ...], ...]:
     python = sys.executable
     pip = (python, "-m", "pip", "install", "--no-cache-dir", "--quiet")
     baseline, piano = runtime_requirements()
+    exact_vcs = (*pip, "--no-deps", "--force-reinstall")
     return (
         (*pip, "-e", f"{ROOT}[dev]"),
         (*pip, *RUNTIME_DEPENDENCIES),
         (
-            *pip,
-            "--no-deps",
+            *exact_vcs,
             vcs_requirement(
                 piano.package_name,
                 piano.source_url,
@@ -64,8 +64,7 @@ def install_commands() -> tuple[tuple[str, ...], ...]:
             ),
         ),
         (
-            *pip,
-            "--no-deps",
+            *exact_vcs,
             vcs_requirement(
                 baseline.package_name,
                 baseline.source_url,
