@@ -101,9 +101,7 @@ def test_all_baseline_git_dependencies_use_exact_full_revisions() -> None:
 
     assert observed == {
         contract.BASELINE_PACKAGE_NAME: contract.BASELINE_SOURCE_REVISION,
-        contract.PIANO_TRANSCRIPTION_PACKAGE_NAME: (
-            contract.PIANO_TRANSCRIPTION_SOURCE_REVISION
-        ),
+        contract.PIANO_TRANSCRIPTION_PACKAGE_NAME: (contract.PIANO_TRANSCRIPTION_SOURCE_REVISION),
     }
 
 
