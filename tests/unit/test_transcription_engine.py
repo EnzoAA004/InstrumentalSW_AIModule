@@ -72,6 +72,8 @@ def test_model_identity_records_exact_pinned_provenance_and_is_immutable() -> No
         ("engine_name", ""),
         ("engine_version", ""),
         ("engine_source_revision", ""),
+        ("engine_source_revision", "A" * 40),
+        ("engine_source_revision", "0" * 39),
         ("model_id", ""),
         ("model_revision", ""),
         ("checkpoint_filename", ""),

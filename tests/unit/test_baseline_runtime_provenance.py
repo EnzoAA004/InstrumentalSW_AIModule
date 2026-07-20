@@ -2,20 +2,20 @@ from __future__ import annotations
 
 import json
 import re
-import tomllib
 from pathlib import Path
 from typing import Any
 
 import pytest
+from scripts import install_baseline
 
 from saxo_ai.application.transcription_errors import TranscriptionEngineUnavailableError
+from saxo_ai.domain.transcription import TranscriptionSettings
 from saxo_ai.infrastructure import hf_baseline_contract as contract
+from saxo_ai.infrastructure.hf_baseline_contract import BaselineRuntime
 from saxo_ai.infrastructure.hf_runtime import HfMidiRuntimeFactory
 from saxo_ai.infrastructure.hf_saxophone import HfSaxophoneTranscriptionEngine
 from tests.unit.hf_saxophone_fakes import SpyStream
 
-ROOT = Path(__file__).resolve().parents[2]
-PYPROJECT_PATH = ROOT / "pyproject.toml"
 _FULL_GIT_REVISION = re.compile(r"[0-9a-f]{40}\Z")
 
 
@@ -33,7 +33,12 @@ class NeverInitializeRuntimeFactory(HfMidiRuntimeFactory):
     def __init__(self) -> None:
         self.create_called = False
 
-    def create(self, **kwargs: object) -> object:
+    def create(
+        self,
+        *,
+        checkpoint_path: Path,
+        settings: TranscriptionSettings,
+    ) -> BaselineRuntime:
         self.create_called = True
         raise AssertionError("model initialization must not run")
 
@@ -83,23 +88,23 @@ def _install_fake_distributions(
 
 
 def test_all_baseline_git_dependencies_use_exact_full_revisions() -> None:
-    configuration = tomllib.loads(PYPROJECT_PATH.read_text(encoding="utf-8"))
-    dependencies = configuration["project"]["optional-dependencies"]["baseline"]
-    git_dependencies = [dependency for dependency in dependencies if "git+" in dependency]
-
-    expected = {
-        contract.BASELINE_PACKAGE_NAME: contract.BASELINE_SOURCE_REVISION,
-        contract.PIANO_TRANSCRIPTION_PACKAGE_NAME: contract.PIANO_TRANSCRIPTION_SOURCE_REVISION,
-    }
     observed: dict[str, str] = {}
-    for dependency in git_dependencies:
-        package_name, reference = dependency.split("@", maxsplit=1)
-        revision = reference.rsplit("@", maxsplit=1)[1].split(";", maxsplit=1)[0].strip()
-        normalized_name = package_name.strip()
-        assert _FULL_GIT_REVISION.fullmatch(revision), dependency
-        observed[normalized_name] = revision
+    for requirement in contract.BASELINE_RUNTIME_REQUIREMENTS:
+        reference = install_baseline.vcs_requirement(
+            requirement.package_name,
+            requirement.source_url,
+            requirement.source_revision,
+        )
+        revision = reference.rsplit("@", maxsplit=1)[1]
+        assert _FULL_GIT_REVISION.fullmatch(revision), reference
+        observed[requirement.package_name] = revision
 
-    assert observed == expected
+    assert observed == {
+        contract.BASELINE_PACKAGE_NAME: contract.BASELINE_SOURCE_REVISION,
+        contract.PIANO_TRANSCRIPTION_PACKAGE_NAME: (
+            contract.PIANO_TRANSCRIPTION_SOURCE_REVISION
+        ),
+    }
 
 
 @pytest.mark.parametrize(
