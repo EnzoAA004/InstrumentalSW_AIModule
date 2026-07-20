@@ -25,6 +25,9 @@ dev = [
   "types-PyYAML>=6.0.12,<7",
   "ruff>=0.9,<1",
 ]
+baseline = [
+  "hf-midi-transcription==0.1.1; python_version < '3.12'",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/saxo_ai"]
@@ -35,7 +38,8 @@ testpaths = ["tests"]
 addopts = ["--strict-config", "--strict-markers"]
 filterwarnings = ["error"]
 markers = [
-  "integration: tests that require the external FFmpeg executable",
+  "integration: tests that require external audio or model runtimes",
+  "baseline_integration: real pinned FiloSax checkpoint download and inference",
 ]
 
 [tool.coverage.run]
