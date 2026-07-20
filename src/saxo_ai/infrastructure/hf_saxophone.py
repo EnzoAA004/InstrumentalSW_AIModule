@@ -67,21 +67,15 @@ class HfSaxophoneTranscriptionEngine:
         runtime_factory: BaselineRuntimeFactory | None = None,
         settings: TranscriptionSettings = DEFAULT_SETTINGS,
         copy_chunk_size: int = DEFAULT_COPY_CHUNK_SIZE,
-        temporary_directory_factory: Callable[[], AbstractContextManager[str]]
-        | None = None,
+        temporary_directory_factory: Callable[[], AbstractContextManager[str]] | None = None,
         diagnostics_observer: DiagnosticsObserver | None = None,
         clock: Callable[[], float] = perf_counter,
     ) -> None:
         if copy_chunk_size <= 0:
             raise ValueError("copy_chunk_size must be positive")
-        if (
-            settings.sample_rate_hz != SAMPLE_RATE_HZ
-            or settings.device != DEFAULT_DEVICE
-        ):
+        if settings.sample_rate_hz != SAMPLE_RATE_HZ or settings.device != DEFAULT_DEVICE:
             raise ValueError("FiloSax baseline requires 16000 Hz audio and CPU")
-        self._checkpoint_resolver = (
-            checkpoint_resolver or PinnedFiloSaxCheckpointResolver()
-        )
+        self._checkpoint_resolver = checkpoint_resolver or PinnedFiloSaxCheckpointResolver()
         self._runtime_factory = runtime_factory or HfMidiRuntimeFactory()
         self._settings = settings
         self._copy_chunk_size = copy_chunk_size
@@ -177,9 +171,7 @@ class HfSaxophoneTranscriptionEngine:
         except InvalidTranscriptionEngineOutputError:
             raise
         except Exception as error:
-            raise TranscriptionInferenceError(
-                "Pinned FiloSax baseline inference failed"
-            ) from error
+            raise TranscriptionInferenceError("Pinned FiloSax baseline inference failed") from error
         return output, self._clock() - started
 
     def _report(
@@ -192,9 +184,7 @@ class HfSaxophoneTranscriptionEngine:
             return
         self._diagnostics_observer(
             BaselineExecutionDiagnostics(
-                checkpoint_download_seconds=(
-                    self._checkpoint_resolver.last_download_seconds
-                ),
+                checkpoint_download_seconds=(self._checkpoint_resolver.last_download_seconds),
                 checkpoint_verification_seconds=(
                     self._checkpoint_resolver.last_verification_seconds
                 ),
