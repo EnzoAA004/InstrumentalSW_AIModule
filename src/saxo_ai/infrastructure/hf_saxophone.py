@@ -67,15 +67,17 @@ class HfSaxophoneTranscriptionEngine:
         runtime_factory: BaselineRuntimeFactory | None = None,
         settings: TranscriptionSettings = DEFAULT_SETTINGS,
         copy_chunk_size: int = DEFAULT_COPY_CHUNK_SIZE,
-        temporary_directory_factory: Callable[
-            [], AbstractContextManager[str]
-        ] | None = None,
+        temporary_directory_factory: Callable[[], AbstractContextManager[str]]
+        | None = None,
         diagnostics_observer: DiagnosticsObserver | None = None,
         clock: Callable[[], float] = perf_counter,
     ) -> None:
         if copy_chunk_size <= 0:
             raise ValueError("copy_chunk_size must be positive")
-        if settings.sample_rate_hz != SAMPLE_RATE_HZ or settings.device != DEFAULT_DEVICE:
+        if (
+            settings.sample_rate_hz != SAMPLE_RATE_HZ
+            or settings.device != DEFAULT_DEVICE
+        ):
             raise ValueError("FiloSax baseline requires 16000 Hz audio and CPU")
         self._checkpoint_resolver = (
             checkpoint_resolver or PinnedFiloSaxCheckpointResolver()
