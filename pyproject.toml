@@ -26,7 +26,7 @@ dev = [
   "ruff>=0.9,<1",
 ]
 baseline = [
-  "hf-midi-transcription==0.1.1; python_version < '3.12'",
+  "hf-midi-transcription @ git+https://github.com/xavriley/hf_midi_transcription.git@96f6797881e9497cbfc8f8e5deccea9c1f2f7adc; python_version < '3.12'",
 ]
 
 [tool.hatch.build.targets.wheel]
