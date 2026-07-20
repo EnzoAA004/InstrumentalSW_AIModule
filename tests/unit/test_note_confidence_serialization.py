@@ -10,7 +10,12 @@ from saxo_ai.domain.note_event_postprocessing import (
     NoteEventPostProcessingSettings,
     PostProcessedTranscriptionResult,
 )
-from saxo_ai.domain.note_events import NOTE_EVENT_FIELDS, NOTE_EVENT_SCHEMA_VERSION, NoteEvent, NoteEventBatch
+from saxo_ai.domain.note_events import (
+    NOTE_EVENT_FIELDS,
+    NOTE_EVENT_SCHEMA_VERSION,
+    NoteEvent,
+    NoteEventBatch,
+)
 from saxo_ai.domain.transcription import (
     TranscriptionModelIdentity,
     TranscriptionResult,
@@ -121,8 +126,10 @@ def test_serialization_omits_accuracy_probability_wrong_and_sax022_report_fields
         make_processed((NoteEvent(60, 0.0, 0.5, 100, 0.4),))
     )
 
-    payload = serialize_confidence_annotated_result(result)
+    payload = json.loads(serialize_confidence_annotated_result(result))
 
+    root_and_event_keys = set(payload) | set(payload["summary"])
+    root_and_event_keys.update(key for event in payload["events"] for key in event)
     for forbidden in (
         "accuracy",
         "probability_correct",
@@ -133,7 +140,7 @@ def test_serialization_omits_accuracy_probability_wrong_and_sax022_report_fields
         "duplicate_removed_count",
         "duplicate_group_count",
     ):
-        assert forbidden not in payload
+        assert forbidden not in root_and_event_keys
 
 
 def test_serialization_supports_empty_batch() -> None:
