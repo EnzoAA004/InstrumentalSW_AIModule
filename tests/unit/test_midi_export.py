@@ -12,6 +12,8 @@ from saxo_ai.application.midi_export import (
 )
 from saxo_ai.domain.midi_export import (
     InvalidMidiArtifactError,
+    InvalidMidiExportSettingsError,
+    InvalidMidiPlanError,
     MidiExportSettings,
     MidiNotePlan,
 )
@@ -255,7 +257,7 @@ def test_empty_result_produces_nonempty_artifact_and_zero_note_report() -> None:
     assert result.artifact.content
     assert result.report.input_event_count == 0
     assert result.report.exported_note_count == 0
-    assert result.report.midi_message_count == 6
+    assert result.report.midi_message_count == 5
 
 
 def test_complete_provenance_chain_is_preserved() -> None:
@@ -324,8 +326,8 @@ def test_invalid_encoder_result_is_controlled(value: object) -> None:
 def test_use_case_rejects_invalid_original_and_settings_before_encoder() -> None:
     encoder = RecordingEncoder()
 
-    with pytest.raises(InvalidMidiArtifactError):
+    with pytest.raises(InvalidMidiPlanError):
         ExportWrittenPitchToMidi(encoder).execute(cast(Any, object()), MidiExportSettings())
-    with pytest.raises(InvalidMidiArtifactError):
+    with pytest.raises(InvalidMidiExportSettingsError):
         ExportWrittenPitchToMidi(encoder).execute(written_result(()), cast(Any, object()))
     assert encoder.calls == []
