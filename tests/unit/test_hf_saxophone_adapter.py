@@ -6,6 +6,7 @@ from saxo_ai.domain.note_events import NOTE_EVENT_SCHEMA_VERSION
 from saxo_ai.infrastructure.hf_saxophone import (
     BASELINE_PACKAGE_NAME,
     BASELINE_PACKAGE_VERSION,
+    BASELINE_SOURCE_REVISION,
     BEGIN_MIDI_NOTE,
     CHECKPOINT_FILENAME,
     CHECKPOINT_SHA256,
@@ -60,6 +61,7 @@ def test_non_seekable_stream_is_copied_in_bounded_blocks_and_result_has_provenan
     assert source.requests and all(request == 65536 for request in source.requests)
     assert result.model.engine_name == BASELINE_PACKAGE_NAME
     assert result.model.engine_version == BASELINE_PACKAGE_VERSION
+    assert result.model.engine_source_revision == BASELINE_SOURCE_REVISION
     assert result.model.model_id == MODEL_ID
     assert result.model.model_revision == MODEL_REVISION
     assert result.model.checkpoint_filename == CHECKPOINT_FILENAME

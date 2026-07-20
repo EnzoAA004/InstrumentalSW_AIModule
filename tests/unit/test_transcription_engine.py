@@ -23,6 +23,7 @@ def model_identity(**overrides: Any) -> TranscriptionModelIdentity:
     values: dict[str, Any] = {
         "engine_name": "hf-midi-transcription",
         "engine_version": "0.1.1",
+        "engine_source_revision": "96f6797881e9497cbfc8f8e5deccea9c1f2f7adc",
         "model_id": "xavriley/midi-transcription-models",
         "model_revision": "982ce108d7010bc3c4f36cf851caea8d4c94763d",
         "checkpoint_filename": "filosax_25k.pth",
@@ -55,6 +56,7 @@ def test_model_identity_records_exact_pinned_provenance_and_is_immutable() -> No
     identity = model_identity()
     assert identity.engine_name == "hf-midi-transcription"
     assert identity.engine_version == "0.1.1"
+    assert identity.engine_source_revision == "96f6797881e9497cbfc8f8e5deccea9c1f2f7adc"
     assert identity.model_id == "xavriley/midi-transcription-models"
     assert identity.model_revision == "982ce108d7010bc3c4f36cf851caea8d4c94763d"
     assert identity.checkpoint_filename == "filosax_25k.pth"
@@ -69,6 +71,7 @@ def test_model_identity_records_exact_pinned_provenance_and_is_immutable() -> No
     [
         ("engine_name", ""),
         ("engine_version", ""),
+        ("engine_source_revision", ""),
         ("model_id", ""),
         ("model_revision", ""),
         ("checkpoint_filename", ""),

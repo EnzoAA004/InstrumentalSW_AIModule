@@ -13,6 +13,7 @@ import pytest
 from saxo_ai.application.note_event_serialization import serialize_note_event_batch
 from saxo_ai.infrastructure.hf_saxophone import (
     BASELINE_PACKAGE_VERSION,
+    BASELINE_SOURCE_REVISION,
     CHECKPOINT_FILENAME,
     CHECKPOINT_SHA256,
     CHECKPOINT_SIZE,
@@ -75,6 +76,7 @@ def test_real_pinned_filosax_baseline_transcribes_generated_a4(
     result = engine.transcribe(io.BytesIO(_synthetic_saxophone_like_wav()))
 
     assert result.model.engine_version == BASELINE_PACKAGE_VERSION
+    assert result.model.engine_source_revision == BASELINE_SOURCE_REVISION
     assert result.model.model_id == MODEL_ID
     assert result.model.model_revision == MODEL_REVISION
     assert result.model.checkpoint_filename == CHECKPOINT_FILENAME
