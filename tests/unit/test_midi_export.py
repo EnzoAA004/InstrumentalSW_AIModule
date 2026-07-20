@@ -159,7 +159,7 @@ class InvalidEncoder:
     def encode(
         self, *, plan: tuple[MidiNotePlan, ...], settings: MidiExportSettings
     ) -> bytes:
-        return cast(Any, self.value)
+        return cast(bytes, self.value)
 
 
 def test_encoder_protocol_is_structural() -> None:
