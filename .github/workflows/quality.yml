@@ -44,61 +44,9 @@ jobs:
           ffmpeg -version
       - name: Upgrade pip
         run: python -m pip install --upgrade pip
-      - name: Install baseline development environment
+      - name: Install project with pinned baseline
         if: matrix.python-version == '3.11'
-        run: >-
-          python -c "from scripts.install_baseline import install_commands, run_command;
-          raise SystemExit(run_command(install_commands()[0]).returncode)"
-      - name: Install baseline runtime dependencies
-        if: matrix.python-version == '3.11'
-        run: >-
-          python -c "from scripts.install_baseline import install_commands, run_command;
-          raise SystemExit(run_command(install_commands()[1]).returncode)"
-      - name: Install pinned piano runtime
-        if: matrix.python-version == '3.11'
-        run: >-
-          python -c "from scripts.install_baseline import install_commands, run_command;
-          raise SystemExit(run_command(install_commands()[2]).returncode)"
-      - name: Install pinned FiloSax runtime
-        if: matrix.python-version == '3.11'
-        run: >-
-          python -c "from scripts.install_baseline import install_commands, run_command;
-          raise SystemExit(run_command(install_commands()[3]).returncode)"
-      - name: Capture installed piano provenance
-        id: piano
-        if: matrix.python-version == '3.11'
-        shell: bash
-        run: |
-          python - <<'PY'
-          import json
-          import os
-          from importlib import metadata
-          from saxo_ai.infrastructure.hf_baseline_contract import PIANO_TRANSCRIPTION_PACKAGE_NAME
-
-          distribution = metadata.distribution(PIANO_TRANSCRIPTION_PACKAGE_NAME)
-          raw = distribution.read_text("direct_url.json")
-          document = json.loads(raw) if raw is not None else {}
-          vcs_info = document.get("vcs_info", {})
-          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
-              output.write(f"version={distribution.version}\n")
-              output.write(f"url={document.get('url', 'missing')}\n")
-              output.write(f"commit={vcs_info.get('commit_id', 'missing')}\n")
-          PY
-      - name: Piano version ${{ steps.piano.outputs.version }}
-        if: matrix.python-version == '3.11'
-        run: >-
-          python -c "from saxo_ai.infrastructure.hf_baseline_contract import PIANO_TRANSCRIPTION_PACKAGE_VERSION;
-          assert '${{ steps.piano.outputs.version }}' == PIANO_TRANSCRIPTION_PACKAGE_VERSION"
-      - name: Piano URL ${{ steps.piano.outputs.url }}
-        if: matrix.python-version == '3.11'
-        run: >-
-          python -c "from saxo_ai.infrastructure.hf_baseline_contract import PIANO_TRANSCRIPTION_SOURCE_URL;
-          assert '${{ steps.piano.outputs.url }}' == PIANO_TRANSCRIPTION_SOURCE_URL"
-      - name: Piano commit ${{ steps.piano.outputs.commit }}
-        if: matrix.python-version == '3.11'
-        run: >-
-          python -c "from saxo_ai.infrastructure.hf_baseline_contract import PIANO_TRANSCRIPTION_SOURCE_REVISION;
-          assert '${{ steps.piano.outputs.commit }}' == PIANO_TRANSCRIPTION_SOURCE_REVISION"
+        run: python scripts/install_baseline.py
       - name: Install project
         if: matrix.python-version != '3.11'
         run: python -m pip install -e ".[dev]"
