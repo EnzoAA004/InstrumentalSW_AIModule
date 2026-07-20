@@ -29,6 +29,9 @@ baseline = [
   "hf-midi-transcription @ git+https://github.com/xavriley/hf_midi_transcription.git@96f6797881e9497cbfc8f8e5deccea9c1f2f7adc; python_version < '3.12'",
 ]
 
+[tool.hatch.metadata]
+allow-direct-references = true
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/saxo_ai"]
 dev-mode-dirs = ["src"]
