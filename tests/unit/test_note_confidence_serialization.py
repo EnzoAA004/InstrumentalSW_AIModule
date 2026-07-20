@@ -127,7 +127,9 @@ def test_serialization_omits_accuracy_probability_wrong_and_sax022_report_fields
     payload = json.loads(serialize_confidence_annotated_result(result))
 
     root_and_event_keys = set(payload) | set(payload["summary"])
-    root_and_event_keys.update(key for event_document in payload["events"] for key in event_document)
+    root_and_event_keys.update(
+        key for event_document in payload["events"] for key in event_document
+    )
     for forbidden in (
         "accuracy",
         "probability_correct",
