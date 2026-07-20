@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import math
 from io import BytesIO
+from typing import Any
 from uuid import UUID
 
 import pytest
@@ -46,14 +47,14 @@ class SpyStream:
 
 
 class DurationRejectingConverter:
-    def convert(self, **_: object) -> object:
+    def convert(self, **_: Any) -> Any:
         raise AudioDurationLimitExceededError(
             max_duration_seconds=1.0,
             actual_duration_seconds=1.0000625,
         )
 
 
-def post_audio(client: TestClient, content: bytes) -> object:
+def post_audio(client: TestClient, content: bytes) -> Any:
     return client.post(
         "/api/v1/transcriptions",
         files={"file": ("take.wav", content, "application/octet-stream")},
@@ -113,11 +114,11 @@ def test_http_exact_limit_and_structured_413() -> None:
     limits = AudioProcessingLimits(max_size_bytes=8, max_duration_seconds=1.0)
     with TestClient(create_app(limits=limits)) as client:
         accepted = post_audio(client, b"12345678")
-        assert accepted.status_code == 202  # type: ignore[attr-defined]
-        assert accepted.json()["size_bytes"] == 8  # type: ignore[attr-defined]
+        assert accepted.status_code == 202
+        assert accepted.json()["size_bytes"] == 8
         rejected = post_audio(client, b"123456789")
-        assert rejected.status_code == 413  # type: ignore[attr-defined]
-        assert rejected.json() == {  # type: ignore[attr-defined]
+        assert rejected.status_code == 413
+        assert rejected.json() == {
             "detail": {
                 "code": "AUDIO_SIZE_LIMIT_EXCEEDED",
                 "message": "Audio exceeds the maximum allowed size of 8 bytes.",
