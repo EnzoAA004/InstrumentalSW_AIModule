@@ -64,6 +64,27 @@ jobs:
         run: |
           set -o pipefail
           python scripts/check_quality.py 2>&1 | tee quality.log
+      - name: Materialize exact Ruff formatting
+        if: always() && matrix.python-version == '3.12'
+        run: |
+          python -m ruff format \
+            src/saxo_ai/application/transcription_errors.py \
+            src/saxo_ai/infrastructure/hf_output.py \
+            src/saxo_ai/infrastructure/hf_saxophone.py \
+            tests/integration/test_hf_saxophone_baseline.py \
+            tests/unit/test_hf_saxophone_runtime.py
+      - name: Upload exact Ruff formatting
+        if: always() && matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: saxo-ruff-formatted
+          path: |
+            src/saxo_ai/application/transcription_errors.py
+            src/saxo_ai/infrastructure/hf_output.py
+            src/saxo_ai/infrastructure/hf_saxophone.py
+            tests/integration/test_hf_saxophone_baseline.py
+            tests/unit/test_hf_saxophone_runtime.py
+          retention-days: 1
       - name: Upload one-run quality diagnostics
         if: always()
         uses: actions/upload-artifact@v4
