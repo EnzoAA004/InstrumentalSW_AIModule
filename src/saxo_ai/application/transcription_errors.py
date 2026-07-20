@@ -28,9 +28,7 @@ class TranscriptionCheckpointMismatchError(TranscriptionError):
         if actual_size is not None:
             parts.append(f"size {actual_size} does not match expected {expected_size}")
         if actual_sha256 is not None:
-            parts.append(
-                f"SHA-256 {actual_sha256} does not match expected {expected_sha256}"
-            )
+            parts.append(f"SHA-256 {actual_sha256} does not match expected {expected_sha256}")
         super().__init__("; ".join(parts))
         self.expected_sha256 = expected_sha256
         self.actual_sha256 = actual_sha256
