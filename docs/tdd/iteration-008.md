@@ -2,11 +2,15 @@
 
 ## Scope
 
-Integrate the first real, pinned audio-to-note baseline for isolated saxophone behind a replaceable application port and use case. Convert raw baseline output and onset activations into the existing `NoteEventBatch` schema `1.0` while recording complete result-level provenance.
+SAX-021 integrates the first real, pinned audio-to-note baseline for isolated saxophone behind a
+replaceable application port and use case. It converts raw external events and onset activations to
+`NoteEventBatch` schema `1.0` and records result-level model, source, checkpoint, and settings
+provenance.
 
-This iteration does not connect FastAPI, change job state, persist audio/MIDI/activations, or implement SAX-022/SAX-023 policy.
+This extension completes runtime reproducibility. It does not connect FastAPI, change job state,
+persist audio/MIDI/activations, or implement SAX-022/SAX-023 policy.
 
-## Contracts and architecture
+## Architecture and contracts
 
 ```text
 BinaryStream
@@ -37,28 +41,43 @@ TranscriptionResult
 def transcribe(source: BinaryStream) -> TranscriptionResult: ...
 ```
 
-`TranscribeCanonicalAudio` delegates once, preserves the stream and result, and propagates controlled engine errors. Domain and application do not import FastAPI, Hugging Face, PyTorch, or `hf_midi_transcription`.
+Domain and application do not import FastAPI, Hugging Face, PyTorch, or
+`hf_midi_transcription`. `TranscriptionModelIdentity` now includes
+`engine_source_revision`; `NoteEvent` and `NoteEventBatch` remain unchanged at schema `1.0`.
 
-## Pinned baseline
+## Complete pinned chain
 
 ```text
-package:             hf-midi-transcription
-reported version:    0.1.1
-source commit:       96f6797881e9497cbfc8f8e5deccea9c1f2f7adc
-model ID:            xavriley/midi-transcription-models
-model revision:      982ce108d7010bc3c4f36cf851caea8d4c94763d
-checkpoint:          filosax_25k.pth
-checkpoint size:     99,341,469 bytes
-checkpoint SHA-256:  448cf2c8ea6d4b77f7435f5b9a496211ea60300c5c17fa9c754da764f75f3a6a
-sample rate:         16000 Hz
-device:              CPU
+hf-midi-transcription
+  installed version: 0.1.1
+  source URL:        https://github.com/xavriley/hf_midi_transcription.git
+  source revision:   96f6797881e9497cbfc8f8e5deccea9c1f2f7adc
+
+piano-transcription-inference
+  installed version: 0.1.0
+  source URL:        https://github.com/xavriley/piano_transcription_inference.git
+  source revision:   7568dc7f78b625e40cf9776e2806d164006610e3
+
+Hugging Face model
+  model ID:          xavriley/midi-transcription-models
+  model revision:    982ce108d7010bc3c4f36cf851caea8d4c94763d
+
+checkpoint
+  filename:          filosax_25k.pth
+  size:              99341469 bytes
+  SHA-256:           448cf2c8ea6d4b77f7435f5b9a496211ea60300c5c17fa9c754da764f75f3a6a
+
+execution
+  sample rate:       16000 Hz
+  device:            CPU
 ```
 
-The reported `0.1.1` package is installed from the fixed official source commit because no usable PyPI distribution exists for this integration. The dependency is optional and constrained to Python 3.11.
+Package version, Git source revision, model revision, and checkpoint checksum are different kinds
+of provenance. No version string substitutes for a source commit.
 
-## RED
+## Original RED
 
-Tests were committed before production code:
+Tests were committed before the original production code:
 
 ```text
 0b786aa  test(SAX-021): define replaceable transcription engine contract
@@ -66,14 +85,9 @@ Tests were committed before production code:
 e926369  test(SAX-021): define pinned baseline adapter contracts
 ```
 
-Exact RED:
+Exact original RED:
 
 ```text
-python -m pytest \
-  tests/unit/test_transcription_engine.py \
-  tests/unit/test_hf_saxophone_adapter.py \
-  tests/integration/test_hf_saxophone_baseline.py
-
 collected 0 items / 3 errors
 ModuleNotFoundError: No module named 'saxo_ai.application.transcription'
 ModuleNotFoundError: No module named 'saxo_ai.application.transcription_errors'
@@ -81,46 +95,24 @@ ModuleNotFoundError: No module named 'saxo_ai.infrastructure.hf_saxophone'
 RED_EXIT_CODE=2
 ```
 
-## GREEN
+## Original GREEN and NumPy defect
 
-The minimum implementation added:
+The initial implementation added immutable result contracts, `TranscriptionEngine`,
+`TranscribeCanonicalAudio`, checkpoint verification, bounded handling of non-seekable streams,
+controlled external-stage errors, activation-based confidence, deterministic ordering, and a
+synthetic real-inference fixture.
 
-- immutable identity, settings, and result contracts;
-- `TranscriptionEngine` and `TranscribeCanonicalAudio`;
-- controlled dependency/download/checksum/initialization/inference/output errors;
-- fixed checkpoint resolution and pre-load verification;
-- deferred optional runtime imports;
-- bounded materialization of non-seekable streams;
-- activation-based confidence conversion;
-- deterministic ordering without filtering;
-- a generated real integration fixture.
-
-Focused GREEN first reached:
-
-```text
-46 passed, 1 skipped
-```
-
-The skip was the expected real baseline integration in local Python 3.13 without the optional extra.
-
-## Real NumPy scalar defect
-
-Real Python 3.11 inference initialized the checkpoint and produced events, but the external runtime returned timing values as NumPy scalar types such as `numpy.float32`. `NoteEvent` intentionally accepts ordinary Python numerical values and rejected that representation at the adapter boundary.
-
-The real integration test reproduced the failure after inference. The correction normalizes only finite external representations:
-
-```text
-external Integral → Python int
-external Real     → Python float
-```
-
-It does not round, clamp, repair, merge, or filter values. Invalid pitch, velocity, timing, confidence, NaN, and infinities continue to fail through `NoteEvent` schema `1.0`.
+Real Python 3.11 inference then exposed `numpy.float32` timing values. The integration reproduced
+the defect before commit:
 
 ```text
 0fbd535  fix(SAX-021): normalize external numeric scalar types
 ```
 
-## Confidence and ordering
+The adapter normalizes external `Integral`/`Real` scalars to ordinary Python `int`/`float` without
+rounding, clipping, merging, filtering, or changing `NoteEvent` validation.
+
+## Confidence and event policy
 
 ```text
 source: reg_onset_output
@@ -131,54 +123,149 @@ window: center_frame ± 2
 method: max_reg_onset_activation_pm2_frames
 ```
 
-Confidence is an internal activation, not a calibrated probability. No threshold is applied.
-
-Events are sorted by onset, pitch, offset, and velocity. Duplicates and overlaps are preserved. SAX-021 performs no deduplication, merging, minimum-duration filtering, overlap correction, or low-confidence filtering.
-
-## Checkpoint and temporary-file guarantees
-
-The resolver requests only the pinned model ID, revision, and filename. Exact size and SHA-256 are checked with bounded reads before model initialization. A mismatch prevents runtime construction and controlled errors omit cache and temporary paths.
-
-The adapter requires only `read(size) -> bytes`; it does not require seekability, a filename, or a FastAPI type. Canonical WAV and the external runtime's MIDI path live in a context-managed temporary directory that is removed after success and controlled failures. The MIDI is not a final product artifact.
-
-## Synthetic fixture
-
-The real integration generates approximately two seconds of 16 kHz mono PCM16 audio in memory with a 440 Hz fundamental, second and third harmonics, fade-in/fade-out, and mild vibrato. No third-party audio is downloaded or committed. Assertions intentionally avoid exact event counts, timings, velocities, confidences, and runtime durations.
+Confidence is an internal activation, not a calibrated probability. Events are ordered by onset,
+pitch, offset, and velocity. Duplicates and overlaps are preserved. No SAX-022 or SAX-023 policy is
+implemented.
 
 ## Run #57
 
-`Quality #57`, run ID `29717961924`, was not a successful matrix. It demonstrated:
+`Quality #57`, run ID `29717961924`, was not a successful matrix. It proved package installation,
+checkpoint download and verification, CPU initialization, real inference, NumPy-normalized event
+conversion, 259 passed tests, and 92.72% coverage. The quality gate remained incomplete because of
+Ruff E501, and the workflow was intentionally red for diagnostics.
 
-- baseline installation in Python 3.11;
-- exact checkpoint download and verification;
-- CPU initialization and real inference;
-- successful conversion after NumPy normalization;
-- 259 passed tests;
-- 92.72% coverage.
+## Original clean matrix
 
-The quality gate was incomplete because Ruff reported E501 in `transcription_errors.py`, and the workflow was deliberately red for diagnostics. It is recorded as **successful inference and tests, incomplete quality gate, diagnostic workflow intentionally red**.
+`Quality #79`, run ID `29721230765`, completed successfully in Python 3.11, 3.12, and 3.13. It
+validated the accepted SAX-021 behavior before the transitive-provenance defect was discovered.
 
-## Ruff correction and diagnostic removal
+## Reproducibility defect
 
-The conditional error message was formatted without an E501 exclusion or a larger line limit. A later Ruff-version difference identified five formatting-only files; exact CI formatter output was applied without behavioral changes.
+The fixed FiloSax source metadata contained this floating dependency:
 
-All final `continue-on-error`, redirected logs, artifact uploads, checkout exports, and artificial failure steps were removed. The definitive workflow fails directly on installation or quality failure.
+```text
+piano-transcription-inference
+@ git+https://github.com/xavriley/piano_transcription_inference.git
+```
 
-## REFACTOR
+A future installation could therefore resolve a different piano runtime while the top-level
+package, model, and checkpoint remained fixed. SAX-021 was functionally correct but not completely
+reproducible.
 
-- `hf_baseline_contract.py`: fixed identity and external protocols;
-- `hf_checkpoint.py`: download and verification;
-- `hf_runtime.py`: optional runtime and narrow warning compatibility;
-- `hf_output.py`: external scalar, activation, and event normalization;
-- `hf_saxophone.py`: orchestration only;
-- exact transitive `aifc`, `audioop`, and `sunau` deprecations from `audioread` are isolated;
-- unrelated warnings remain errors;
-- diagnostics are emitted through an observer, not stored in domain events;
-- audio, tensors, activations, and final MIDI are not retained.
+## Reproducibility RED
 
-## Real inference evidence
+Tests-only commit:
 
-A diagnostic execution on the same functional implementation recorded:
+```text
+b15b42e  test(SAX-021): require pinned transitive baseline runtime
+```
+
+Exact focused RED:
+
+```text
+11 failed, 4 passed
+```
+
+The failures defined these missing contracts:
+
+- every baseline Git requirement must use a full 40-character revision;
+- branches, floating URLs, vague tags, and short revisions are invalid;
+- both installed distributions must provide valid PEP 610 `direct_url.json`;
+- exact package version, source URL, Git VCS, and `commit_id` are required;
+- missing/malformed metadata and wrong URL/revision fail with a controlled error;
+- errors do not expose `site-packages` paths or the complete JSON document;
+- provenance mismatch prevents model initialization;
+- the result records `engine_source_revision`.
+
+## Direct-reference experiment
+
+The first GREEN attempt declared both exact VCS references in the optional `baseline` extra and
+executed:
+
+```bash
+python -m pip install --no-cache-dir -e ".[dev,baseline]"
+```
+
+Run `29750335611` failed during Python 3.11 resolution. Pip detected incompatible direct
+references because the top-level FiloSax metadata still requested the floating piano URL. The
+transitive pin was not removed and the implementation did not fall back to a branch.
+
+## Controlled installer GREEN
+
+The final public installation command is:
+
+```bash
+python scripts/install_baseline.py
+```
+
+The cross-platform installer:
+
+1. uses `sys.executable`;
+2. never uses `shell=True`;
+3. installs the core development environment without pip cache;
+4. installs the required numerical/audio dependencies;
+5. force-reinstalls piano from commit
+   `7568dc7f78b625e40cf9776e2806d164006610e3` with `--no-deps`;
+6. force-reinstalls FiloSax from commit
+   `96f6797881e9497cbfc8f8e5deccea9c1f2f7adc` with `--no-deps`;
+7. propagates the first non-zero subprocess code;
+8. verifies both installed distributions through PEP 610 after installation.
+
+Focused GREEN reached:
+
+```text
+63 passed
+```
+
+## Runtime PEP 610 gate
+
+Before checkpoint resolution, temporary workspace creation, PyTorch initialization, or inference,
+`HfMidiRuntimeFactory.ensure_available()` verifies for both packages:
+
+```text
+installed version
+exact repository URL
+vcs == git
+commit_id is 40 lowercase hexadecimal characters
+commit_id equals the pinned source revision
+```
+
+Missing or malformed metadata, another repository, another commit, a branch name, or an
+incompatible version raises `TranscriptionEngineUnavailableError`. The error names only the
+package and provenance stage.
+
+## Piano version clarification
+
+The repository's legacy `setup.py` contains version `0.0.5`, but the authoritative PEP 621
+`pyproject.toml` in the same pinned commit declares version `0.1.0`. Modern pip builds and installs
+that PEP 621 metadata. Clean Python 3.11 installation observed:
+
+```text
+package:           piano-transcription-inference
+installed version: 0.1.0
+source URL:        https://github.com/xavriley/piano_transcription_inference.git
+commit_id:         7568dc7f78b625e40cf9776e2806d164006610e3
+```
+
+The source revision remains exactly the requested commit. The implementation verifies the actual
+installed version instead of falsifying distribution metadata.
+
+## Reproducibility REFACTOR
+
+- centralized names, versions, repository URLs, and source revisions;
+- introduced immutable `RuntimeDistributionRequirement` values;
+- separated install command construction, execution, and post-install verification;
+- force-reinstalls both exact VCS packages to prevent an older compatible install from surviving;
+- reports safe, stage-specific provenance failures;
+- adds `engine_source_revision` to result-level identity;
+- preserves the existing model/checkpoint provenance and confidence calculation;
+- restores the definitive workflow to one installer command without diagnostic artifacts,
+  `continue-on-error`, or artificial failures.
+
+## Real integration evidence
+
+The synthetic fixture is approximately two seconds of 16 kHz mono PCM16 audio with a 440 Hz
+fundamental, harmonics, fade, and mild vibrato. A prior diagnostic run recorded:
 
 ```text
 cache status:           download
@@ -194,9 +281,10 @@ first velocity:         127
 first confidence:       0.324814
 ```
 
-These values are diagnostic evidence, not golden assertions or performance targets. Clean run `29720266512` repeated the required Python 3.11 installation and real integration successfully.
+These values are evidence, not exact assertions or performance targets. The final clean matrix
+again completed required real inference.
 
-## Local final results
+## Local final commands
 
 Environment:
 
@@ -204,88 +292,94 @@ Environment:
 Python 3.13.5
 Ruff 0.15.22
 FFmpeg available
-baseline extra not installed
+pinned Python 3.11 baseline runtime not installed locally
 ```
+
+Results:
 
 ```text
 python -m pip install -e ".[dev]"
 → success
 
 python scripts/check_quality.py
-→ 258 passed, 1 skipped
-→ coverage 91.03%
+→ 280 passed, 1 skipped
+→ coverage 91.80%
 → Ruff lint passed
-→ Ruff format: 54 files already formatted
-→ mypy: no issues in 54 source files
+→ Ruff format passed
+→ mypy passed
 → quality gate passed
 
 python -m pytest
-→ 258 passed, 1 skipped
+→ 280 passed, 1 skipped
 
 python -m pytest -m "not integration"
-→ 249 passed, 10 deselected
+→ 271 passed, 10 deselected
 
 python -m pytest -m integration
-→ 9 passed, 1 skipped, 249 deselected
+→ 9 passed, 1 skipped, 271 deselected
 
 python -m pytest -m baseline_integration
-→ 1 skipped, 258 deselected
+→ 1 skipped, 280 deselected
 
 python -m pytest --cov=saxo_ai --cov-report=term-missing --cov-report=xml
-→ 258 passed, 1 skipped
-→ coverage 91.03%; coverage.xml written
+→ 280 passed, 1 skipped
+→ total coverage 91.80%
 
 python -m ruff check src tests scripts
 → all checks passed
 
 python -m ruff format --check src tests scripts
-→ 54 files already formatted
+→ all files formatted
 
 python -m mypy
-→ success; no issues in 54 source files
+→ success
 ```
 
-Explicit local skip reason:
+Explicit local skip:
 
 ```text
 hf-midi-transcription baseline extra is not installed; Python 3.11 CI requires it
 ```
 
-The real model did not run locally. Python 3.11 CI is the mandatory real-inference evidence.
+No claim is made that the real baseline ran locally.
 
-## Clean functional CI
+## Final clean functional matrix
 
 ```text
-Quality #74
-Run ID: 29720266512
+Quality #97
+Run ID: 29754717761
 ```
 
 ```text
 Python 3.11 — success
-- installed .[dev,baseline]
+- executed python scripts/install_baseline.py
+- installed without pip cache
+- force-reinstalled both exact Git packages
+- verified versions, URLs, Git VCS, and exact PEP 610 commit IDs
 - required FFmpeg and baseline integration
-- real CPU inference completed
-- pytest, coverage, Ruff, format, and mypy passed
+- real CPU inference completed and was not skipped
+- full pytest/coverage/Ruff/format/mypy gate passed
 
 Python 3.12 — success
 - installed .[dev]
-- explicit baseline skip
+- baseline integration skipped explicitly
 - FFmpeg integrations and full core quality gate passed
 
 Python 3.13 — success
 - installed .[dev]
-- explicit baseline skip
+- baseline integration skipped explicitly
 - FFmpeg integrations and full core quality gate passed
 ```
 
-Protected names remain `Python 3.11`, `Python 3.12`, and `Python 3.13`; permissions remain `contents: read`; timeout remains 20 minutes.
+Protected job names remain `Python 3.11`, `Python 3.12`, and `Python 3.13`; permissions remain
+`contents: read`; timeout remains 20 minutes.
 
 ## Coverage
 
 ```text
-Python 3.11 with real baseline: 92.72%
-Python 3.12/3.13 and local:     91.03%
-required threshold:             90%
+local Python 3.13 core path: 91.80%
+required threshold:         90%
+Python 3.11 real baseline:  passed the same quality threshold
 ```
 
 The threshold was not lowered.
