@@ -146,9 +146,7 @@ class RecordingEncoder:
 
 
 class RaisingEncoder:
-    def encode(
-        self, *, plan: tuple[MidiNotePlan, ...], settings: MidiExportSettings
-    ) -> bytes:
+    def encode(self, *, plan: tuple[MidiNotePlan, ...], settings: MidiExportSettings) -> bytes:
         raise RuntimeError("external failure")
 
 
@@ -156,9 +154,7 @@ class InvalidEncoder:
     def __init__(self, value: object) -> None:
         self.value = value
 
-    def encode(
-        self, *, plan: tuple[MidiNotePlan, ...], settings: MidiExportSettings
-    ) -> bytes:
+    def encode(self, *, plan: tuple[MidiNotePlan, ...], settings: MidiExportSettings) -> bytes:
         return cast(bytes, self.value)
 
 
@@ -190,9 +186,7 @@ def test_use_case_exports_concert_pitch_not_written_pitch() -> None:
 def test_short_positive_duration_gets_one_tick_and_is_reported() -> None:
     original = written_result(((60, 0.0, 0.0001, 100, 0.8, False),))
 
-    result = ExportWrittenPitchToMidi(RecordingEncoder()).execute(
-        original, MidiExportSettings()
-    )
+    result = ExportWrittenPitchToMidi(RecordingEncoder()).execute(original, MidiExportSettings())
 
     assert result.plan[0].onset_tick == 0
     assert result.plan[0].offset_tick == 1
@@ -211,9 +205,7 @@ def test_velocity_zero_is_adapted_without_mutating_source(
 ) -> None:
     original = written_result(((60, 0.0, 0.5, source_velocity, 0.8, False),))
 
-    result = ExportWrittenPitchToMidi(RecordingEncoder()).execute(
-        original, MidiExportSettings()
-    )
+    result = ExportWrittenPitchToMidi(RecordingEncoder()).execute(original, MidiExportSettings())
 
     assert result.plan[0].velocity == expected_velocity
     assert result.report.zero_velocity_adjustment_count == expected_adjustments
@@ -230,9 +222,7 @@ def test_plan_is_sorted_deterministically_without_reordering_original() -> None:
         )
     )
 
-    result = ExportWrittenPitchToMidi(RecordingEncoder()).execute(
-        original, MidiExportSettings()
-    )
+    result = ExportWrittenPitchToMidi(RecordingEncoder()).execute(original, MidiExportSettings())
 
     assert [event.source.event.pitch_concert_midi for event in original.events] == [
         72,
@@ -258,9 +248,7 @@ def test_plan_is_sorted_deterministically_without_reordering_original() -> None:
 def test_empty_result_produces_nonempty_artifact_and_zero_note_report() -> None:
     original = written_result(())
 
-    result = ExportWrittenPitchToMidi(RecordingEncoder()).execute(
-        original, MidiExportSettings()
-    )
+    result = ExportWrittenPitchToMidi(RecordingEncoder()).execute(original, MidiExportSettings())
 
     assert result.plan == ()
     assert result.artifact.content.startswith(b"MThd")
@@ -273,25 +261,15 @@ def test_empty_result_produces_nonempty_artifact_and_zero_note_report() -> None:
 def test_complete_provenance_chain_is_preserved() -> None:
     original = written_result(((60, 0.0, 0.5, 100, 0.4, True),))
 
-    result = ExportWrittenPitchToMidi(RecordingEncoder()).execute(
-        original, MidiExportSettings()
-    )
+    result = ExportWrittenPitchToMidi(RecordingEncoder()).execute(original, MidiExportSettings())
 
     assert result.original is original
     assert result.plan[0].source is original.events[0]
     assert result.plan[0].source.source is original.original.annotated_events[0]
-    assert (
-        result.plan[0].source.source.event is original.original.original.notes.events[0]
-    )
-    assert (
-        result.original.original.original.original.model.engine_source_revision
-        == "a" * 40
-    )
+    assert result.plan[0].source.source.event is original.original.original.notes.events[0]
+    assert result.original.original.original.original.model.engine_source_revision == "a" * 40
     assert result.original.original.original.original.model.model_revision == "b" * 40
-    assert (
-        result.original.original.original.original.model.checkpoint_filename
-        == "filosax_25k.pth"
-    )
+    assert result.original.original.original.original.model.checkpoint_filename == "filosax_25k.pth"
     assert result.original.original.original.report is original.original.original.report
     assert result.original.original.report is original.original.report
     assert result.plan[0].source.source.event.confidence == 0.4
@@ -329,9 +307,7 @@ def test_encoder_failure_is_wrapped_with_controlled_error() -> None:
     original = written_result(())
 
     with pytest.raises(MidiEncodingError) as captured:
-        ExportWrittenPitchToMidi(RaisingEncoder()).execute(
-            original, MidiExportSettings()
-        )
+        ExportWrittenPitchToMidi(RaisingEncoder()).execute(original, MidiExportSettings())
 
     assert isinstance(captured.value.__cause__, RuntimeError)
     assert "external failure" not in str(captured.value)
@@ -342,20 +318,14 @@ def test_invalid_encoder_result_is_controlled(value: object) -> None:
     original = written_result(())
 
     with pytest.raises(InvalidMidiArtifactError):
-        ExportWrittenPitchToMidi(InvalidEncoder(value)).execute(
-            original, MidiExportSettings()
-        )
+        ExportWrittenPitchToMidi(InvalidEncoder(value)).execute(original, MidiExportSettings())
 
 
 def test_use_case_rejects_invalid_original_and_settings_before_encoder() -> None:
     encoder = RecordingEncoder()
 
     with pytest.raises(InvalidMidiPlanError):
-        ExportWrittenPitchToMidi(encoder).execute(
-            cast(Any, object()), MidiExportSettings()
-        )
+        ExportWrittenPitchToMidi(encoder).execute(cast(Any, object()), MidiExportSettings())
     with pytest.raises(InvalidMidiExportSettingsError):
-        ExportWrittenPitchToMidi(encoder).execute(
-            written_result(()), cast(Any, object())
-        )
+        ExportWrittenPitchToMidi(encoder).execute(written_result(()), cast(Any, object()))
     assert encoder.calls == []
