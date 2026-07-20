@@ -417,3 +417,23 @@ def test_written_pitch_modules_do_not_import_forbidden_dependencies() -> None:
         "mido",
     ):
         assert forbidden not in source
+
+
+def test_written_pitch_result_rejects_non_annotated_original() -> None:
+    with pytest.raises(InvalidWrittenPitchContractError):
+        WrittenPitchTranscriptionResult(
+            original=cast(Any, object()),
+            saxophone_type=SaxophoneType.ALTO,
+            events=(),
+        )
+
+
+def test_written_pitch_result_rejects_non_tuple_events() -> None:
+    original = annotated_result((), ())
+
+    with pytest.raises(InvalidWrittenPitchContractError):
+        WrittenPitchTranscriptionResult(
+            original=original,
+            saxophone_type=SaxophoneType.ALTO,
+            events=cast(Any, []),
+        )
