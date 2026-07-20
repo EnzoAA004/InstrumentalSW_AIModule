@@ -161,9 +161,7 @@ def test_real_wav_one_frame_over_duration_limit_fails_without_destination(
     with pytest.raises(TranscriptionAudioValidationError) as captured:
         ValidateTranscriptionAudio(
             repository,
-            FfmpegCanonicalAudioConverter(
-                limits=AudioProcessingLimits(max_duration_seconds=1.0)
-            ),
+            FfmpegCanonicalAudioConverter(limits=AudioProcessingLimits(max_duration_seconds=1.0)),
         ).execute(
             job_id=job.job_id,
             source=BytesIO(content),
@@ -204,9 +202,7 @@ def test_real_corrupt_content_still_uses_content_invalid_code() -> None:
     with pytest.raises(TranscriptionAudioValidationError) as captured:
         ValidateTranscriptionAudio(
             repository,
-            FfmpegCanonicalAudioConverter(
-                limits=AudioProcessingLimits(max_duration_seconds=1.0)
-            ),
+            FfmpegCanonicalAudioConverter(limits=AudioProcessingLimits(max_duration_seconds=1.0)),
         ).execute(
             job_id=job.job_id,
             source=BytesIO(content),
