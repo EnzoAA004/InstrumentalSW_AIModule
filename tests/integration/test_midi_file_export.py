@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 import struct
 from pathlib import Path
+from typing import Any
 
 import mido  # type: ignore[import-untyped]
 import pytest
@@ -27,7 +28,10 @@ from saxo_ai.domain.transcription import (
     TranscriptionResult,
     TranscriptionSettings,
 )
-from saxo_ai.domain.written_pitch import WrittenPitchNoteEvent, WrittenPitchTranscriptionResult
+from saxo_ai.domain.written_pitch import (
+    WrittenPitchNoteEvent,
+    WrittenPitchTranscriptionResult,
+)
 from saxo_ai.infrastructure.mido_midi import MidoMidiFileEncoder
 
 pytestmark = [pytest.mark.integration, pytest.mark.midi_integration]
@@ -77,15 +81,13 @@ def written_result(
     )
 
 
-def parse(content: bytes) -> mido.MidiFile:
+def parse(content: bytes) -> Any:
     return mido.MidiFile(file=io.BytesIO(content))
 
 
-def absolute_messages(
-    track: mido.MidiTrack,
-) -> list[tuple[int, mido.Message | mido.MetaMessage]]:
+def absolute_messages(track: Any) -> list[tuple[int, Any]]:
     absolute = 0
-    result: list[tuple[int, mido.Message | mido.MetaMessage]] = []
+    result: list[tuple[int, Any]] = []
     for message in track:
         absolute += message.time
         result.append((absolute, message))
@@ -103,15 +105,15 @@ def test_real_mido_encoder_produces_type_one_concert_pitch_file() -> None:
     assert midi.type == 1
     assert midi.ticks_per_beat == 480
     assert len(midi.tracks) == 2
-    assert [message.name for message in midi.tracks[0] if message.type == "track_name"] == [
-        "Saxo Metadata"
-    ]
-    assert [message.tempo for message in midi.tracks[0] if message.type == "set_tempo"] == [
-        500_000
-    ]
-    assert [message.name for message in midi.tracks[1] if message.type == "track_name"] == [
-        "Saxo Concert Pitch"
-    ]
+    assert [
+        message.name for message in midi.tracks[0] if message.type == "track_name"
+    ] == ["Saxo Metadata"]
+    assert [
+        message.tempo for message in midi.tracks[0] if message.type == "set_tempo"
+    ] == [500_000]
+    assert [
+        message.name for message in midi.tracks[1] if message.type == "track_name"
+    ] == ["Saxo Concert Pitch"]
     note_ons = [message for message in midi.tracks[1] if message.type == "note_on"]
     note_offs = [message for message in midi.tracks[1] if message.type == "note_off"]
     assert len(note_ons) == len(note_offs) == 1
@@ -144,8 +146,13 @@ def test_time_conversion_delta_order_and_velocity_adjustment() -> None:
         (480, "note_on", 62),
         (960, "note_off", 62),
     ]
-    assert [message.velocity for _, message in notes if message.type == "note_on"] == [1, 127]
-    assert all(message.time >= 0 for message in parse(result.artifact.content).tracks[1])
+    assert [message.velocity for _, message in notes if message.type == "note_on"] == [
+        1,
+        127,
+    ]
+    assert all(
+        message.time >= 0 for message in parse(result.artifact.content).tracks[1]
+    )
     assert result.report.zero_velocity_adjustment_count == 1
 
 
@@ -181,9 +188,11 @@ def test_empty_batch_is_still_valid_midi() -> None:
 
 
 def test_standard_library_structural_snapshot() -> None:
-    content = ExportWrittenPitchToMidi(MidoMidiFileEncoder()).execute(
-        written_result(((60, 0.0, 0.5, 100),)), MidiExportSettings()
-    ).artifact.content
+    content = (
+        ExportWrittenPitchToMidi(MidoMidiFileEncoder())
+        .execute(written_result(((60, 0.0, 0.5, 100),)), MidiExportSettings())
+        .artifact.content
+    )
 
     assert content[:4] == b"MThd"
     header_length = struct.unpack(">I", content[4:8])[0]
