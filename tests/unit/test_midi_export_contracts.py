@@ -182,7 +182,7 @@ def test_midi_export_report_enforces_counts() -> None:
         exported_note_count=2,
         minimum_tick_adjustment_count=1,
         zero_velocity_adjustment_count=1,
-        midi_message_count=10,
+        midi_message_count=9,
     )
 
     assert report.settings is settings
@@ -194,7 +194,7 @@ def test_midi_export_report_enforces_counts() -> None:
             exported_note_count=2,
             minimum_tick_adjustment_count=0,
             zero_velocity_adjustment_count=0,
-            midi_message_count=10,
+            midi_message_count=9,
         )
 
 
