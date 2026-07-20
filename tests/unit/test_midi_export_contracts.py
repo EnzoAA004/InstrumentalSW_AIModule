@@ -261,5 +261,11 @@ def test_project_declares_pinned_mido_and_midi_marker() -> None:
 
     assert '"mido==1.3.3"' in pyproject
     assert "midi_integration" in pyproject
-    for forbidden in ("python-rtmidi", "pygame", "fluidsynth", "pretty_midi", "music21"):
+    for forbidden in (
+        "python-rtmidi",
+        "pygame",
+        "fluidsynth",
+        "pretty_midi",
+        "music21",
+    ):
         assert forbidden not in pyproject
