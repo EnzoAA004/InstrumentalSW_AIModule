@@ -29,9 +29,7 @@ def test_runtime_suppresses_only_known_audioread_stdlib_deprecations(
     tmp_path: Path,
 ) -> None:
     runtime = _HfMidiRuntime(
-        WarningModel(
-            f"'{module_name}' is deprecated and slated for removal in Python 3.13"
-        )
+        WarningModel(f"'{module_name}' is deprecated and slated for removal in Python 3.13")
     )
     assert runtime.transcribe(
         audio_path=tmp_path / "canonical.wav",
