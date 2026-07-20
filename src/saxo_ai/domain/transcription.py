@@ -50,13 +50,12 @@ class TranscriptionModelIdentity:
             "checkpoint_filename",
         ):
             object.__setattr__(
-                self,
-                field_name,
-                _non_empty_string(field_name, getattr(self, field_name)),
+                self, field_name, _non_empty_string(field_name, getattr(self, field_name))
             )
-        if not isinstance(self.checkpoint_sha256, str) or _SHA256_PATTERN.fullmatch(
-            self.checkpoint_sha256
-        ) is None:
+        if (
+            not isinstance(self.checkpoint_sha256, str)
+            or _SHA256_PATTERN.fullmatch(self.checkpoint_sha256) is None
+        ):
             raise InvalidTranscriptionContractError(
                 "checkpoint_sha256 must be 64 lowercase hexadecimal characters"
             )
@@ -111,8 +110,6 @@ class TranscriptionResult:
         if not isinstance(self.notes, NoteEventBatch):
             raise InvalidTranscriptionContractError("notes must be a NoteEventBatch")
         if not isinstance(self.model, TranscriptionModelIdentity):
-            raise InvalidTranscriptionContractError(
-                "model must be a TranscriptionModelIdentity"
-            )
+            raise InvalidTranscriptionContractError("model must be a TranscriptionModelIdentity")
         if not isinstance(self.settings, TranscriptionSettings):
             raise InvalidTranscriptionContractError("settings must be TranscriptionSettings")
