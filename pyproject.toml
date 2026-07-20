@@ -25,10 +25,6 @@ dev = [
   "types-PyYAML>=6.0.12,<7",
   "ruff>=0.9,<1",
 ]
-baseline = [
-  "piano-transcription-inference @ git+https://github.com/xavriley/piano_transcription_inference.git@7568dc7f78b625e40cf9776e2806d164006610e3 ; python_version < '3.12'",
-  "hf-midi-transcription @ git+https://github.com/xavriley/hf_midi_transcription.git@96f6797881e9497cbfc8f8e5deccea9c1f2f7adc ; python_version < '3.12'",
-]
 
 [tool.hatch.metadata]
 allow-direct-references = true

@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from saxo_ai.domain.note_events import NoteEventBatch
 
 _SHA256_PATTERN = re.compile(r"[0-9a-f]{64}\Z")
+_GIT_REVISION_PATTERN = re.compile(r"[0-9a-f]{40}\Z")
 
 
 class InvalidTranscriptionContractError(ValueError):
@@ -53,6 +54,10 @@ class TranscriptionModelIdentity:
         ):
             object.__setattr__(
                 self, field_name, _non_empty_string(field_name, getattr(self, field_name))
+            )
+        if _GIT_REVISION_PATTERN.fullmatch(self.engine_source_revision) is None:
+            raise InvalidTranscriptionContractError(
+                "engine_source_revision must be 40 lowercase hexadecimal characters"
             )
         if (
             not isinstance(self.checkpoint_sha256, str)

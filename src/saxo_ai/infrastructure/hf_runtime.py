@@ -97,13 +97,16 @@ def _verify_distribution(requirement: RuntimeDistributionRequirement) -> str:
     return distribution.version
 
 
+def verify_baseline_runtime() -> dict[str, str]:
+    return {
+        requirement.package_name: _verify_distribution(requirement)
+        for requirement in BASELINE_RUNTIME_REQUIREMENTS
+    }
+
+
 class HfMidiRuntimeFactory:
     def ensure_available(self) -> str:
-        versions = {
-            requirement.package_name: _verify_distribution(requirement)
-            for requirement in BASELINE_RUNTIME_REQUIREMENTS
-        }
-        return versions[BASELINE_PACKAGE_NAME]
+        return verify_baseline_runtime()[BASELINE_PACKAGE_NAME]
 
     def create(
         self,
