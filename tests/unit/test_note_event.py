@@ -126,7 +126,7 @@ def test_confidence_rejects_invalid_values(confidence: Any) -> None:
 def test_note_event_batch_accepts_empty_and_normalizes_sequence_to_tuple() -> None:
     empty = NoteEventBatch(events=())
     event = make_event()
-    batch = NoteEventBatch(events=[event])
+    batch = NoteEventBatch(events=[event])  # type: ignore[arg-type]
 
     assert empty.events == ()
     assert empty.schema_version == NOTE_EVENT_SCHEMA_VERSION == "1.0"
