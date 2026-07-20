@@ -40,7 +40,10 @@ from saxo_ai.domain.transcription import (
     TranscriptionResult,
     TranscriptionSettings,
 )
-from saxo_ai.domain.written_pitch import WrittenPitchNoteEvent, WrittenPitchTranscriptionResult
+from saxo_ai.domain.written_pitch import (
+    WrittenPitchNoteEvent,
+    WrittenPitchTranscriptionResult,
+)
 from saxo_ai.infrastructure import mido_midi
 from saxo_ai.infrastructure.mido_midi import MidoMidiFileEncoder
 
@@ -106,9 +109,7 @@ def test_seconds_to_tick_rejects_non_numeric_values(seconds: object) -> None:
         seconds_to_midi_tick(cast(Any, seconds), MidiExportSettings())
 
 
-@pytest.mark.parametrize(
-    "seconds", [-1.0, float("nan"), float("inf"), float("-inf")]
-)
+@pytest.mark.parametrize("seconds", [-1.0, float("nan"), float("inf"), float("-inf")])
 def test_seconds_to_tick_rejects_invalid_numeric_values(seconds: float) -> None:
     with pytest.raises(InvalidMidiPlanError):
         seconds_to_midi_tick(seconds, MidiExportSettings())
