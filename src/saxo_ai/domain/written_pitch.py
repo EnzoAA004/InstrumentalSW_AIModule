@@ -33,9 +33,7 @@ class WrittenPitchNoteEvent:
 
     def __post_init__(self) -> None:
         if not isinstance(self.source, ConfidenceAnnotatedNoteEvent):
-            raise InvalidWrittenPitchContractError(
-                "source must be a ConfidenceAnnotatedNoteEvent"
-            )
+            raise InvalidWrittenPitchContractError("source must be a ConfidenceAnnotatedNoteEvent")
         written_pitch = _validate_written_pitch(self.written_pitch_midi)
         object.__setattr__(self, "written_pitch_midi", written_pitch)
 
