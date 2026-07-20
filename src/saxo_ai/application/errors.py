@@ -11,6 +11,34 @@ class EmptyAudioFileError(ValueError):
     """Raised when an uploaded file contains no bytes."""
 
 
+class AudioSizeLimitExceededError(ValueError):
+    """Raised when upload inspection observes one byte beyond the configured maximum."""
+
+    def __init__(self, *, max_size_bytes: int, observed_size_bytes: int) -> None:
+        super().__init__(
+            f"Audio size exceeds {max_size_bytes} bytes; observed at least {observed_size_bytes}"
+        )
+        self.max_size_bytes = max_size_bytes
+        self.observed_size_bytes = observed_size_bytes
+
+
+class AudioDurationLimitExceededError(ValueError):
+    """Raised when a valid canonical WAV is longer than the configured maximum."""
+
+    def __init__(
+        self,
+        *,
+        max_duration_seconds: float,
+        actual_duration_seconds: float,
+    ) -> None:
+        super().__init__(
+            "Audio duration exceeds "
+            f"{max_duration_seconds:g} seconds; actual duration is {actual_duration_seconds:g}"
+        )
+        self.max_duration_seconds = max_duration_seconds
+        self.actual_duration_seconds = actual_duration_seconds
+
+
 class TranscriptionJobNotFoundError(LookupError):
     """Raised when a transcription job cannot be found."""
 
