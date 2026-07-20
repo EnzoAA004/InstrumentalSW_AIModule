@@ -109,9 +109,7 @@ def test_serialization_preserves_order_and_original_values() -> None:
 
 
 def test_serialization_is_deterministic_and_compact() -> None:
-    result = MarkLowConfidenceEvents().execute(
-        make_processed((NoteEvent(60, 0.0, 0.5, 100, 0.4),))
-    )
+    result = MarkLowConfidenceEvents().execute(make_processed((NoteEvent(60, 0.0, 0.5, 100, 0.4),)))
 
     first = serialize_confidence_annotated_result(result)
     second = serialize_confidence_annotated_result(result)
@@ -122,9 +120,7 @@ def test_serialization_is_deterministic_and_compact() -> None:
 
 
 def test_serialization_omits_accuracy_probability_wrong_and_sax022_report_fields() -> None:
-    result = MarkLowConfidenceEvents().execute(
-        make_processed((NoteEvent(60, 0.0, 0.5, 100, 0.4),))
-    )
+    result = MarkLowConfidenceEvents().execute(make_processed((NoteEvent(60, 0.0, 0.5, 100, 0.4),)))
 
     payload = json.loads(serialize_confidence_annotated_result(result))
 
