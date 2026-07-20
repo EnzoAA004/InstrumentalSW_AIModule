@@ -18,7 +18,7 @@ from saxo_ai.infrastructure.hf_baseline_contract import (
 )
 
 _AUDIOREAD_STDLIB_DEPRECATION = (
-    r"'(?:aifc|sunau)' is deprecated and slated for removal in Python 3\.13"
+    r"'(?:aifc|audioop|sunau)' is deprecated and slated for removal in Python 3\.13"
 )
 
 
