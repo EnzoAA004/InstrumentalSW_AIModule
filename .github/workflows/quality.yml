@@ -48,7 +48,11 @@ jobs:
         run: python -m pip install --upgrade pip
       - name: Install project with pinned baseline
         if: matrix.python-version == '3.11'
-        run: python -m pip install -e ".[dev,baseline]"
+        run: |
+          python -m pip install -e ".[dev,baseline]" > baseline-install.log 2>&1 || {
+            tail -n 160 baseline-install.log
+            exit 1
+          }
       - name: Install project
         if: matrix.python-version != '3.11'
         run: python -m pip install -e ".[dev]"
@@ -56,7 +60,15 @@ jobs:
         if: matrix.python-version == '3.11'
         env:
           SAXO_REQUIRE_BASELINE: "1"
-        run: python scripts/check_quality.py
+        run: |
+          python scripts/check_quality.py > quality.log 2>&1 || {
+            tail -n 200 quality.log
+            exit 1
+          }
       - name: Run quality gate
         if: matrix.python-version != '3.11'
-        run: python scripts/check_quality.py
+        run: |
+          python scripts/check_quality.py > quality.log 2>&1 || {
+            tail -n 200 quality.log
+            exit 1
+          }
