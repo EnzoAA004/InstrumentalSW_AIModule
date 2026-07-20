@@ -52,8 +52,7 @@ def written_result(
     specs: tuple[tuple[int, float, float, int], ...] = (),
 ) -> WrittenPitchTranscriptionResult:
     notes = tuple(
-        NoteEvent(pitch, onset, offset, velocity, 0.8)
-        for pitch, onset, offset, velocity in specs
+        NoteEvent(pitch, onset, offset, velocity, 0.8) for pitch, onset, offset, velocity in specs
     )
     batch = NoteEventBatch(notes)
     raw = TranscriptionResult(
@@ -283,9 +282,7 @@ def test_external_parser_validation_rejects_structural_mismatch(
     monkeypatch.setattr(mido, "MidiFile", lambda **kwargs: parsed)
 
     with pytest.raises(InvalidMidiArtifactError):
-        mido_midi._validate_encoded_content(
-            b"MThd", plan=(), settings=MidiExportSettings()
-        )
+        mido_midi._validate_encoded_content(b"MThd", plan=(), settings=MidiExportSettings())
 
 
 @pytest.mark.parametrize(
@@ -312,9 +309,7 @@ def test_external_parser_validation_wraps_parse_failure(
 
     monkeypatch.setattr(mido, "MidiFile", fail)
     with pytest.raises(InvalidMidiArtifactError) as captured:
-        mido_midi._validate_encoded_content(
-            b"not midi", plan=(), settings=MidiExportSettings()
-        )
+        mido_midi._validate_encoded_content(b"not midi", plan=(), settings=MidiExportSettings())
     assert isinstance(captured.value.__cause__, ValueError)
 
 
