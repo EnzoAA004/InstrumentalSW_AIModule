@@ -44,9 +44,7 @@ def _synthetic_saxophone_like_wav() -> bytes:
         vibrato = 1.0 + 0.003 * math.sin(2.0 * math.pi * 5.2 * time_seconds)
         phase = 2.0 * math.pi * 440.0 * vibrato * time_seconds
         sample = fade * (
-            0.70 * math.sin(phase)
-            + 0.20 * math.sin(2.0 * phase)
-            + 0.10 * math.sin(3.0 * phase)
+            0.70 * math.sin(phase) + 0.20 * math.sin(2.0 * phase) + 0.10 * math.sin(3.0 * phase)
         )
         integer = max(-32768, min(32767, round(sample * 24000)))
         frames.extend(struct.pack("<h", integer))
