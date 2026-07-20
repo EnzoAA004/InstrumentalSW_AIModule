@@ -2,16 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests.unit.hf_saxophone_fakes import (
-    FakeDownloader,
-    FakeRuntime,
-    FakeRuntimeFactory,
-    SpyStream,
-    WorkspaceTracker,
-    make_checkpoint,
-    valid_external_output,
-)
-
 from saxo_ai.domain.note_events import NOTE_EVENT_SCHEMA_VERSION
 from saxo_ai.infrastructure.hf_saxophone import (
     BASELINE_PACKAGE_NAME,
@@ -26,6 +16,15 @@ from saxo_ai.infrastructure.hf_saxophone import (
     MODEL_REVISION,
     HfSaxophoneTranscriptionEngine,
     PinnedFiloSaxCheckpointResolver,
+)
+from tests.unit.hf_saxophone_fakes import (
+    FakeDownloader,
+    FakeRuntime,
+    FakeRuntimeFactory,
+    SpyStream,
+    WorkspaceTracker,
+    make_checkpoint,
+    valid_external_output,
 )
 
 
