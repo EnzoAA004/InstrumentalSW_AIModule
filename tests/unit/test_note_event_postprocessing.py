@@ -1,4 +1,5 @@
 from dataclasses import FrozenInstanceError
+from typing import Any, cast
 
 import pytest
 
@@ -36,19 +37,18 @@ def test_settings_normalize_integer_minimum_duration_to_float() -> None:
 def test_settings_reject_invalid_minimum_duration(invalid_value: object) -> None:
     with pytest.raises(InvalidNoteEventPostProcessingContractError):
         NoteEventPostProcessingSettings(
-            minimum_duration_seconds=invalid_value  # type: ignore[arg-type]
+            minimum_duration_seconds=cast(Any, invalid_value),
         )
 
 
-@pytest.mark.parametrize(
-    ("field_name", "invalid_value"),
-    [("policy_version", "2.0"), ("duplicate_policy", "approximate")],
-)
-def test_settings_reject_unsupported_policy_identity(field_name: str, invalid_value: str) -> None:
-    arguments = {field_name: invalid_value}
-
+def test_settings_reject_unsupported_policy_version() -> None:
     with pytest.raises(InvalidNoteEventPostProcessingContractError):
-        NoteEventPostProcessingSettings(**arguments)  # type: ignore[arg-type]
+        NoteEventPostProcessingSettings(policy_version="2.0")
+
+
+def test_settings_reject_unsupported_duplicate_policy() -> None:
+    with pytest.raises(InvalidNoteEventPostProcessingContractError):
+        NoteEventPostProcessingSettings(duplicate_policy="approximate")
 
 
 def test_settings_are_immutable() -> None:
@@ -72,28 +72,37 @@ def test_report_calculates_total_affected_count() -> None:
 
 
 @pytest.mark.parametrize(
-    "field_name",
-    [
+    (
         "input_event_count",
         "output_event_count",
         "short_duration_removed_count",
         "duplicate_removed_count",
         "duplicate_group_count",
+    ),
+    [
+        (-1, 1, 0, 0, 0),
+        (1, -1, 0, 0, 0),
+        (1, 1, -1, 0, 0),
+        (1, 1, 0, -1, 0),
+        (1, 1, 0, 0, -1),
     ],
 )
-def test_report_rejects_negative_counts(field_name: str) -> None:
-    arguments = {
-        "settings": NoteEventPostProcessingSettings(),
-        "input_event_count": 1,
-        "output_event_count": 1,
-        "short_duration_removed_count": 0,
-        "duplicate_removed_count": 0,
-        "duplicate_group_count": 0,
-    }
-    arguments[field_name] = -1
-
+def test_report_rejects_negative_counts(
+    input_event_count: int,
+    output_event_count: int,
+    short_duration_removed_count: int,
+    duplicate_removed_count: int,
+    duplicate_group_count: int,
+) -> None:
     with pytest.raises(InvalidNoteEventPostProcessingContractError):
-        NoteEventPostProcessingReport(**arguments)  # type: ignore[arg-type]
+        NoteEventPostProcessingReport(
+            settings=NoteEventPostProcessingSettings(),
+            input_event_count=input_event_count,
+            output_event_count=output_event_count,
+            short_duration_removed_count=short_duration_removed_count,
+            duplicate_removed_count=duplicate_removed_count,
+            duplicate_group_count=duplicate_group_count,
+        )
 
 
 @pytest.mark.parametrize("invalid_count", [True, 1.0, "1", None])
@@ -101,7 +110,7 @@ def test_report_rejects_non_integer_counts(invalid_count: object) -> None:
     with pytest.raises(InvalidNoteEventPostProcessingContractError):
         NoteEventPostProcessingReport(
             settings=NoteEventPostProcessingSettings(),
-            input_event_count=invalid_count,  # type: ignore[arg-type]
+            input_event_count=cast(Any, invalid_count),
             output_event_count=0,
             short_duration_removed_count=0,
             duplicate_removed_count=0,
@@ -143,7 +152,7 @@ def test_report_rejects_inconsistent_duplicate_groups(
 def test_report_rejects_non_settings_object() -> None:
     with pytest.raises(InvalidNoteEventPostProcessingContractError):
         NoteEventPostProcessingReport(
-            settings=object(),  # type: ignore[arg-type]
+            settings=cast(Any, object()),
             input_event_count=0,
             output_event_count=0,
             short_duration_removed_count=0,
@@ -163,7 +172,7 @@ def test_result_rejects_inconsistent_note_count() -> None:
     )
 
     with pytest.raises(InvalidNoteEventPostProcessingContractError):
-        NoteEventPostProcessingResult(notes=object(), report=report)  # type: ignore[arg-type]
+        NoteEventPostProcessingResult(notes=cast(Any, object()), report=report)
 
 
 def test_result_accepts_empty_batch_and_matching_report() -> None:
