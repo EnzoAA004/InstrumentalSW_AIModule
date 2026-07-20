@@ -45,12 +45,7 @@ def seconds_to_midi_tick(seconds: float, settings: MidiExportSettings) -> int:
         raise InvalidMidiPlanError("seconds must be a finite non-negative number")
     if not isinstance(settings, MidiExportSettings):
         raise InvalidMidiExportSettingsError("settings must be MidiExportSettings")
-    converted = (
-        normalized
-        * MIDI_TICKS_PER_BEAT
-        * 1_000_000
-        / settings.tempo_microseconds_per_beat
-    )
+    converted = normalized * MIDI_TICKS_PER_BEAT * 1_000_000 / settings.tempo_microseconds_per_beat
     return max(0, round(converted))
 
 
@@ -75,9 +70,7 @@ class ExportWrittenPitchToMidi:
         settings: MidiExportSettings,
     ) -> MidiExportResult:
         if not isinstance(original, WrittenPitchTranscriptionResult):
-            raise InvalidMidiPlanError(
-                "original must be a WrittenPitchTranscriptionResult"
-            )
+            raise InvalidMidiPlanError("original must be a WrittenPitchTranscriptionResult")
         if not isinstance(settings, MidiExportSettings):
             raise InvalidMidiExportSettingsError("settings must be MidiExportSettings")
 
