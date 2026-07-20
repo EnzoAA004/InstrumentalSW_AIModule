@@ -53,3 +53,17 @@ runs/
 *.pt
 *.pth
 *.safetensors
+
+# Model and Hugging Face caches
+model_cache/
+hf_cache/
+.huggingface/
+.cache/huggingface/
+
+# Temporary MIDI and diagnostic output
+*.mid
+*.midi
+baseline-install.log
+quality.log
+*.diagnostic.log
+diagnostics/

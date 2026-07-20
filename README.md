@@ -77,7 +77,42 @@ An upload above the size limit stops after at most `maximum + 1` returned bytes 
 
 SAX-020 defines a model-independent `NoteEvent` and ordered `NoteEventBatch` with current schema version `"1.0"`. The contract uses concert-pitch MIDI, onset/offset seconds, MIDI-compatible velocity, and confidence, with strict standard-library JSON round trips.
 
-The complete schema is documented in [`docs/contracts/note-event-v1.md`](docs/contracts/note-event-v1.md). No transcription engine, model, checkpoint, or inference integration exists yet; those belong to SAX-021.
+The complete schema is documented in [`docs/contracts/note-event-v1.md`](docs/contracts/note-event-v1.md).
+
+## Optional FiloSax baseline
+
+SAX-021 provides an internal, replaceable FiloSax audio-to-note baseline behind
+`TranscriptionEngine` and `TranscribeCanonicalAudio`. Python 3.11 is the validated inference
+environment.
+
+Install the optional model stack with the controlled installer:
+
+```bash
+python scripts/install_baseline.py
+```
+
+The installer uses no pip cache, force-installs both Git distributions from exact commits with
+`--no-deps`, and verifies their PEP 610 `direct_url.json` metadata:
+
+```text
+hf-midi-transcription
+  version: 0.1.1
+  source:  96f6797881e9497cbfc8f8e5deccea9c1f2f7adc
+
+piano-transcription-inference
+  version: 0.1.0
+  source:  7568dc7f78b625e40cf9776e2806d164006610e3
+```
+
+The model is not downloaded during installation. It is resolved only when inference or the real
+integration test runs. Reproducibility also fixes the Hugging Face model revision and verifies the
+checkpoint filename, byte size, and SHA-256 before loading.
+
+See [`docs/baselines/hf-saxophone-v1.md`](docs/baselines/hf-saxophone-v1.md) for the distinction
+between package version, source revision, model revision, and checkpoint checksum.
+
+The baseline is not instantiated by the FastAPI composition root and is not connected to any
+endpoint.
 
 ## Quality and tests
 
@@ -85,9 +120,12 @@ The complete schema is documented in [`docs/contracts/note-event-v1.md`](docs/co
 python scripts/check_quality.py
 python -m pytest -m "not integration"
 python -m pytest -m integration
+python -m pytest -m baseline_integration
 ```
 
 The quality command runs pytest with statement/branch coverage and a 90% threshold, Ruff lint, Ruff format check, and strict mypy. GitHub Actions runs it for Python 3.11, 3.12, and 3.13. The runner stops at the first failed control and returns a non-zero exit code.
+
+The real FiloSax integration is required only on Python 3.11. On Python 3.12 and 3.13 it skips with an explicit reason while the full core and FFmpeg integration suite continues to run.
 
 ## Architecture
 
@@ -95,13 +133,13 @@ The quality command runs pytest with statement/branch coverage and a 90% thresho
 src/saxo_ai/
 ├── api/             # FastAPI transport and HTTP error translation
 ├── application/     # Use cases, ports, stable errors, and JSON contracts
-├── domain/          # Immutable jobs, audio policy, and NoteEvent contract
-├── infrastructure/  # Environment, SHA-256, FFmpeg, and in-memory repository
+├── domain/          # Immutable jobs, audio policy, NoteEvent, and result contracts
+├── infrastructure/  # Environment, SHA-256, FFmpeg, repositories, and model adapters
 └── main.py          # Composition root and dependency injection
 ```
 
-Dependencies point inward. FastAPI does not appear in domain or application. Environment variables are loaded only at the infrastructure/composition boundary. FFmpeg, subprocess, and temporary files remain infrastructure concerns.
+Dependencies point inward. FastAPI does not appear in domain or application. Environment variables are loaded only at the infrastructure/composition boundary. FFmpeg, Hugging Face, PyTorch, subprocesses, and temporary files remain infrastructure concerns.
 
 ## Scope boundaries
 
-The module does not connect duration validation to endpoints, persist audio, implement retries/workers/queues, download or run models, train models, generate MIDI/MusicXML, or use cloud services. SAX-020 defines data contracts only; SAX-021 and musical inference have not started.
+The module does not connect duration validation or model inference to endpoints, persist audio, implement retries/workers/queues, train models, generate final MIDI/MusicXML, or use product cloud storage. SAX-021 does not implement deduplication, event merging, minimum-duration policy, overlap correction, or low-confidence policy; those belong to SAX-022 and SAX-023.

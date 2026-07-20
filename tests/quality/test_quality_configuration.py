@@ -54,6 +54,7 @@ def test_quality_workflow_installs_project_and_invokes_single_runner() -> None:
     assert any(action.startswith("actions/checkout@") for action in uses)
     assert any(action.startswith("actions/setup-python@") for action in uses)
     assert 'python -m pip install -e ".[dev]"' in commands
+    assert "python scripts/install_baseline.py" in commands
     assert any("python scripts/check_quality.py" in command for command in commands)
 
 
