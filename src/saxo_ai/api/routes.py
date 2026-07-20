@@ -5,6 +5,7 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 
 from saxo_ai.api.schemas import HealthResponse, TranscriptionJobResponse
 from saxo_ai.application.errors import (
+    AudioSizeLimitExceededError,
     EmptyAudioFileError,
     TranscriptionJobNotFoundError,
     UnsupportedAudioFormatError,
@@ -49,6 +50,17 @@ def build_router(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="The uploaded audio file is empty.",
+            ) from error
+        except AudioSizeLimitExceededError as error:
+            raise HTTPException(
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                detail={
+                    "code": "AUDIO_SIZE_LIMIT_EXCEEDED",
+                    "message": (
+                        f"Audio exceeds the maximum allowed size of {error.max_size_bytes} bytes."
+                    ),
+                    "max_size_bytes": error.max_size_bytes,
+                },
             ) from error
         return TranscriptionJobResponse.model_validate(job)
 

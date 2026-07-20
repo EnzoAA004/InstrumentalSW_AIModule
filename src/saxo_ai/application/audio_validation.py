@@ -1,7 +1,9 @@
+from typing import NoReturn
 from uuid import UUID
 
 from saxo_ai.application.errors import (
     AudioContentInvalidError,
+    AudioDurationLimitExceededError,
     TranscriptionAudioValidationError,
     TranscriptionJobNotFoundError,
 )
@@ -16,7 +18,7 @@ from saxo_ai.domain.audio import (
     CanonicalAudioSettings,
     OriginalAudioReference,
 )
-from saxo_ai.domain.models import JobFailureCode
+from saxo_ai.domain.models import JobFailureCode, TranscriptionJob
 
 
 class ValidateTranscriptionAudio:
@@ -56,9 +58,27 @@ class ValidateTranscriptionAudio:
                 original=original,
             )
         except AudioContentInvalidError as error:
-            failure_code = JobFailureCode.AUDIO_CONTENT_INVALID
-            self._repository.save(job.mark_failed(failure_code))
-            raise TranscriptionAudioValidationError(
-                job_id=job.job_id,
-                failure_code=failure_code,
-            ) from error
+            self._raise_failed_job(
+                job=job,
+                failure_code=JobFailureCode.AUDIO_CONTENT_INVALID,
+                error=error,
+            )
+        except AudioDurationLimitExceededError as error:
+            self._raise_failed_job(
+                job=job,
+                failure_code=JobFailureCode.AUDIO_DURATION_LIMIT_EXCEEDED,
+                error=error,
+            )
+
+    def _raise_failed_job(
+        self,
+        *,
+        job: TranscriptionJob,
+        failure_code: JobFailureCode,
+        error: Exception,
+    ) -> NoReturn:
+        self._repository.save(job.mark_failed(failure_code))
+        raise TranscriptionAudioValidationError(
+            job_id=job.job_id,
+            failure_code=failure_code,
+        ) from error

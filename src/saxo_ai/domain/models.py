@@ -24,6 +24,7 @@ class JobStatus(StrEnum):
 
 class JobFailureCode(StrEnum):
     AUDIO_CONTENT_INVALID = "AUDIO_CONTENT_INVALID"
+    AUDIO_DURATION_LIMIT_EXCEEDED = "AUDIO_DURATION_LIMIT_EXCEEDED"
 
 
 @dataclass(frozen=True, slots=True)

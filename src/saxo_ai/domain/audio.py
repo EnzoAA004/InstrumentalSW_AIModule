@@ -1,10 +1,37 @@
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass
 
 _DEFAULT_SCHEMA_VERSION = "1.0"
 _SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
+
+DEFAULT_MAX_AUDIO_SIZE_BYTES = 100 * 1024 * 1024
+DEFAULT_MAX_AUDIO_DURATION_SECONDS = 15 * 60.0
+
+
+@dataclass(frozen=True, slots=True)
+class AudioProcessingLimits:
+    """Runtime-independent resource limits for accepted audio processing."""
+
+    max_size_bytes: int = DEFAULT_MAX_AUDIO_SIZE_BYTES
+    max_duration_seconds: float = DEFAULT_MAX_AUDIO_DURATION_SECONDS
+
+    def __post_init__(self) -> None:
+        if isinstance(self.max_size_bytes, bool) or not isinstance(self.max_size_bytes, int):
+            raise TypeError("max_size_bytes must be an integer")
+        if self.max_size_bytes <= 0:
+            raise ValueError("max_size_bytes must be greater than zero")
+
+        if isinstance(self.max_duration_seconds, bool) or not isinstance(
+            self.max_duration_seconds, (int, float)
+        ):
+            raise TypeError("max_duration_seconds must be numeric")
+        duration = float(self.max_duration_seconds)
+        if not math.isfinite(duration) or duration <= 0:
+            raise ValueError("max_duration_seconds must be finite and greater than zero")
+        object.__setattr__(self, "max_duration_seconds", duration)
 
 
 class InvalidCanonicalAudioSettingsError(ValueError):

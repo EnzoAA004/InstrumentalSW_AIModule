@@ -29,7 +29,7 @@ python -m uvicorn saxo_ai.main:app --reload
 - `POST /api/v1/transcriptions`
 - `GET /api/v1/transcriptions/{job_id}`
 
-Jobs are stored only in memory and begin with status `UPLOADED`. Each job includes the SHA-256 calculated from bounded upload reads. SAX-011 and SAX-012 do not connect preprocessing or validation to these endpoints.
+Jobs are stored only in memory and begin with status `UPLOADED`. Each job includes the SHA-256 calculated from bounded upload reads. SAX-013 rejects oversized uploads during that same traversal before a job is created. Canonical content and duration validation remain disconnected from these endpoints.
 
 ## Canonical audio capability
 
@@ -49,9 +49,29 @@ Input and output are copied in bounded 64 KiB blocks through an automatically cl
 
 ## Invalid audio content
 
-`AUDIO_CONTENT_INVALID` is the stable domain failure code used only when an already accepted MP3/WAV cannot be decoded by the real FFmpeg conversion command. It is distinct from an unsupported extension and from technical failures such as unavailable FFmpeg, timeout, missing output, invalid generated output, executor failure, or destination-write failure.
+`AUDIO_CONTENT_INVALID` is the stable domain failure code used only when an already accepted MP3/WAV cannot be decoded by the real FFmpeg conversion command. It is distinct from an unsupported extension and technical infrastructure failures.
 
 On invalid content, the internal validation use case stores a new immutable `FAILED` version of the job and produces no canonical destination bytes. This capability is not exposed through HTTP yet.
+
+## Audio processing limits
+
+Default limits are:
+
+```text
+max_size_bytes:        104857600 bytes (100 MiB)
+max_duration_seconds:  900.0 seconds (15 minutes)
+```
+
+Override them at application startup with:
+
+```text
+SAXO_MAX_AUDIO_SIZE_BYTES
+SAXO_MAX_AUDIO_DURATION_SECONDS
+```
+
+Invalid values fail startup instead of silently using defaults. Tests may inject `AudioProcessingLimits` directly into `create_app`.
+
+An upload above the size limit stops after at most `maximum + 1` returned bytes and responds with HTTP 413 and code `AUDIO_SIZE_LIMIT_EXCEEDED`; no job is created. A semantically valid canonical WAV above the duration limit becomes an internal failed job with `AUDIO_DURATION_LIMIT_EXCEEDED`. Duration validation is not connected to HTTP yet.
 
 ## Quality and tests
 
@@ -67,15 +87,15 @@ The quality command runs pytest with statement/branch coverage and a 90% thresho
 
 ```text
 src/saxo_ai/
-├── api/             # Existing FastAPI transport only
-├── application/     # Use cases and small ports
-├── domain/          # Immutable job and canonical-audio contracts
-├── infrastructure/  # SHA-256 and FFmpeg adapters
-└── main.py          # Existing API composition root
+├── api/             # FastAPI transport and HTTP error translation
+├── application/     # Use cases, ports, and stable errors
+├── domain/          # Immutable jobs, audio contracts, and limit policy
+├── infrastructure/  # Environment, SHA-256, FFmpeg, and in-memory repository
+└── main.py          # Composition root and dependency injection
 ```
 
-Dependencies point inward. FastAPI does not participate in canonical conversion or validation; infrastructure owns FFmpeg, subprocess, temporary files, and WAV validation.
+Dependencies point inward. FastAPI does not appear in domain or application. Environment variables are loaded only at the infrastructure/composition boundary. FFmpeg, subprocess, and temporary files remain infrastructure concerns.
 
 ## Scope boundaries
 
-The module does not connect validation to endpoints, persist audio, enforce size/duration limits, implement retries/workers/queues, download or run models, train models, generate MIDI/MusicXML, or use cloud services.
+The module does not connect duration validation to endpoints, persist audio, implement retries/workers/queues, download or run models, train models, generate MIDI/MusicXML, or use cloud services. SAX-020 and musical transcription have not started.

@@ -10,6 +10,7 @@ from typing import Protocol
 
 from saxo_ai.application.errors import (
     AudioContentInvalidError,
+    AudioDurationLimitExceededError,
     CanonicalAudioOutputInvalidError,
     CanonicalAudioOutputMissingError,
     FfmpegConversionError,
@@ -18,6 +19,7 @@ from saxo_ai.application.errors import (
 )
 from saxo_ai.application.ports import BinaryDestination, BinaryStream
 from saxo_ai.domain.audio import (
+    AudioProcessingLimits,
     CanonicalAudioMetadata,
     CanonicalAudioResult,
     CanonicalAudioSettings,
@@ -66,6 +68,7 @@ class FfmpegCanonicalAudioConverter:
         io_chunk_size: int = DEFAULT_IO_CHUNK_SIZE,
         timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
         max_stderr_chars: int = DEFAULT_MAX_STDERR_CHARS,
+        limits: AudioProcessingLimits | None = None,
     ) -> None:
         if io_chunk_size <= 0:
             raise ValueError("io_chunk_size must be greater than zero")
@@ -78,6 +81,7 @@ class FfmpegCanonicalAudioConverter:
         self._io_chunk_size = io_chunk_size
         self._timeout_seconds = timeout_seconds
         self._max_stderr_chars = max_stderr_chars
+        self._limits = limits or AudioProcessingLimits()
 
     def convert(
         self,
@@ -108,6 +112,11 @@ class FfmpegCanonicalAudioConverter:
                 )
 
             duration_seconds = self._validate_output(output_path, settings)
+            if duration_seconds > self._limits.max_duration_seconds:
+                raise AudioDurationLimitExceededError(
+                    max_duration_seconds=self._limits.max_duration_seconds,
+                    actual_duration_seconds=duration_seconds,
+                )
             self._copy_file_to_destination(output_path, destination)
 
         return CanonicalAudioResult(
