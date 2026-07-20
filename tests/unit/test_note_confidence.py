@@ -1,4 +1,5 @@
 from dataclasses import FrozenInstanceError
+from typing import Any, cast
 
 import pytest
 
@@ -53,7 +54,7 @@ def test_settings_accept_valid_thresholds_and_normalize_to_float(threshold: int 
 )
 def test_settings_reject_invalid_thresholds(threshold: object) -> None:
     with pytest.raises(InvalidLowConfidenceContractError):
-        LowConfidenceSettings(low_confidence_threshold=threshold)  # type: ignore[arg-type]
+        LowConfidenceSettings(low_confidence_threshold=cast(Any, threshold))
 
 
 def test_settings_reject_unsupported_policy_version() -> None:
@@ -80,7 +81,7 @@ def test_annotation_preserves_event_reference_and_bool_marker() -> None:
 def test_annotation_rejects_non_note_event() -> None:
     with pytest.raises(InvalidLowConfidenceContractError):
         ConfidenceAnnotatedNoteEvent(
-            event=object(),  # type: ignore[arg-type]
+            event=cast(Any, object()),
             is_low_confidence=True,
         )
 
@@ -90,7 +91,7 @@ def test_annotation_rejects_non_boolean_marker(marker: object) -> None:
     with pytest.raises(InvalidLowConfidenceContractError):
         ConfidenceAnnotatedNoteEvent(
             event=make_event(),
-            is_low_confidence=marker,  # type: ignore[arg-type]
+            is_low_confidence=cast(Any, marker),
         )
 
 
@@ -127,7 +128,7 @@ def test_report_rejects_non_integer_count(count: object) -> None:
     with pytest.raises(InvalidLowConfidenceContractError):
         LowConfidenceReport(
             settings=LowConfidenceSettings(),
-            input_event_count=count,  # type: ignore[arg-type]
+            input_event_count=cast(Any, count),
             low_confidence_count=0,
             regular_confidence_count=0,
         )
@@ -146,7 +147,7 @@ def test_report_rejects_inconsistent_count_equation() -> None:
 def test_report_rejects_non_settings_object() -> None:
     with pytest.raises(InvalidLowConfidenceContractError):
         LowConfidenceReport(
-            settings=object(),  # type: ignore[arg-type]
+            settings=cast(Any, object()),
             input_event_count=0,
             low_confidence_count=0,
             regular_confidence_count=0,
