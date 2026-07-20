@@ -75,7 +75,9 @@ class ExportWrittenPitchToMidi:
         settings: MidiExportSettings,
     ) -> MidiExportResult:
         if not isinstance(original, WrittenPitchTranscriptionResult):
-            raise InvalidMidiPlanError("original must be a WrittenPitchTranscriptionResult")
+            raise InvalidMidiPlanError(
+                "original must be a WrittenPitchTranscriptionResult"
+            )
         if not isinstance(settings, MidiExportSettings):
             raise InvalidMidiExportSettingsError("settings must be MidiExportSettings")
 
