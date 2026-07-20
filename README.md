@@ -81,19 +81,38 @@ The complete schema is documented in [`docs/contracts/note-event-v1.md`](docs/co
 
 ## Optional FiloSax baseline
 
-SAX-021 provides an internal, replaceable FiloSax audio-to-note baseline behind `TranscriptionEngine` and `TranscribeCanonicalAudio`. Python 3.11 is the validated inference environment.
+SAX-021 provides an internal, replaceable FiloSax audio-to-note baseline behind
+`TranscriptionEngine` and `TranscribeCanonicalAudio`. Python 3.11 is the validated inference
+environment.
 
-Install the optional model stack with:
+Install the optional model stack with the controlled installer:
 
 ```bash
-python -m pip install -e ".[dev,baseline]"
+python scripts/install_baseline.py
 ```
 
-The model is not downloaded during installation. The exact pinned checkpoint is resolved through the Hugging Face cache only when inference or the real integration test runs, and its size and SHA-256 are verified before loading.
+The installer uses no pip cache, force-installs both Git distributions from exact commits with
+`--no-deps`, and verifies their PEP 610 `direct_url.json` metadata:
 
-See [`docs/baselines/hf-saxophone-v1.md`](docs/baselines/hf-saxophone-v1.md) for package, source commit, model revision, checkpoint, confidence derivation, security boundaries, and limitations.
+```text
+hf-midi-transcription
+  version: 0.1.1
+  source:  96f6797881e9497cbfc8f8e5deccea9c1f2f7adc
 
-The baseline is not instantiated by the FastAPI composition root and is not connected to any endpoint.
+piano-transcription-inference
+  version: 0.1.0
+  source:  7568dc7f78b625e40cf9776e2806d164006610e3
+```
+
+The model is not downloaded during installation. It is resolved only when inference or the real
+integration test runs. Reproducibility also fixes the Hugging Face model revision and verifies the
+checkpoint filename, byte size, and SHA-256 before loading.
+
+See [`docs/baselines/hf-saxophone-v1.md`](docs/baselines/hf-saxophone-v1.md) for the distinction
+between package version, source revision, model revision, and checkpoint checksum.
+
+The baseline is not instantiated by the FastAPI composition root and is not connected to any
+endpoint.
 
 ## Quality and tests
 
