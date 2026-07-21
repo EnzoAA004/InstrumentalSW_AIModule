@@ -4,6 +4,9 @@ name: SAX-031 Quality Diagnostics
   push:
     branches:
       - feature/SAX-031-midi-export
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
