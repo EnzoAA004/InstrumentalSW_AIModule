@@ -143,6 +143,22 @@ Manual tempo works even when automatic estimation is unavailable. Every explicit
 
 The complete contract is documented in [`docs/contracts/tempo-resolution-v1.md`](docs/contracts/tempo-resolution-v1.md). SAX-032 does not analyze audio, estimate meter, quantize rhythm, create MusicXML, or connect the flow to FastAPI.
 
+## Monophonic rhythm quantization
+
+SAX-033 adds the internal `QuantizeMonophonicRhythm` use case. It maps original note boundaries to a configurable uniform grid using the effective BPM from the exact `TempoResolution` revision. The default is four steps per beat, with beat interpreted as a quarter note.
+
+```text
+policy version:         1.0
+subdivisions per beat:    4
+rounding:                nearest_half_up
+overlap policy:          truncate_earlier_then_shift_same_step
+rests:                   explicit positive grid gaps
+```
+
+Onset and offset are rounded independently with decimal half-up semantics; any zero-duration candidate receives one step. A later attack truncates the prior note, while notes colliding in the same step are shifted after the prior offset without removal or fusion. Positive initial and internal gaps become `QuantizedRest`; no final duration is invented.
+
+Every quantized note keeps its original `WrittenPitchNoteEvent` reference and index, and signed onset/offset deltas report how notated timing differs from real timing. A new tempo override requires a new quantization result tied to that exact revision. The complete contract is documented in [`docs/contracts/rhythm-quantization-v1.md`](docs/contracts/rhythm-quantization-v1.md). SAX-033 creates no measures, time signature, notation spelling, MusicXML, score, endpoint, persistence, Backend, or Frontend behavior.
+
 ## Optional FiloSax baseline
 
 SAX-021 provides an internal, replaceable FiloSax audio-to-note baseline behind
@@ -202,8 +218,8 @@ Real `midi_integration` tests run on all three supported Python versions. The re
 ```text
 src/saxo_ai/
 ├── api/             # FastAPI transport and HTTP error translation
-├── application/     # Use cases, ports, stable errors, JSON, and artifact metadata
-├── domain/          # Immutable jobs, audio policy, note, pitch, tempo, and result contracts
+├── application/     # Use cases, ports, stable errors, JSON, artifacts, and quantization
+├── domain/          # Immutable jobs, audio, note, pitch, tempo, rhythm, and result contracts
 ├── infrastructure/  # Environment, hashing, FFmpeg, repositories, model, MIDI, and tempo adapters
 └── main.py          # Composition root and dependency injection
 ```
@@ -212,4 +228,4 @@ Dependencies point inward. FastAPI does not appear in domain or application. Env
 
 ## Scope boundaries
 
-The module does not connect duration validation, model inference, NoteEvent postprocessing, confidence annotations, written-pitch transposition, MIDI export, or tempo resolution to endpoints; persist audio or MIDI; implement retries/workers/queues; train models; generate MusicXML or a rendered score; or use product cloud storage. SAX-032 does not implement rhythmic quantization, notation, audio beat tracking, playback, Backend, or Frontend behavior.
+The module does not connect duration validation, model inference, NoteEvent postprocessing, confidence annotations, written-pitch transposition, MIDI export, tempo resolution, or rhythm quantization to endpoints; persist audio or derived artifacts; implement retries/workers/queues; train models; generate MusicXML or a rendered score; or use product cloud storage. SAX-033 does not implement measures, meter, notation spelling, MusicXML, playback, Backend, or Frontend behavior.
