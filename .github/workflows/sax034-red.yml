@@ -1,9 +1,9 @@
 name: SAX-034 RED
 
 on:
-  push:
+  pull_request:
     branches:
-      - feature/SAX-034-musicxml-export
+      - main
 
 permissions:
   contents: read
@@ -23,13 +23,23 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]"
       - name: Run SAX-034 RED
+        shell: bash
         run: |
           set +e
           python -m pytest \
             tests/unit/test_musicxml_contracts.py \
             tests/unit/test_musicxml_pitch.py \
             tests/unit/test_musicxml_measures.py \
-            tests/unit/test_musicxml_export.py
-          status=$?
-          echo "RED_EXIT_CODE=${status}"
+            tests/unit/test_musicxml_export.py \
+            2>&1 | tee sax034-red.txt
+          status=${PIPESTATUS[0]}
+          echo "RED_EXIT_CODE=${status}" | tee -a sax034-red.txt
           test "${status}" -ne 0
+      - name: Upload RED evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: sax034-red-evidence
+          path: sax034-red.txt
+          if-no-files-found: error
+          retention-days: 1
