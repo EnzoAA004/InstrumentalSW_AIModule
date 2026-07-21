@@ -133,7 +133,11 @@ def test_override_regenerates_midi_and_preserves_prior_result_and_provenance() -
     assert first.midi.original is second.midi.original is original
     assert [item.pitch_concert_midi for item in first.midi.plan] == [60, 62, 64]
     assert [item.source.written_pitch_midi for item in first.midi.plan] == [69, 71, 73]
-    assert [item.source.source.is_low_confidence for item in first.midi.plan] == [True, False, False]
+    assert [item.source.source.is_low_confidence for item in first.midi.plan] == [
+        True,
+        False,
+        False,
+    ]
     assert original.original.original.original.model.checkpoint_filename == "filosax_25k.pth"
     assert original.original.original.original.settings.confidence_method == "activation"
     assert [item.source.event.onset_seconds for item in original.events] == [0.0, 0.5, 1.0]
@@ -144,9 +148,9 @@ def test_automatic_resolution_exports_its_estimated_tempo() -> None:
         written_result(), TempoEstimationSettings()
     )
 
-    result = ExportTempoResolvedMidi(
-        ExportWrittenPitchToMidi(MidoMidiFileEncoder())
-    ).execute(automatic)
+    result = ExportTempoResolvedMidi(ExportWrittenPitchToMidi(MidoMidiFileEncoder())).execute(
+        automatic
+    )
 
     assert result.tempo is automatic
     assert result.midi.report.settings.tempo_bpm == automatic.effective_tempo_bpm
