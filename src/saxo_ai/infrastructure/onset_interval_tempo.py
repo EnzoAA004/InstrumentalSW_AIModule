@@ -26,6 +26,8 @@ def _octave_equivalents_in_range(
     candidate = bpm
     while candidate > maximum_bpm:
         candidate /= 2.0
+    while candidate / 2.0 >= minimum_bpm:
+        candidate /= 2.0
     while candidate < minimum_bpm:
         candidate *= 2.0
         if not math.isfinite(candidate) or candidate > maximum_bpm:
@@ -45,12 +47,18 @@ def _resolve_octave_equivalent(
     minimum_bpm: float,
     maximum_bpm: float,
 ) -> float | None:
-    equivalents = _octave_equivalents_in_range(
-        bpm,
-        minimum_bpm=minimum_bpm,
-        maximum_bpm=maximum_bpm,
-    )
-    return equivalents[0] if equivalents else None
+    if minimum_bpm <= bpm <= maximum_bpm:
+        return bpm
+    candidate = bpm
+    if candidate < minimum_bpm:
+        while candidate < minimum_bpm:
+            candidate *= 2.0
+            if not math.isfinite(candidate):
+                return None
+    else:
+        while candidate > maximum_bpm:
+            candidate /= 2.0
+    return candidate if minimum_bpm <= candidate <= maximum_bpm else None
 
 
 def _closest_octave_equivalent(
