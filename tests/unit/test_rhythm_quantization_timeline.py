@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from itertools import pairwise
 from pathlib import Path
 from typing import Any, cast
 
@@ -36,8 +37,6 @@ from saxo_ai.domain.transcription import (
 )
 from saxo_ai.domain.written_pitch import WrittenPitchNoteEvent, WrittenPitchTranscriptionResult
 
-ROOT = Path(__file__).resolve().parents[2]
-
 
 def written_result(
     specs: tuple[tuple[int, float, float, float, bool], ...],
@@ -64,19 +63,26 @@ def written_result(
         raw,
         batch,
         NoteEventPostProcessingReport(
-            NoteEventPostProcessingSettings(), len(notes), len(notes), 0, 0, 0
+            NoteEventPostProcessingSettings(),
+            len(notes),
+            len(notes),
+            0,
+            0,
+            0,
         ),
     )
     annotations = tuple(
-        ConfidenceAnnotatedNoteEvent(note, specs[index][4])
-        for index, note in enumerate(notes)
+        ConfidenceAnnotatedNoteEvent(note, specs[index][4]) for index, note in enumerate(notes)
     )
     low_count = sum(annotation.is_low_confidence for annotation in annotations)
     annotated = ConfidenceAnnotatedTranscriptionResult(
         processed,
         annotations,
         LowConfidenceReport(
-            LowConfidenceSettings(), len(notes), low_count, len(notes) - low_count
+            LowConfidenceSettings(),
+            len(notes),
+            low_count,
+            len(notes) - low_count,
         ),
     )
     return WrittenPitchTranscriptionResult(
@@ -97,21 +103,21 @@ def manual_resolution(
     return ConfigureManualTempo().execute(written_result(specs), bpm)
 
 
+ROOT = Path(__file__).resolve().parents[2]
+
+
 def quantize(
     specs: tuple[tuple[int, float, float, float, bool], ...],
     *,
     bpm: float = 120.0,
 ) -> QuantizedRhythmResult:
     return QuantizeMonophonicRhythm().execute(
-        manual_resolution(specs, bpm=bpm), RhythmQuantizationSettings()
+        manual_resolution(specs, bpm=bpm),
+        RhythmQuantizationSettings(),
     )
 
 
-def quantized_notes(result: QuantizedRhythmResult) -> tuple[QuantizedNoteEvent, ...]:
-    return tuple(item for item in result.timeline if isinstance(item, QuantizedNoteEvent))
-
-
-def test_initial_and_internal_gaps_become_rests_without_final_rest() -> None:
+def test_initial_and_internal_gaps_become_explicit_rests_without_final_rest() -> None:
     result = quantize(
         (
             (60, 0.25, 0.50, 0.8, False),
@@ -119,33 +125,40 @@ def test_initial_and_internal_gaps_become_rests_without_final_rest() -> None:
         )
     )
 
-    assert isinstance(result.timeline[0], QuantizedRest)
-    assert (result.timeline[0].onset_step, result.timeline[0].offset_step) == (0, 2)
-    internal = cast(QuantizedRest, result.timeline[2])
-    assert (internal.onset_step, internal.offset_step) == (4, 6)
+    assert result.timeline == (
+        QuantizedRest(0, 2),
+        cast(QuantizedNoteEvent, result.timeline[1]),
+        QuantizedRest(4, 6),
+        cast(QuantizedNoteEvent, result.timeline[3]),
+    )
     assert isinstance(result.timeline[-1], QuantizedNoteEvent)
     assert result.report.rest_count == 2
 
 
-def test_adjacency_and_collapsed_real_gap_do_not_create_zero_rest() -> None:
-    adjacent = quantize(
+def test_adjacent_notes_do_not_create_rest() -> None:
+    result = quantize(
         (
             (60, 0.0, 0.25, 0.8, False),
             (62, 0.25, 0.50, 0.8, False),
         )
     )
-    collapsed = quantize(
+
+    assert all(not isinstance(item, QuantizedRest) for item in result.timeline)
+    assert result.report.rest_count == 0
+
+
+def test_real_gap_collapsing_to_same_grid_boundary_creates_no_zero_rest() -> None:
+    result = quantize(
         (
             (60, 0.0, 0.249, 0.8, False),
             (62, 0.251, 0.50, 0.8, False),
         )
     )
 
-    assert adjacent.report.rest_count == 0
-    assert collapsed.report.rest_count == 0
+    assert all(not isinstance(item, QuantizedRest) for item in result.timeline)
 
 
-def test_empty_input_has_no_invented_duration() -> None:
+def test_empty_input_produces_empty_timeline_and_zero_report() -> None:
     result = quantize(())
 
     assert result.timeline == ()
@@ -156,7 +169,7 @@ def test_empty_input_has_no_invented_duration() -> None:
     assert result.report.maximum_absolute_boundary_delta_seconds == 0.0
 
 
-def test_unsorted_input_preserves_original_identity_and_timeline_is_chronological() -> None:
+def test_unsorted_input_keeps_original_order_and_references_but_timeline_is_chronological() -> None:
     tempo = manual_resolution(
         (
             (64, 0.50, 0.75, 0.8, False),
@@ -166,7 +179,7 @@ def test_unsorted_input_preserves_original_identity_and_timeline_is_chronologica
     )
     original_events = tempo.original.events
     result = QuantizeMonophonicRhythm().execute(tempo, RhythmQuantizationSettings())
-    notes = quantized_notes(result)
+    notes = tuple(item for item in result.timeline if isinstance(item, QuantizedNoteEvent))
 
     assert tempo.original.events is original_events
     assert tuple(note.source_index for note in notes) == (1, 2, 0)
@@ -176,12 +189,11 @@ def test_unsorted_input_preserves_original_identity_and_timeline_is_chronologica
         original_events[0],
     )
     assert all(
-        left.quantized_offset_step <= right.quantized_onset_step
-        for left, right in zip(notes, notes[1:])
+        left.quantized_offset_step <= right.quantized_onset_step for left, right in pairwise(notes)
     )
 
 
-def test_confidence_low_confidence_and_pitches_remain_identical() -> None:
+def test_confidence_low_confidence_and_both_pitches_remain_identical() -> None:
     tempo = manual_resolution(
         (
             (60, 0.0, 0.25, 0.0, True),
@@ -189,52 +201,117 @@ def test_confidence_low_confidence_and_pitches_remain_identical() -> None:
         )
     )
     result = QuantizeMonophonicRhythm().execute(tempo, RhythmQuantizationSettings())
+    notes = tuple(item for item in result.timeline if isinstance(item, QuantizedNoteEvent))
 
-    for note in quantized_notes(result):
+    for note in notes:
         original = tempo.original.events[note.source_index]
         assert note.source is original
         assert note.source.source.event is original.source.event
-        assert note.source.source.event.pitch_concert_midi == original.source.event.pitch_concert_midi
+        assert (
+            note.source.source.event.pitch_concert_midi == original.source.event.pitch_concert_midi
+        )
         assert note.source.written_pitch_midi == original.written_pitch_midi
         assert note.source.source.event.confidence == original.source.event.confidence
         assert note.source.source.is_low_confidence is original.source.is_low_confidence
 
 
-def test_result_rejects_missing_or_repeated_sources() -> None:
+def valid_single_result() -> QuantizedRhythmResult:
+    return quantize(((60, 0.0, 0.25, 0.8, False),))
+
+
+@pytest.mark.parametrize(
+    "timeline",
+    [
+        (QuantizedRest(1, 2),),
+        (QuantizedRest(0, 1), QuantizedRest(1, 2)),
+        (QuantizedRest(0, 1),),
+    ],
+)
+def test_result_rejects_timeline_without_exact_source_coverage(
+    timeline: tuple[object, ...],
+) -> None:
+    base = valid_single_result()
+    with pytest.raises(InvalidQuantizedRhythmResultError):
+        QuantizedRhythmResult(
+            tempo=base.tempo,
+            timeline=cast(Any, timeline),
+            report=base.report,
+        )
+
+
+def test_result_rejects_repeated_source_index_and_replaced_reference() -> None:
     base = quantize(
         (
             (60, 0.0, 0.25, 0.8, False),
             (62, 0.25, 0.50, 0.8, False),
         )
     )
-    first, second = quantized_notes(base)
+    notes = tuple(item for item in base.timeline if isinstance(item, QuantizedNoteEvent))
     repeated = QuantizedNoteEvent(
-        source=second.source,
+        source=notes[1].source,
         source_index=0,
-        quantized_onset_step=second.quantized_onset_step,
-        quantized_offset_step=second.quantized_offset_step,
-        onset_delta_seconds=second.onset_delta_seconds,
-        offset_delta_seconds=second.offset_delta_seconds,
+        quantized_onset_step=notes[1].quantized_onset_step,
+        quantized_offset_step=notes[1].quantized_offset_step,
+        onset_delta_seconds=notes[1].onset_delta_seconds,
+        offset_delta_seconds=notes[1].offset_delta_seconds,
     )
-
     with pytest.raises(InvalidQuantizedRhythmResultError):
-        QuantizedRhythmResult(base.tempo, (first,), base.report)
-    with pytest.raises(InvalidQuantizedRhythmResultError):
-        QuantizedRhythmResult(base.tempo, (first, repeated), base.report)
+        QuantizedRhythmResult(
+            tempo=base.tempo,
+            timeline=(notes[0], repeated),
+            report=base.report,
+        )
 
 
-def test_result_rejects_gap_without_rest_and_wrong_metrics() -> None:
+def test_result_rejects_gap_without_rest_overlap_and_inconsistent_metrics() -> None:
     base = quantize(
         (
             (60, 0.0, 0.25, 0.8, False),
             (62, 0.50, 0.75, 0.8, False),
         )
     )
-    notes = quantized_notes(base)
+    notes = tuple(item for item in base.timeline if isinstance(item, QuantizedNoteEvent))
     with pytest.raises(InvalidQuantizedRhythmResultError):
-        QuantizedRhythmResult(base.tempo, notes, base.report)
+        QuantizedRhythmResult(
+            tempo=base.tempo,
+            timeline=notes,
+            report=base.report,
+        )
 
-    wrong = RhythmQuantizationReport(
+    overlapping = QuantizedNoteEvent(
+        source=notes[1].source,
+        source_index=notes[1].source_index,
+        quantized_onset_step=1,
+        quantized_offset_step=3,
+        onset_delta_seconds=notes[1].onset_delta_seconds,
+        offset_delta_seconds=notes[1].offset_delta_seconds,
+    )
+    with pytest.raises(InvalidQuantizedRhythmResultError):
+        QuantizedRhythmResult(
+            tempo=base.tempo,
+            timeline=(notes[0], overlapping),
+            report=RhythmQuantizationReport(
+                settings=base.report.settings,
+                input_event_count=2,
+                quantized_note_count=2,
+                rest_count=0,
+                minimum_duration_adjustment_count=0,
+                overlap_adjusted_event_count=0,
+                total_absolute_onset_delta_seconds=sum(
+                    abs(note.onset_delta_seconds) for note in (notes[0], overlapping)
+                ),
+                total_absolute_offset_delta_seconds=sum(
+                    abs(note.offset_delta_seconds) for note in (notes[0], overlapping)
+                ),
+                maximum_absolute_boundary_delta_seconds=max(
+                    abs(delta)
+                    for note in (notes[0], overlapping)
+                    for delta in (note.onset_delta_seconds, note.offset_delta_seconds)
+                ),
+            ),
+        )
+
+    wrong_report = RhythmQuantizationReport(
         settings=base.report.settings,
         input_event_count=2,
         quantized_note_count=2,
@@ -246,13 +323,21 @@ def test_result_rejects_gap_without_rest_and_wrong_metrics() -> None:
         maximum_absolute_boundary_delta_seconds=999.0,
     )
     with pytest.raises(InvalidQuantizedRhythmResultError):
-        QuantizedRhythmResult(base.tempo, base.timeline, wrong)
+        QuantizedRhythmResult(
+            tempo=base.tempo,
+            timeline=base.timeline,
+            report=wrong_report,
+        )
 
 
 def test_result_rejects_non_tempo_resolution() -> None:
-    base = quantize(((60, 0.0, 0.25, 0.8, False),))
+    base = valid_single_result()
     with pytest.raises(InvalidQuantizedRhythmResultError):
-        QuantizedRhythmResult(cast(Any, object()), base.timeline, base.report)
+        QuantizedRhythmResult(
+            tempo=cast(Any, object()),
+            timeline=base.timeline,
+            report=base.report,
+        )
 
 
 def test_architecture_and_scope_boundaries() -> None:
@@ -274,4 +359,5 @@ def test_architecture_and_scope_boundaries() -> None:
         assert forbidden not in (domain + application).lower()
     for future in ("time_signature", "key_signature", "measure", "tuplet"):
         assert future not in (domain + application).lower()
+    assert "Python 3.11" not in workflow
     assert '"3.11"' in workflow and '"3.12"' in workflow and '"3.13"' in workflow
