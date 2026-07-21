@@ -27,6 +27,28 @@ jobs:
         run: |
           set +e
           : > sax035-final-diagnostics.txt
+          python - <<'PY' 2>&1 | tee -a sax035-final-diagnostics.txt
+          import importlib
+          import verovio
+
+          print("VEROVIO_MODULE", verovio.__file__)
+          print("VEROVIO_LOG_NAMES", sorted(name for name in dir(verovio) if "log" in name.lower()))
+          print("VEROVIO_INTERNAL_NAMES", sorted(name for name in dir(verovio) if name.startswith("_")))
+          for module_name in ("verovio._verovio", "_verovio"):
+              try:
+                  module = importlib.import_module(module_name)
+              except Exception as error:
+                  print("IMPORT", module_name, type(error).__name__, str(error))
+              else:
+                  print(
+                      "MODULE",
+                      module_name,
+                      sorted(name for name in dir(module) if "log" in name.lower()),
+                  )
+          toolkit = verovio.toolkit()
+          print("TOOLKIT_LOG_NAMES", sorted(name for name in dir(toolkit) if "log" in name.lower()))
+          PY
+          echo "INTROSPECTION_EXIT_CODE=${PIPESTATUS[0]}" | tee -a sax035-final-diagnostics.txt
           run_command() {
             echo "" | tee -a sax035-final-diagnostics.txt
             echo "$ $*" | tee -a sax035-final-diagnostics.txt
