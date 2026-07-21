@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
+from collections.abc import Callable
 
 import pytest
 
 from saxo_ai.application.musicxml_export import ExportQuantizedRhythmToMusicXml
 from saxo_ai.domain.models import SaxophoneType
 from saxo_ai.domain.musicxml_export import (
+    MusicXmlExportResult,
     MusicXmlExportSettings,
     MusicXmlValidationSummary,
 )
+from saxo_ai.domain.rhythm_quantization import QuantizedRhythmResult
 from saxo_ai.infrastructure.musicxml_encoder import StandardLibraryMusicXmlEncoder
 from tests.musicxml_helpers import automatic_quantized, manual_quantized
 
@@ -31,16 +34,16 @@ class ContractReader:
 
 
 def export(
-    original,
+    original: QuantizedRhythmResult,
     settings: MusicXmlExportSettings | None = None,
-):
+) -> MusicXmlExportResult:
     return ExportQuantizedRhythmToMusicXml(
         StandardLibraryMusicXmlEncoder(),
         ContractReader(),
     ).execute(original, settings or MusicXmlExportSettings())
 
 
-def parse(result):
+def parse(result: MusicXmlExportResult) -> ET.Element:
     return ET.fromstring(result.artifact.content)
 
 
@@ -69,7 +72,9 @@ def test_one_measure_contains_ordered_attributes_notes_rests_and_written_pitch()
     assert root.findtext("./part-list/score-part/score-instrument/instrument-name") == (
         "Alto Saxophone in E-flat"
     )
-    assert root.find("./part").attrib == {"id": "P1"}  # type: ignore[union-attr]
+    part = root.find("./part")
+    assert part is not None
+    assert part.attrib == {"id": "P1"}
     assert measure.attrib == {"number": "1"}
     assert [child.tag for child in measure[:2]] == ["attributes", "direction"]
     assert measure.findtext("attributes/divisions") == "4"
@@ -82,7 +87,9 @@ def test_one_measure_contains_ordered_attributes_notes_rests_and_written_pitch()
     assert measure.find("attributes/transpose/octave-change") is None
     assert measure.findtext("direction/direction-type/metronome/beat-unit") == "quarter"
     assert measure.findtext("direction/direction-type/metronome/per-minute") == "120"
-    assert measure.find("direction/sound").attrib == {"tempo": "120"}  # type: ignore[union-attr]
+    sound = measure.find("direction/sound")
+    assert sound is not None
+    assert sound.attrib == {"tempo": "120"}
 
     xml_notes = measure.findall("note")
     assert len(xml_notes) == 4
@@ -207,7 +214,7 @@ def test_empty_timeline_produces_attributes_and_no_invented_duration() -> None:
     ],
 )
 def test_tempo_direction_uses_exact_effective_resolution_without_scientific_notation(
-    factory,
+    factory: Callable[..., QuantizedRhythmResult],
     expected_source: str,
     expected_bpm: str,
 ) -> None:
@@ -221,5 +228,7 @@ def test_tempo_direction_uses_exact_effective_resolution_without_scientific_nota
     assert result.original.tempo.source.value == expected_source
     assert measure.findtext("attributes/time/beats") == "3"
     assert measure.findtext("direction/direction-type/metronome/per-minute") == expected_bpm
-    assert measure.find("direction/sound").attrib["tempo"] == expected_bpm  # type: ignore[union-attr]
+    sound = measure.find("direction/sound")
+    assert sound is not None
+    assert sound.attrib["tempo"] == expected_bpm
     assert "e" not in expected_bpm.lower()
