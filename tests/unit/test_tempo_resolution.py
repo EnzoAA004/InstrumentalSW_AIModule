@@ -45,7 +45,9 @@ from saxo_ai.domain.written_pitch import (
 
 
 def written_result(onsets: tuple[float, ...]) -> WrittenPitchTranscriptionResult:
-    notes = tuple(NoteEvent(60 + index, onset, onset + 0.5, 100, 0.8) for index, onset in enumerate(onsets))
+    notes = tuple(
+        NoteEvent(60 + index, onset, onset + 0.5, 100, 0.8) for index, onset in enumerate(onsets)
+    )
     batch = NoteEventBatch(notes)
     raw = TranscriptionResult(
         batch,
@@ -108,9 +110,7 @@ class RecordingMidiEncoder:
 
 
 @pytest.mark.parametrize("onsets", [(), (0.0,), (0.0, 0.5)])
-def test_manual_configuration_works_without_automatic_estimate(
-    onsets: tuple[float, ...]
-) -> None:
+def test_manual_configuration_works_without_automatic_estimate(onsets: tuple[float, ...]) -> None:
     original = written_result(onsets)
 
     resolution = ConfigureManualTempo().execute(original, 90)
@@ -122,9 +122,7 @@ def test_manual_configuration_works_without_automatic_estimate(
     assert resolution.revision == 1
 
 
-@pytest.mark.parametrize(
-    "tempo", [True, False, "120", None, 0, -1, float("nan"), float("inf")]
-)
+@pytest.mark.parametrize("tempo", [True, False, "120", None, 0, -1, float("nan"), float("inf")])
 def test_manual_configuration_rejects_invalid_bpm(tempo: object) -> None:
     with pytest.raises(InvalidTempoSettingsError):
         ConfigureManualTempo().execute(written_result(()), cast(Any, tempo))
@@ -140,7 +138,10 @@ def test_manual_configuration_preserves_complete_provenance() -> None:
     assert resolution.original.events[0] is original.events[0]
     assert resolution.original.events[0].source.event.confidence == 0.8
     assert resolution.original.events[0].source.is_low_confidence is True
-    assert resolution.original.original.original.original.model.checkpoint_filename == "filosax_25k.pth"
+    assert (
+        resolution.original.original.original.original.model.checkpoint_filename
+        == "filosax_25k.pth"
+    )
 
 
 def test_override_preserves_automatic_estimate_original_and_history() -> None:
@@ -181,9 +182,7 @@ def test_override_rejects_invalid_previous_and_manual_bpm() -> None:
 
 def test_tempo_resolved_midi_result_preserves_resolution_reference() -> None:
     resolution = ConfigureManualTempo().execute(written_result((0.0, 0.5)), 90)
-    exporter = ExportTempoResolvedMidi(
-        ExportWrittenPitchToMidi(cast(Any, RecordingMidiEncoder()))
-    )
+    exporter = ExportTempoResolvedMidi(ExportWrittenPitchToMidi(cast(Any, RecordingMidiEncoder())))
 
     result = exporter.execute(resolution)
 
@@ -197,9 +196,7 @@ def test_tempo_resolved_midi_result_preserves_resolution_reference() -> None:
 
 
 def test_export_rejects_invalid_resolution_before_midi_export() -> None:
-    exporter = ExportTempoResolvedMidi(
-        ExportWrittenPitchToMidi(cast(Any, RecordingMidiEncoder()))
-    )
+    exporter = ExportTempoResolvedMidi(ExportWrittenPitchToMidi(cast(Any, RecordingMidiEncoder())))
 
     with pytest.raises(InvalidTempoResolutionError):
         exporter.execute(cast(Any, object()))
