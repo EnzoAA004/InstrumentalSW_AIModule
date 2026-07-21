@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import math
 import re
 from dataclasses import dataclass
 
+from saxo_ai.domain.tempo import InvalidTempoSettingsError, normalize_positive_bpm
 from saxo_ai.domain.written_pitch import (
     WrittenPitchNoteEvent,
     WrittenPitchTranscriptionResult,
@@ -62,15 +62,10 @@ class MidiExportSettings:
     policy_version: str = MIDI_EXPORT_POLICY_VERSION
 
     def __post_init__(self) -> None:
-        if isinstance(self.tempo_bpm, bool) or not isinstance(self.tempo_bpm, (int, float)):
-            raise InvalidMidiExportSettingsError(
-                "tempo_bpm must be a finite number greater than zero"
-            )
-        normalized = float(self.tempo_bpm)
-        if not math.isfinite(normalized) or normalized <= 0.0:
-            raise InvalidMidiExportSettingsError(
-                "tempo_bpm must be a finite number greater than zero"
-            )
+        try:
+            normalized = normalize_positive_bpm(self.tempo_bpm)
+        except InvalidTempoSettingsError as error:
+            raise InvalidMidiExportSettingsError(str(error)) from error
         if self.policy_version != MIDI_EXPORT_POLICY_VERSION:
             raise InvalidMidiExportSettingsError(
                 f"policy_version must be {MIDI_EXPORT_POLICY_VERSION!r}"
