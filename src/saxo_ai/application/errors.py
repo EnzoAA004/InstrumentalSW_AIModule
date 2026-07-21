@@ -43,6 +43,14 @@ class TranscriptionJobNotFoundError(LookupError):
     """Raised when a transcription job cannot be found."""
 
 
+class TranscriptionResultNotReadyError(LookupError):
+    """Raised when a known job does not yet have a produced review result."""
+
+
+class TranscriptionReviewInstrumentMismatchError(ValueError):
+    """Raised when a review result belongs to a different saxophone type."""
+
+
 class FfmpegNotAvailableError(RuntimeError):
     """Raised when the FFmpeg executable cannot be started."""
 
