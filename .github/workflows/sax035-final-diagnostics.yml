@@ -71,10 +71,7 @@ jobs:
           )
           iteration.write_text(text)
           PY
-          python -m ruff format \
-            tests/unit/test_verovio_svg_adapter.py \
-            docs/contracts/score-rendering-v1.md \
-            docs/tdd/iteration-016.md
+          python -m ruff format tests/unit/test_verovio_svg_adapter.py
           python -m ruff check --fix tests/unit/test_verovio_svg_adapter.py
           if git diff --quiet; then
             echo "No binding corrections required."
