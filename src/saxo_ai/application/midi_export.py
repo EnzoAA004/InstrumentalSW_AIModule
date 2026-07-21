@@ -49,6 +49,20 @@ def seconds_to_midi_tick(seconds: float, settings: MidiExportSettings) -> int:
     return max(0, round(converted))
 
 
+def build_midi_artifact(content: bytes) -> MidiArtifact:
+    """Build immutable artifact metadata from validated in-memory MIDI bytes."""
+
+    if not isinstance(content, bytes):
+        raise InvalidMidiArtifactError("encoder output must be bytes")
+    return MidiArtifact(
+        content=content,
+        media_type=MIDI_MEDIA_TYPE,
+        file_extension=MIDI_FILE_EXTENSION,
+        size_bytes=len(content),
+        sha256=sha256(content).hexdigest(),
+    )
+
+
 def _plan_sort_key(item: MidiNotePlan) -> tuple[int, int, int, int]:
     return (
         item.onset_tick,
@@ -106,15 +120,7 @@ class ExportWrittenPitchToMidi:
             raise
         except Exception as error:
             raise MidiEncodingError("MIDI encoding failed.") from error
-        if not isinstance(content, bytes):
-            raise InvalidMidiArtifactError("encoder output must be bytes")
-        artifact = MidiArtifact(
-            content=content,
-            media_type=MIDI_MEDIA_TYPE,
-            file_extension=MIDI_FILE_EXTENSION,
-            size_bytes=len(content),
-            sha256=sha256(content).hexdigest(),
-        )
+        artifact = build_midi_artifact(content)
         report = MidiExportReport(
             settings=settings,
             input_event_count=len(original.events),
