@@ -1,0 +1,65 @@
+name: SAX-035 Diagnostics
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostics:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Install project
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Run focused diagnostics
+        shell: bash
+        run: |
+          set +e
+          : > sax035-diagnostics.txt
+          run_command() {
+            echo "" | tee -a sax035-diagnostics.txt
+            echo "$ $*" | tee -a sax035-diagnostics.txt
+            "$@" 2>&1 | tee -a sax035-diagnostics.txt
+            status=${PIPESTATUS[0]}
+            echo "EXIT_CODE=${status}" | tee -a sax035-diagnostics.txt
+          }
+          run_command python -m pytest \
+            tests/unit/test_score_render_contracts.py \
+            tests/unit/test_score_rendering.py \
+            tests/integration/test_verovio_svg_rendering.py
+          run_command python -m ruff check \
+            src/saxo_ai/domain/score_rendering.py \
+            src/saxo_ai/application/score_rendering.py \
+            src/saxo_ai/infrastructure/verovio_svg.py \
+            tests/score_render_helpers.py \
+            tests/unit/test_score_render_contracts.py \
+            tests/unit/test_score_rendering.py \
+            tests/integration/test_verovio_svg_rendering.py
+          run_command python -m ruff format --check \
+            src/saxo_ai/domain/score_rendering.py \
+            src/saxo_ai/application/score_rendering.py \
+            src/saxo_ai/infrastructure/verovio_svg.py \
+            tests/score_render_helpers.py \
+            tests/unit/test_score_render_contracts.py \
+            tests/unit/test_score_rendering.py \
+            tests/integration/test_verovio_svg_rendering.py
+          run_command python -m mypy
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: sax035-diagnostics
+          path: sax035-diagnostics.txt
+          if-no-files-found: error
+          retention-days: 1
