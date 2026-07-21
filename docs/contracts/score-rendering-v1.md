@@ -101,7 +101,7 @@ Cada operación crea una instancia nueva del toolkit y aplica explícitamente:
 }
 ```
 
-Para SVG no se configura `xmlIdSeed`. Los identificadores se derivan del contenido mediante `xmlIdChecksum`. El renderer activa el buffer de logs y nivel `LOG_WARNING` antes de cargar el documento.
+Para SVG no se configura `xmlIdSeed`. Los identificadores se derivan del contenido mediante `xmlIdChecksum`. El renderer fija `LOG_WARNING`. La referencia de Verovio documenta `enableLogToBuffer`, pero el wheel Python fijado 6.2.1 no exporta esa función; el adaptador la invoca cuando el binding la ofrece y, en el wheel validado, consume el buffer disponible directamente mediante `toolkit.getLog()`.
 
 ## Render multipágina
 
@@ -110,7 +110,7 @@ Para SVG no se configura `xmlIdSeed`. Los identificadores se derivan del conteni
 1. valida bytes no vacíos;
 2. decodifica MusicXML como UTF-8;
 3. crea un toolkit nuevo;
-4. activa buffer y warning logs;
+4. solicita buffer cuando la función está exportada y fija warning logs;
 5. configura las opciones fijas;
 6. ejecuta `loadData`;
 7. exige carga exitosa;

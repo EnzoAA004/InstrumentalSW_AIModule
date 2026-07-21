@@ -172,11 +172,11 @@ scale:           settings.scale
 svgViewBox:      true
 xmlIdChecksum:   true
 xmlIdSeed:       absent
-log buffer:      enabled
+log buffer:      requested when exported; getLog used in pinned wheel
 log level:       warning
 ```
 
-Cada render crea un toolkit nuevo.
+Cada render crea un toolkit nuevo. La inspección del wheel 6.2.1 confirmó `enableLog` y `toolkit.getLog`, pero no `enableLogToBuffer`; no se simula una API ausente.
 
 ## Páginas y artefactos
 

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any
 
 import pytest
+import verovio
 
 from saxo_ai.application.score_rendering import (
     ScorePageCountError,
@@ -11,9 +11,7 @@ from saxo_ai.application.score_rendering import (
     ScoreRendererLoadError,
 )
 from saxo_ai.domain.score_rendering import ScoreRenderSettings
-from saxo_ai.infrastructure import verovio_svg
 from saxo_ai.infrastructure.verovio_svg import VerovioSvgScoreRenderer
-
 
 SVG_ONE = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><g/></svg>'
 SVG_TWO = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><g/></svg>'
@@ -77,16 +75,17 @@ def configure_fake(
     buffered: list[bool] = []
     levels: list[object] = []
     monkeypatch.setattr(
-        verovio_svg.verovio,
+        verovio,
         "enableLogToBuffer",
         lambda enabled: buffered.append(enabled),
+        raising=False,
     )
     monkeypatch.setattr(
-        verovio_svg.verovio,
+        verovio,
         "enableLog",
         lambda level: levels.append(level),
     )
-    monkeypatch.setattr(verovio_svg.verovio, "toolkit", toolkit_factory)
+    monkeypatch.setattr(verovio, "toolkit", toolkit_factory)
     return buffered, levels
 
 
@@ -107,7 +106,7 @@ def test_adapter_uses_exact_options_renders_all_pages_and_preserves_log_content(
     output = VerovioSvgScoreRenderer().render(content=MUSICXML, settings=settings)
 
     assert buffered == [True]
-    assert levels == [verovio_svg.verovio.LOG_WARNING]
+    assert levels == [verovio.LOG_WARNING]
     assert toolkit.options == {
         "inputFrom": "xml",
         "pageWidth": 800,
@@ -116,6 +115,7 @@ def test_adapter_uses_exact_options_renders_all_pages_and_preserves_log_content(
         "svgViewBox": True,
         "xmlIdChecksum": True,
     }
+    assert toolkit.options is not None
     assert "xmlIdSeed" not in toolkit.options
     assert toolkit.loaded_text == MUSICXML.decode("utf-8")
     assert toolkit.render_calls == [(1, True), (2, True)]
