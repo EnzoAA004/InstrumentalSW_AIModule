@@ -47,9 +47,7 @@ class TempoResolvedMidiResult:
                 "MIDI output must preserve the tempo resolution original reference"
             )
         if self.midi.report.settings.tempo_bpm != self.tempo.effective_tempo_bpm:
-            raise InvalidTempoResolutionError(
-                "MIDI settings must match the effective tempo"
-            )
+            raise InvalidTempoResolutionError("MIDI settings must match the effective tempo")
 
 
 class EstimateTranscriptionTempo:
@@ -64,13 +62,9 @@ class EstimateTranscriptionTempo:
         settings: TempoEstimationSettings,
     ) -> TempoResolution:
         if not isinstance(original, WrittenPitchTranscriptionResult):
-            raise InvalidTempoEstimateError(
-                "original must be a WrittenPitchTranscriptionResult"
-            )
+            raise InvalidTempoEstimateError("original must be a WrittenPitchTranscriptionResult")
         if not isinstance(settings, TempoEstimationSettings):
-            raise InvalidTempoSettingsError(
-                "settings must be TempoEstimationSettings"
-            )
+            raise InvalidTempoSettingsError("settings must be TempoEstimationSettings")
         try:
             estimate = self._estimator.estimate(original, settings)
         except (
@@ -83,9 +77,7 @@ class EstimateTranscriptionTempo:
         except Exception as error:
             raise TempoEstimatorError("Tempo estimation failed.") from error
         if not isinstance(estimate, AutomaticTempoEstimate):
-            raise InvalidTempoEstimateError(
-                "estimator must return AutomaticTempoEstimate"
-            )
+            raise InvalidTempoEstimateError("estimator must return AutomaticTempoEstimate")
         return TempoResolution(
             original=original,
             automatic_estimate=estimate,
@@ -103,9 +95,7 @@ class ConfigureManualTempo:
         manual_tempo_bpm: object,
     ) -> TempoResolution:
         if not isinstance(original, WrittenPitchTranscriptionResult):
-            raise InvalidTempoResolutionError(
-                "original must be a WrittenPitchTranscriptionResult"
-            )
+            raise InvalidTempoResolutionError("original must be a WrittenPitchTranscriptionResult")
         tempo = normalize_positive_bpm(
             manual_tempo_bpm,
             field_name="manual_tempo_bpm",
