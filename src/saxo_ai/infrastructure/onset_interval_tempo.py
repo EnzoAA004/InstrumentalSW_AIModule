@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import statistics
+from itertools import pairwise
 
 from saxo_ai.application.tempo_resolution import TempoEstimator
 from saxo_ai.domain.tempo import (
@@ -87,21 +88,15 @@ class OnsetIntervalTempoEstimator(TempoEstimator):
         settings: TempoEstimationSettings,
     ) -> AutomaticTempoEstimate:
         if not isinstance(original, WrittenPitchTranscriptionResult):
-            raise InvalidTempoEstimateError(
-                "original must be a WrittenPitchTranscriptionResult"
-            )
+            raise InvalidTempoEstimateError("original must be a WrittenPitchTranscriptionResult")
         if not isinstance(settings, TempoEstimationSettings):
-            raise InvalidTempoSettingsError(
-                "settings must be TempoEstimationSettings"
-            )
+            raise InvalidTempoSettingsError("settings must be TempoEstimationSettings")
 
         unique_onsets = tuple(
             sorted({event.source.event.onset_seconds for event in original.events})
         )
         intervals = tuple(
-            later - earlier
-            for earlier, later in zip(unique_onsets, unique_onsets[1:], strict=False)
-            if later - earlier > 0.0
+            later - earlier for earlier, later in pairwise(unique_onsets) if later - earlier > 0.0
         )
         interval_count = len(intervals)
         if interval_count < settings.minimum_interval_count:
