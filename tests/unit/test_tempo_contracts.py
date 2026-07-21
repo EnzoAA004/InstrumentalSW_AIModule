@@ -109,7 +109,10 @@ def test_constants_defaults_and_string_enum_are_stable() -> None:
     )
     assert (
         (settings.minimum_bpm, settings.maximum_bpm)
-        == (DEFAULT_MINIMUM_BPM, DEFAULT_MAXIMUM_BPM)
+        == (
+            DEFAULT_MINIMUM_BPM,
+            DEFAULT_MAXIMUM_BPM,
+        )
         == (40.0, 240.0)
     )
     assert settings.minimum_interval_count == DEFAULT_MINIMUM_INTERVAL_COUNT == 2
@@ -121,9 +124,15 @@ def test_constants_defaults_and_string_enum_are_stable() -> None:
 
 @pytest.mark.parametrize(
     "changes",
-    [{"minimum_bpm": value} for value in (True, False, "40", None, 0, -1, float("nan"), float("inf"))]
+    [
+        {"minimum_bpm": value}
+        for value in (True, False, "40", None, 0, -1, float("nan"), float("inf"))
+    ]
     + [{"maximum_bpm": value} for value in (True, 0, float("-inf"))]
-    + [{"minimum_bpm": 120, "maximum_bpm": 120}, {"minimum_bpm": 121, "maximum_bpm": 120}]
+    + [
+        {"minimum_bpm": 120, "maximum_bpm": 120},
+        {"minimum_bpm": 121, "maximum_bpm": 120},
+    ]
     + [{"minimum_interval_count": value} for value in (0, -1, True, 2.0)]
     + [{"consensus_tolerance": value} for value in (-0.01, 1.01, True, float("nan"))]
     + [{"policy_version": "2.0"}],
@@ -152,6 +161,7 @@ def test_estimate_normalizes_and_enforces_exact_confidence_formula() -> None:
         4,
         3,
     )
+
     assert estimate.tempo_bpm == 120.0
     assert estimate.confidence == estimate.inlier_interval_count / estimate.interval_count == 0.75
 
@@ -159,11 +169,20 @@ def test_estimate_normalizes_and_enforces_exact_confidence_formula() -> None:
 @pytest.mark.parametrize(
     "changes",
     [
-        {"tempo_bpm": 0}, {"tempo_bpm": True}, {"tempo_bpm": float("nan")},
-        {"confidence": -0.01}, {"confidence": 1.01}, {"confidence": True},
-        {"estimator_name": ""}, {"estimator_version": " "}, {"confidence_method": ""},
-        {"unique_onset_count": -1}, {"unique_onset_count": True},
-        {"interval_count": 2}, {"inlier_interval_count": 4}, {"confidence": 0.5},
+        {"tempo_bpm": 0},
+        {"tempo_bpm": True},
+        {"tempo_bpm": float("nan")},
+        {"confidence": -0.01},
+        {"confidence": 1.01},
+        {"confidence": True},
+        {"estimator_name": ""},
+        {"estimator_version": " "},
+        {"confidence_method": ""},
+        {"unique_onset_count": -1},
+        {"unique_onset_count": True},
+        {"interval_count": 2},
+        {"inlier_interval_count": 4},
+        {"confidence": 0.5},
     ],
 )
 def test_invalid_estimates_are_rejected(changes: dict[str, object]) -> None:
@@ -198,9 +217,15 @@ def test_automatic_and_manual_resolution_invariants() -> None:
 @pytest.mark.parametrize(
     "changes",
     [
-        {"original": object()}, {"source": "automatic"}, {"revision": 0},
-        {"revision": True}, {"policy_version": "2.0"}, {"automatic_estimate": None},
-        {"manual_tempo_bpm": 90.0}, {"effective_tempo_bpm": 121.0}, {"revision": 2},
+        {"original": object()},
+        {"source": "automatic"},
+        {"revision": 0},
+        {"revision": True},
+        {"policy_version": "2.0"},
+        {"automatic_estimate": None},
+        {"manual_tempo_bpm": 90.0},
+        {"effective_tempo_bpm": 121.0},
+        {"revision": 2},
     ],
 )
 def test_invalid_automatic_resolutions_are_rejected(changes: dict[str, object]) -> None:
@@ -221,7 +246,10 @@ def test_invalid_automatic_resolutions_are_rejected(changes: dict[str, object]) 
 def test_contracts_are_immutable() -> None:
     settings = TempoEstimationSettings()
     estimate = automatic()
-    resolution = TempoResolution(written_result(), estimate, None, 120, TempoSelectionSource.AUTOMATIC, 1)
+    resolution = TempoResolution(
+        written_result(), estimate, None, 120, TempoSelectionSource.AUTOMATIC, 1
+    )
+
     with pytest.raises(FrozenInstanceError):
         settings.minimum_bpm = 60.0  # type: ignore[misc]
     with pytest.raises(FrozenInstanceError):
