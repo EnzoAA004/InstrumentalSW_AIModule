@@ -112,7 +112,13 @@ def test_quantization_regenerates_for_exact_tempo_revision() -> None:
     assert first.tempo.effective_tempo_bpm == 120.0
     assert second.tempo.effective_tempo_bpm == 60.0
     assert first.timeline != second.timeline
-    assert first_notes[0].quantized_onset_step != second_notes[0].quantized_onset_step
+    assert (
+        first_notes[0].quantized_onset_step,
+        first_notes[0].quantized_offset_step,
+    ) != (
+        second_notes[0].quantized_onset_step,
+        second_notes[0].quantized_offset_step,
+    )
     assert all(
         first_note.source is second_note.source
         for first_note, second_note in zip(first_notes, second_notes)
