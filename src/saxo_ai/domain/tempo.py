@@ -101,9 +101,7 @@ class TempoEstimationSettings:
             field_name="consensus_tolerance",
         )
         if self.policy_version != TEMPO_POLICY_VERSION:
-            raise InvalidTempoSettingsError(
-                f"policy_version must be {TEMPO_POLICY_VERSION!r}"
-            )
+            raise InvalidTempoSettingsError(f"policy_version must be {TEMPO_POLICY_VERSION!r}")
         object.__setattr__(self, "minimum_bpm", minimum)
         object.__setattr__(self, "maximum_bpm", maximum)
         object.__setattr__(self, "consensus_tolerance", tolerance)
@@ -150,9 +148,7 @@ class AutomaticTempoEstimate:
                 "interval_count must equal unique_onset_count minus one"
             )
         if inlier_count > interval_count:
-            raise InvalidTempoEstimateError(
-                "inlier_interval_count cannot exceed interval_count"
-            )
+            raise InvalidTempoEstimateError("inlier_interval_count cannot exceed interval_count")
         expected_confidence = inlier_count / interval_count if interval_count else 0.0
         if not math.isclose(confidence, expected_confidence, rel_tol=0.0, abs_tol=1e-12):
             raise InvalidTempoEstimateError(
@@ -179,9 +175,7 @@ class TempoResolution:
 
     def __post_init__(self) -> None:
         if not isinstance(self.original, WrittenPitchTranscriptionResult):
-            raise InvalidTempoResolutionError(
-                "original must be a WrittenPitchTranscriptionResult"
-            )
+            raise InvalidTempoResolutionError("original must be a WrittenPitchTranscriptionResult")
         if self.automatic_estimate is not None and not isinstance(
             self.automatic_estimate,
             AutomaticTempoEstimate,
@@ -200,17 +194,17 @@ class TempoResolution:
             raise InvalidTempoResolutionError(str(error)) from error
         if not isinstance(self.source, TempoSelectionSource):
             raise InvalidTempoResolutionError("source must be TempoSelectionSource")
-        if isinstance(self.revision, bool) or not isinstance(self.revision, int) or self.revision < 1:
+        if (
+            isinstance(self.revision, bool)
+            or not isinstance(self.revision, int)
+            or self.revision < 1
+        ):
             raise InvalidTempoResolutionError("revision must be a positive integer")
         if self.policy_version != TEMPO_POLICY_VERSION:
-            raise InvalidTempoResolutionError(
-                f"policy_version must be {TEMPO_POLICY_VERSION!r}"
-            )
+            raise InvalidTempoResolutionError(f"policy_version must be {TEMPO_POLICY_VERSION!r}")
         if self.source is TempoSelectionSource.AUTOMATIC:
             if self.automatic_estimate is None:
-                raise InvalidTempoResolutionError(
-                    "automatic source requires an automatic_estimate"
-                )
+                raise InvalidTempoResolutionError("automatic source requires an automatic_estimate")
             if manual is not None:
                 raise InvalidTempoResolutionError(
                     "automatic source cannot include manual_tempo_bpm"
@@ -220,17 +214,11 @@ class TempoResolution:
                     "effective_tempo_bpm must equal the automatic estimate"
                 )
             if self.revision != 1:
-                raise InvalidTempoResolutionError(
-                    "automatic source must start at revision one"
-                )
+                raise InvalidTempoResolutionError("automatic source must start at revision one")
         else:
             if manual is None:
-                raise InvalidTempoResolutionError(
-                    "manual source requires manual_tempo_bpm"
-                )
+                raise InvalidTempoResolutionError("manual source requires manual_tempo_bpm")
             if effective != manual:
-                raise InvalidTempoResolutionError(
-                    "effective_tempo_bpm must equal manual_tempo_bpm"
-                )
+                raise InvalidTempoResolutionError("effective_tempo_bpm must equal manual_tempo_bpm")
         object.__setattr__(self, "manual_tempo_bpm", manual)
         object.__setattr__(self, "effective_tempo_bpm", effective)
