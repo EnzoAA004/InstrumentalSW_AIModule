@@ -20,8 +20,12 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.13"
-      - name: Verify hosted FFmpeg
-        run: ffmpeg -version
+      - name: Install isolated FFmpeg binary
+        run: |
+          python -m pip install imageio-ffmpeg
+          binary="$(python -c 'import imageio_ffmpeg; print(imageio_ffmpeg.get_ffmpeg_exe())')"
+          sudo ln -sf "$binary" /usr/local/bin/ffmpeg
+          ffmpeg -version
       - name: Install project
         run: |
           python -m pip install --upgrade pip
