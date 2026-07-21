@@ -159,6 +159,24 @@ Onset and offset are rounded independently with decimal half-up semantics; any z
 
 Every quantized note keeps its original `WrittenPitchNoteEvent` reference and index, and signed onset/offset deltas report how notated timing differs from real timing. A new tempo override requires a new quantization result tied to that exact revision. The complete contract is documented in [`docs/contracts/rhythm-quantization-v1.md`](docs/contracts/rhythm-quantization-v1.md). SAX-033 creates no measures, time signature, notation spelling, MusicXML, score, endpoint, persistence, Backend, or Frontend behavior.
 
+## Validated transposing MusicXML export
+
+SAX-034 adds `ExportQuantizedRhythmToMusicXml` behind separate encoder and reader ports. It emits deterministic, uncompressed UTF-8 MusicXML 4.0 `score-partwise` for one written saxophone part.
+
+```text
+document:              score-partwise 4.0
+extension:             .musicxml
+media type:            application/vnd.recordare.musicxml+xml
+pitch:                 written, prefer flats
+meter:                 manual, default 4/4
+divisions:             SAX-033 subdivisions per beat
+external reader:       Verovio 6.2.1
+```
+
+The standard-library encoder segments notes and existing rests at barlines, emits continuity ties only for segments of the same source note, preserves partial final measures, and creates a valid empty score without invented duration. Instrument names and `<transpose>` metadata cover soprano, alto, tenor, and baritone while remaining coherent with SAX-030 offsets.
+
+Application calculates exact SHA-256 metadata and preserves the exact `QuantizedRhythmResult`, tempo revision, source notes, reports, and model provenance by reference. Verovio validates both in-memory bytes and a temporary `.musicxml` file without rendering. The complete contract is documented in [`docs/contracts/musicxml-export-v1.md`](docs/contracts/musicxml-export-v1.md). SAX-034 is not connected to FastAPI, persistence, Backend, or Frontend and does not implement SAX-035, SVG, or PDF.
+
 ## Optional FiloSax baseline
 
 SAX-021 provides an internal, replaceable FiloSax audio-to-note baseline behind
@@ -202,6 +220,7 @@ python -m pytest
 python -m pytest -m "not integration"
 python -m pytest -m integration
 python -m pytest -m midi_integration
+python -m pytest -m musicxml_integration
 python -m pytest -m baseline_integration
 python -m pytest --cov=saxo_ai --cov-report=term-missing --cov-report=xml
 python -m ruff check src tests scripts
@@ -211,21 +230,21 @@ python -m mypy
 
 The quality command runs pytest with statement/branch coverage and a 90% threshold, Ruff lint, Ruff format check, and strict mypy. GitHub Actions runs it for Python 3.11, 3.12, and 3.13. The runner stops at the first failed control and returns a non-zero exit code.
 
-Real `midi_integration` tests run on all three supported Python versions. The real FiloSax `baseline_integration` is required only on Python 3.11; on Python 3.12 and 3.13 it skips with an explicit reason while the full core, FFmpeg, and MIDI integration suites continue to run.
+Real `midi_integration` and `musicxml_integration` tests run on all three supported Python versions. The real FiloSax `baseline_integration` is required only on Python 3.11; on Python 3.12 and 3.13 it skips with an explicit reason while the full core, FFmpeg, MIDI, and MusicXML integration suites continue to run.
 
 ## Architecture
 
 ```text
 src/saxo_ai/
 ├── api/             # FastAPI transport and HTTP error translation
-├── application/     # Use cases, ports, stable errors, JSON, artifacts, and quantization
-├── domain/          # Immutable jobs, audio, note, pitch, tempo, rhythm, and result contracts
-├── infrastructure/  # Environment, hashing, FFmpeg, repositories, model, MIDI, and tempo adapters
+├── application/     # Use cases, ports, stable errors, JSON, artifacts, quantization, and scores
+├── domain/          # Immutable jobs, audio, note, pitch, tempo, rhythm, score, and result contracts
+├── infrastructure/  # Environment, hashing, FFmpeg, repositories, model, MIDI, tempo, and XML adapters
 └── main.py          # Composition root and dependency injection
 ```
 
-Dependencies point inward. FastAPI does not appear in domain or application. Environment variables are loaded only at the infrastructure/composition boundary. FFmpeg, Hugging Face, PyTorch, Mido, subprocesses, and temporary files remain infrastructure concerns. Content hashing is calculated outside domain.
+Dependencies point inward. FastAPI does not appear in domain or application. Environment variables are loaded only at the infrastructure/composition boundary. FFmpeg, Hugging Face, PyTorch, Mido, Verovio, subprocesses, and temporary files remain infrastructure concerns. Content hashing is calculated outside domain.
 
 ## Scope boundaries
 
-The module does not connect duration validation, model inference, NoteEvent postprocessing, confidence annotations, written-pitch transposition, MIDI export, tempo resolution, or rhythm quantization to endpoints; persist audio or derived artifacts; implement retries/workers/queues; train models; generate MusicXML or a rendered score; or use product cloud storage. SAX-033 does not implement measures, meter, notation spelling, MusicXML, playback, Backend, or Frontend behavior.
+The module does not connect duration validation, model inference, NoteEvent postprocessing, confidence annotations, written-pitch transposition, MIDI export, tempo resolution, rhythm quantization, or MusicXML export to endpoints; persist audio or derived artifacts; implement retries/workers/queues; train models; render a score; or use product cloud storage. SAX-034 does not implement SAX-035, SVG, PDF, layout, playback, Backend, or Frontend behavior.
