@@ -65,16 +65,13 @@ def written_result(
         ),
     )
     annotations = tuple(
-        ConfidenceAnnotatedNoteEvent(note, specs[index][4])
-        for index, note in enumerate(notes)
+        ConfidenceAnnotatedNoteEvent(note, specs[index][4]) for index, note in enumerate(notes)
     )
     low_count = sum(annotation.is_low_confidence for annotation in annotations)
     annotated = ConfidenceAnnotatedTranscriptionResult(
         processed,
         annotations,
-        LowConfidenceReport(
-            LowConfidenceSettings(), len(notes), low_count, len(notes) - low_count
-        ),
+        LowConfidenceReport(LowConfidenceSettings(), len(notes), low_count, len(notes) - low_count),
     )
     return WrittenPitchTranscriptionResult(
         annotated,

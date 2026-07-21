@@ -216,9 +216,7 @@ def plan_musicxml_score(
         for index, segments in enumerate(grouped)
     )
 
-    source_note_count = sum(
-        isinstance(item, QuantizedNoteEvent) for item in original.timeline
-    )
+    source_note_count = sum(isinstance(item, QuantizedNoteEvent) for item in original.timeline)
     source_rest_count = sum(isinstance(item, QuantizedRest) for item in original.timeline)
     note_segment_count = sum(
         isinstance(segment.source, QuantizedNoteEvent) for segment in all_segments
@@ -226,11 +224,11 @@ def plan_musicxml_score(
     rest_segment_count = len(all_segments) - note_segment_count
     split_note_count = sum(
         count > 1 and isinstance(item, QuantizedNoteEvent)
-        for item, count in zip(original.timeline, segment_counts)
+        for item, count in zip(original.timeline, segment_counts, strict=True)
     )
     split_rest_count = sum(
         count > 1 and isinstance(item, QuantizedRest)
-        for item, count in zip(original.timeline, segment_counts)
+        for item, count in zip(original.timeline, segment_counts, strict=True)
     )
     report = MusicXmlExportReport(
         settings=settings,
@@ -315,9 +313,7 @@ class ExportQuantizedRhythmToMusicXml:
         except Exception as error:
             raise MusicXmlReaderError("MusicXML external validation failed.") from error
         if not isinstance(validation, MusicXmlValidationSummary):
-            raise MusicXmlReaderError(
-                "MusicXML reader must return MusicXmlValidationSummary."
-            )
+            raise MusicXmlReaderError("MusicXML reader must return MusicXmlValidationSummary.")
         if not validation.loaded_by_external_reader:
             raise MusicXmlValidationError("External reader did not load the MusicXML document.")
         expected = (

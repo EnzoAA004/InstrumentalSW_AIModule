@@ -4,15 +4,15 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-import verovio  # type: ignore[import-untyped]
+import verovio
+from tests.musicxml_helpers import manual_quantized
 
 from saxo_ai.application.musicxml_export import ExportQuantizedRhythmToMusicXml
 from saxo_ai.domain.musicxml_export import MusicXmlExportSettings
 from saxo_ai.infrastructure.musicxml_encoder import StandardLibraryMusicXmlEncoder
 from saxo_ai.infrastructure.verovio_musicxml import VerovioMusicXmlReader
-from tests.musicxml_helpers import manual_quantized
 
-pytestmark = (pytest.mark.integration, pytest.mark.musicxml_integration)
+pytestmark = [pytest.mark.integration, pytest.mark.musicxml_integration]
 
 
 def configured_toolkit() -> Any:

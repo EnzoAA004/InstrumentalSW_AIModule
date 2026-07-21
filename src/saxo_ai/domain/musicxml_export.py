@@ -209,9 +209,7 @@ class MusicXmlArtifact:
         if not body.lstrip().startswith(
             f'<{MUSICXML_SCORE_TYPE} version="{MUSICXML_DOCUMENT_VERSION}"'
         ):
-            raise InvalidMusicXmlArtifactError(
-                "content root must be score-partwise MusicXML 4.0"
-            )
+            raise InvalidMusicXmlArtifactError("content root must be score-partwise MusicXML 4.0")
         if self.media_type != MUSICXML_MEDIA_TYPE:
             raise InvalidMusicXmlArtifactError(f"media_type must be {MUSICXML_MEDIA_TYPE!r}")
         if self.file_extension != MUSICXML_FILE_EXTENSION:
@@ -230,9 +228,7 @@ class MusicXmlArtifact:
             or len(self.sha256) != 64
             or any(character not in "0123456789abcdef" for character in self.sha256)
         ):
-            raise InvalidMusicXmlArtifactError(
-                "sha256 must be 64 lowercase hexadecimal characters"
-            )
+            raise InvalidMusicXmlArtifactError("sha256 must be 64 lowercase hexadecimal characters")
 
 
 @dataclass(frozen=True, slots=True)

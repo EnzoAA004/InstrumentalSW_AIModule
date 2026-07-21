@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 from xml.etree import ElementTree as ET
 
-import verovio  # type: ignore[import-untyped]
+import verovio
 
 from saxo_ai.application.musicxml_export import MusicXmlReaderError, MusicXmlValidationError
 from saxo_ai.domain.musicxml_export import MusicXmlValidationSummary
@@ -17,7 +17,9 @@ def _summarize_log(value: object) -> str:
 
 
 def _configured_toolkit() -> Any:
-    verovio.enableLogToBuffer(True)
+    enable_log_to_buffer = getattr(verovio, "enableLogToBuffer", None)
+    if callable(enable_log_to_buffer):
+        enable_log_to_buffer(True)
     verovio.enableLog(verovio.LOG_ERROR)
     toolkit = verovio.toolkit()
     toolkit.setOptions({"inputFrom": "xml", "xmlIdSeed": 0})

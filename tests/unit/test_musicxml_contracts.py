@@ -122,8 +122,7 @@ def test_invalid_instrument_specs_are_rejected(changes: dict[str, object]) -> No
 
 def test_artifact_validates_shape_without_calculating_digest() -> None:
     content = (
-        b"<?xml version='1.0' encoding='utf-8'?>\n"
-        b'<score-partwise version="4.0"></score-partwise>'
+        b"<?xml version='1.0' encoding='utf-8'?>\n<score-partwise version=\"4.0\"></score-partwise>"
     )
     artifact = MusicXmlArtifact(
         content=content,
@@ -153,8 +152,7 @@ def test_artifact_validates_shape_without_calculating_digest() -> None:
 )
 def test_invalid_artifacts_are_rejected(changes: dict[str, object]) -> None:
     content = (
-        b"<?xml version='1.0' encoding='utf-8'?>\n"
-        b'<score-partwise version="4.0"></score-partwise>'
+        b"<?xml version='1.0' encoding='utf-8'?>\n<score-partwise version=\"4.0\"></score-partwise>"
     )
     values: dict[str, object] = {
         "content": content,

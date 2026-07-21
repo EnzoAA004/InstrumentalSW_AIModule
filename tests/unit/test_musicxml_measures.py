@@ -128,10 +128,10 @@ def test_note_crossing_one_barline_has_start_and_stop_ties() -> None:
         ["start"],
         ["stop"],
     ]
-    assert [
-        [tie.attrib["type"] for tie in note.findall("notations/tied")]
-        for note in pitched
-    ] == [["start"], ["stop"]]
+    assert [[tie.attrib["type"] for tie in note.findall("notations/tied")] for note in pitched] == [
+        ["start"],
+        ["stop"],
+    ]
     assert result.report.source_note_count == 1
     assert result.report.note_segment_count == 2
     assert result.report.split_note_count == 1
@@ -151,10 +151,11 @@ def test_note_crossing_more_than_two_measures_has_middle_stop_and_start() -> Non
         ["stop", "start"],
         ["stop"],
     ]
-    assert [
-        [tie.attrib["type"] for tie in note.findall("notations/tied")]
-        for note in notes
-    ] == [["start"], ["stop", "start"], ["stop"]]
+    assert [[tie.attrib["type"] for tie in note.findall("notations/tied")] for note in notes] == [
+        ["start"],
+        ["stop", "start"],
+        ["stop"],
+    ]
 
 
 def test_rest_crossing_barline_is_split_without_ties() -> None:

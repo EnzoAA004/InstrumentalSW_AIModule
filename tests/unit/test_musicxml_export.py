@@ -16,6 +16,7 @@ from saxo_ai.application.musicxml_export import (
 from saxo_ai.domain.musicxml_export import (
     InvalidMusicXmlArtifactError,
     InvalidMusicXmlResultError,
+    MusicXmlExportResult,
     MusicXmlExportSettings,
     MusicXmlValidationSummary,
 )
@@ -82,7 +83,9 @@ def valid_original() -> QuantizedRhythmResult:
     )
 
 
-def export(original: QuantizedRhythmResult | None = None):
+def export(
+    original: QuantizedRhythmResult | None = None,
+) -> MusicXmlExportResult:
     return ExportQuantizedRhythmToMusicXml(
         StandardLibraryMusicXmlEncoder(),
         ParsingReader(),

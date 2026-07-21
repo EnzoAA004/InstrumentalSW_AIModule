@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import cast
 from xml.etree import ElementTree as ET
 
 from saxo_ai.application.musicxml_export import (
@@ -132,9 +133,12 @@ class StandardLibraryMusicXmlEncoder:
                 _add_segment(measure, segment)
 
         ET.indent(root, space="  ")
-        return ET.tostring(
-            root,
-            encoding="utf-8",
-            xml_declaration=True,
-            short_empty_elements=True,
+        return cast(
+            bytes,
+            ET.tostring(
+                root,
+                encoding="utf-8",
+                xml_declaration=True,
+                short_empty_elements=True,
+            ),
         )
