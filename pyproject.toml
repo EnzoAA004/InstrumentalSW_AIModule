@@ -44,6 +44,7 @@ markers = [
   "baseline_integration: real pinned FiloSax checkpoint download and inference",
   "midi_integration: real in-memory Standard MIDI File encoding and parsing",
   "musicxml_integration: real MusicXML import and external reader validation",
+  "score_render_integration: real in-memory Verovio SVG score page rendering",
 ]
 
 [tool.coverage.run]
