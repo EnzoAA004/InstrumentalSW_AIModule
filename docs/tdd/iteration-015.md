@@ -204,9 +204,70 @@ memoria:      O(n + s)
 reader:       dependiente de Verovio
 ```
 
-## Resultados finales
+## Resultados completos solicitados
 
-Los resultados completos, marker splits, cobertura, Ruff, formato, mypy y matriz protegida se registrarán en el cuerpo definitivo del PR después de validar el head documentado y limpio.
+El runner temporal de métricas usó Python 3.13.14 y un binario FFmpeg aislado solo para evitar un bloqueo de `apt-get update`. La matriz protegida continúa usando FFmpeg del sistema.
+
+```text
+SAX-034 Metrics #4
+run:      29840533286
+artifact: sax034-command-metrics
+ID:       8499159485
+head:     bcfd1e75045a82f352e27e2f6faa0751337e6d3c
+```
+
+```text
+python scripts/check_quality.py
+811 passed, 1 skipped
+2703 statements, 176 missed
+832 branches, 121 partial branches
+91.37% coverage
+Ruff lint passed
+103 files already formatted
+mypy: no issues in 103 source files
+exit 0
+```
+
+```text
+python -m pytest
+811 passed, 1 skipped
+
+python -m pytest -m "not integration"
+791 passed, 21 deselected
+
+python -m pytest -m integration
+20 passed, 1 skipped, 791 deselected
+
+python -m pytest -m midi_integration
+9 passed, 803 deselected
+
+python -m pytest -m musicxml_integration
+1 passed, 811 deselected
+
+python -m pytest -m baseline_integration
+1 skipped, 811 deselected
+
+python -m pytest --cov=saxo_ai --cov-report=term-missing --cov-report=xml
+811 passed, 1 skipped
+91.37% coverage
+
+python -m ruff check src tests scripts
+passed
+
+python -m ruff format --check src tests scripts
+103 files already formatted
+
+python -m mypy
+no issues in 103 source files
+```
+
+Todos los comandos terminaron con exit code cero. El único skip en Python 3.13 es la inferencia real fijada a Python 3.11.
+
+El workflow temporal de métricas se eliminó inmediatamente después de descargar el artefacto. Ningún workflow diagnóstico permanece en el árbol final.
+
+## Matriz protegida
+
+Las ejecuciones funcionales previas aprobaron Python 3.12 y 3.13 con MusicXML real; Python 3.11 instaló Verovio mediante la dependencia normal, FFmpeg y el baseline fijado. La evidencia definitiva corresponde al Quality ejecutado sobre el head documentado y limpio posterior a esta iteración.
 
 ## Historias no implementadas
 
