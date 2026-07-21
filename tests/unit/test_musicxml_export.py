@@ -19,6 +19,7 @@ from saxo_ai.domain.musicxml_export import (
     MusicXmlExportSettings,
     MusicXmlValidationSummary,
 )
+from saxo_ai.domain.rhythm_quantization import QuantizedRhythmResult
 from saxo_ai.infrastructure.musicxml_encoder import StandardLibraryMusicXmlEncoder
 from tests.musicxml_helpers import manual_quantized
 
@@ -44,13 +45,13 @@ class ConstantEncoder:
     def __init__(self, value: object) -> None:
         self.value = value
 
-    def encode(self, *, original, settings, instrument):
+    def encode(self, *, original: object, settings: object, instrument: object) -> object:
         del original, settings, instrument
         return self.value
 
 
 class RaisingEncoder:
-    def encode(self, *, original, settings, instrument):
+    def encode(self, *, original: object, settings: object, instrument: object) -> bytes:
         del original, settings, instrument
         raise LookupError("internal encoder detail")
 
@@ -59,18 +60,18 @@ class ConstantReader:
     def __init__(self, value: object) -> None:
         self.value = value
 
-    def validate(self, *, content: bytes):
+    def validate(self, *, content: bytes) -> object:
         del content
         return self.value
 
 
 class RaisingReader:
-    def validate(self, *, content: bytes):
+    def validate(self, *, content: bytes) -> MusicXmlValidationSummary:
         del content
         raise LookupError("external reader detail")
 
 
-def valid_original():
+def valid_original() -> QuantizedRhythmResult:
     return manual_quantized(
         (
             (60, 0.0, 0.5, 0.0, True),
@@ -81,7 +82,7 @@ def valid_original():
     )
 
 
-def export(original=None):
+def export(original: QuantizedRhythmResult | None = None):
     return ExportQuantizedRhythmToMusicXml(
         StandardLibraryMusicXmlEncoder(),
         ParsingReader(),
@@ -107,7 +108,7 @@ def test_artifact_has_exact_bytes_size_sha_and_is_deterministic() -> None:
 def test_result_preserves_complete_source_and_exact_revision_chain() -> None:
     original = valid_original()
     result = export(original)
-    raw = original.tempo.original.original.original.original.original
+    raw = original.tempo.original.original.original.original
 
     assert result.original is original
     assert result.original.tempo.revision == 3
