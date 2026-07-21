@@ -26,8 +26,6 @@ from saxo_ai.domain.transcription import (
 )
 from saxo_ai.domain.written_pitch import WrittenPitchNoteEvent, WrittenPitchTranscriptionResult
 
-pytestmark = pytest.mark.integration
-
 
 def written_result(
     specs: tuple[tuple[int, float, float, float, bool], ...],
@@ -54,19 +52,26 @@ def written_result(
         raw,
         batch,
         NoteEventPostProcessingReport(
-            NoteEventPostProcessingSettings(), len(notes), len(notes), 0, 0, 0
+            NoteEventPostProcessingSettings(),
+            len(notes),
+            len(notes),
+            0,
+            0,
+            0,
         ),
     )
     annotations = tuple(
-        ConfidenceAnnotatedNoteEvent(note, specs[index][4])
-        for index, note in enumerate(notes)
+        ConfidenceAnnotatedNoteEvent(note, specs[index][4]) for index, note in enumerate(notes)
     )
     low_count = sum(annotation.is_low_confidence for annotation in annotations)
     annotated = ConfidenceAnnotatedTranscriptionResult(
         processed,
         annotations,
         LowConfidenceReport(
-            LowConfidenceSettings(), len(notes), low_count, len(notes) - low_count
+            LowConfidenceSettings(),
+            len(notes),
+            low_count,
+            len(notes) - low_count,
         ),
     )
     return WrittenPitchTranscriptionResult(
@@ -87,7 +92,12 @@ def manual_resolution(
     return ConfigureManualTempo().execute(written_result(specs), bpm)
 
 
-def test_quantization_regenerates_for_exact_tempo_revision() -> None:
+pytestmark = pytest.mark.integration
+
+
+def test_quantization_regenerates_for_exact_tempo_revision_without_reusing_previous_result() -> (
+    None
+):
     first_resolution = manual_resolution(
         (
             (60, 0.125, 0.50, 0.0, True),
@@ -119,9 +129,10 @@ def test_quantization_regenerates_for_exact_tempo_revision() -> None:
         second_notes[0].quantized_onset_step,
         second_notes[0].quantized_offset_step,
     )
+    assert tuple(note.source for note in first_notes) == tuple(note.source for note in second_notes)
     assert all(
         first_note.source is second_note.source
-        for first_note, second_note in zip(first_notes, second_notes)
+        for first_note, second_note in zip(first_notes, second_notes, strict=True)
     )
     assert first.tempo is first_resolution
     assert first.report.settings is settings
