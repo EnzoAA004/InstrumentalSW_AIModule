@@ -98,6 +98,7 @@ jobs:
             ruff-format.exit
             mypy.log
             mypy.exit
+            tests/unit/test_midi_export_contracts.py
           if-no-files-found: error
           retention-days: 1
 
