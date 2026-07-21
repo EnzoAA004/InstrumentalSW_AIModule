@@ -40,13 +40,13 @@ jobs:
       - name: Install project
         run: python -m pip install -e ".[dev]"
 
-      - name: Capture pytest and coverage
+      - name: Capture isolated RED test
         id: pytest_coverage
         continue-on-error: true
         shell: bash
         run: |
           set +e
-          python -m pytest --cov=saxo_ai --cov-report=term-missing --cov-report=xml > pytest-coverage.log 2>&1
+          python -m pytest tests/unit/test_midi_export_architecture.py::test_midi_artifact_hashing_stays_outside_domain -q > pytest-coverage.log 2>&1
           code=$?
           printf '%s\n' "$code" > pytest-coverage.exit
           exit "$code"
