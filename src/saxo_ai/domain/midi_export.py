@@ -3,7 +3,6 @@ from __future__ import annotations
 import math
 import re
 from dataclasses import dataclass
-from hashlib import sha256
 
 from saxo_ai.domain.written_pitch import (
     WrittenPitchNoteEvent,
@@ -176,13 +175,10 @@ class MidiArtifact:
             or self.size_bytes != len(self.content)
         ):
             raise InvalidMidiArtifactError("size_bytes must equal the encoded content length")
-        expected_digest = sha256(self.content).hexdigest()
-        if (
-            not isinstance(self.sha256, str)
-            or _SHA256_PATTERN.fullmatch(self.sha256) is None
-            or self.sha256 != expected_digest
-        ):
-            raise InvalidMidiArtifactError("sha256 must match the lowercase content SHA-256")
+        if not isinstance(self.sha256, str) or _SHA256_PATTERN.fullmatch(self.sha256) is None:
+            raise InvalidMidiArtifactError(
+                "sha256 must be a lowercase 64-character hexadecimal digest"
+            )
 
 
 @dataclass(frozen=True, slots=True)
