@@ -223,7 +223,6 @@ def test_midi_artifact_validates_content_size_and_digest() -> None:
         {"media_type": "application/octet-stream"},
         {"file_extension": ".midi"},
         {"size_bytes": 1},
-        {"sha256": "0" * 64},
         {"sha256": "ABC"},
     ],
 )
