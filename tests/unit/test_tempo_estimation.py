@@ -44,7 +44,9 @@ from saxo_ai.infrastructure.onset_interval_tempo import OnsetIntervalTempoEstima
 
 
 def written_result(onsets: tuple[float, ...]) -> WrittenPitchTranscriptionResult:
-    notes = tuple(NoteEvent(60 + index, onset, onset + 0.1, 100, 0.8) for index, onset in enumerate(onsets))
+    notes = tuple(
+        NoteEvent(60 + index, onset, onset + 0.1, 100, 0.8) for index, onset in enumerate(onsets)
+    )
     batch = NoteEventBatch(notes)
     raw = TranscriptionResult(
         batch,
@@ -239,9 +241,13 @@ def test_estimation_use_case_rejects_invalid_input_before_port() -> None:
     estimator = RecordingEstimator(automatic)
 
     with pytest.raises(InvalidTempoEstimateError):
-        EstimateTranscriptionTempo(estimator).execute(cast(Any, object()), TempoEstimationSettings())
+        EstimateTranscriptionTempo(estimator).execute(
+            cast(Any, object()), TempoEstimationSettings()
+        )
     with pytest.raises(InvalidTempoSettingsError):
-        EstimateTranscriptionTempo(estimator).execute(written_result((0.0, 0.5, 1.0)), cast(Any, object()))
+        EstimateTranscriptionTempo(estimator).execute(
+            written_result((0.0, 0.5, 1.0)), cast(Any, object())
+        )
     assert estimator.calls == []
 
 
