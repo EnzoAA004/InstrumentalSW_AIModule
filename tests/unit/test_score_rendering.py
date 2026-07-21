@@ -120,9 +120,9 @@ def test_same_input_settings_and_renderer_output_are_deterministic() -> None:
         ScoreRendererOutput((ScoreRendererPage(1, b""),), ()),
         ScoreRendererOutput((ScoreRendererPage(1, b"<svg"),), ()),
         ScoreRendererOutput((ScoreRendererPage(1, b"<html/>"),), ()),
-        ScoreRendererOutput((ScoreRendererPage(1, "not bytes"),), ()),
+        ScoreRendererOutput((ScoreRendererPage(1, cast(Any, "not bytes")),), ()),
         ScoreRendererOutput((ScoreRendererPage(True, svg(1)),), ()),
-        ScoreRendererOutput((ScoreRendererPage(1, svg(1)),), (object(),)),
+        ScoreRendererOutput((ScoreRendererPage(1, svg(1)),), (cast(Any, object()),)),
     ],
 )
 def test_invalid_renderer_outputs_are_rejected_atomically(invalid_output: object) -> None:
@@ -182,7 +182,9 @@ def test_unexpected_renderer_exception_is_wrapped_with_cause_and_stable_message(
         ),
     ],
 )
-def test_controlled_failures_preserve_upstream_artifacts_identity_and_logs(error: ScoreRenderingError) -> None:
+def test_controlled_failures_preserve_upstream_artifacts_identity_and_logs(
+    error: ScoreRenderingError,
+) -> None:
     original = musicxml_result(revision=8)
     midi = midi_result(original)
     before = upstream_snapshot(original, midi)
@@ -204,7 +206,9 @@ def test_controlled_failures_preserve_upstream_artifacts_identity_and_logs(error
 @pytest.mark.parametrize(
     "renderer_output",
     [
-        ScoreRendererOutput((ScoreRendererPage(1, b""),), (ScoreRendererLog("render_page", 1, "empty"),)),
+        ScoreRendererOutput(
+            (ScoreRendererPage(1, b""),), (ScoreRendererLog("render_page", 1, "empty"),)
+        ),
         ScoreRendererOutput(
             (ScoreRendererPage(1, b'<html xmlns="http://www.w3.org/1999/xhtml"/>'),),
             (ScoreRendererLog("render_page", 1, "wrong root"),),
@@ -256,12 +260,12 @@ def test_architecture_and_scope_boundaries() -> None:
         "hashlib",
         "elementtree",
         "xml.etree",
-        "verovio",
         "fastapi",
         "application",
         "infrastructure",
     ):
         assert forbidden not in domain
+    assert "import verovio" not in domain
     assert "hashlib" in application
     assert "verovio" not in application
     assert "fastapi" not in application

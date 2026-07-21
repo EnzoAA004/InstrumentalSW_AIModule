@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import FrozenInstanceError
+from typing import Any, cast
 
 import pytest
 
@@ -67,7 +68,9 @@ def test_settings_defaults_are_frozen_slotted_and_versioned() -> None:
         ({"scale": 1000}, 1000),
     ],
 )
-def test_settings_accept_positive_integer_boundaries(kwargs: dict[str, object], expected: int) -> None:
+def test_settings_accept_positive_integer_boundaries(
+    kwargs: dict[str, object], expected: int
+) -> None:
     settings = ScoreRenderSettings(**kwargs)  # type: ignore[arg-type]
     field = next(iter(kwargs))
     assert getattr(settings, field) == expected
@@ -115,12 +118,14 @@ def test_render_page_log_requires_positive_page_number() -> None:
         ("load", None, 123),
     ],
 )
-def test_invalid_log_entries_are_rejected(stage: object, page_number: object, message: object) -> None:
+def test_invalid_log_entries_are_rejected(
+    stage: object, page_number: object, message: object
+) -> None:
     with pytest.raises(InvalidScoreRenderLogEntryError):
-        ScoreRenderLogEntry(  # type: ignore[arg-type]
-            stage=stage,
-            page_number=page_number,
-            message=message,
+        ScoreRenderLogEntry(
+            stage=cast(Any, stage),
+            page_number=cast(Any, page_number),
+            message=cast(Any, message),
         )
 
 
@@ -213,7 +218,7 @@ def test_result_preserves_original_revision_and_complete_page_sequence() -> None
     assert tuple(page.page_number for page in result.pages) == (1, 2)
     assert result.report.source_musicxml_sha256 == original.artifact.sha256
     assert result.report.source_tempo_revision == original.original.tempo.revision == 7
-    raw = result.original.original.tempo.original.original.original.original.original.original
+    raw = result.original.original.tempo.original.original.original.original
     assert raw.model.engine_name == "filosax"
     assert raw.model.checkpoint_sha256 == "c" * 64
     assert result.original.original.tempo.original.events[0].source.event.confidence == 0.8
@@ -266,7 +271,7 @@ def test_result_rejects_empty_missing_duplicate_or_out_of_order_pages(
         ),
     ],
 )
-def test_result_rejects_report_inconsistencies(report_factory) -> None:
+def test_result_rejects_report_inconsistencies(report_factory: Any) -> None:
     original = musicxml_result()
     page = artifact()
     report = report_factory(original, page)

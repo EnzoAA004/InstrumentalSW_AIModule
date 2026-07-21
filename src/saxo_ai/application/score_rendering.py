@@ -249,9 +249,7 @@ class RenderMusicXmlToSvg:
             ) from error
 
         if not isinstance(output, ScoreRendererOutput):
-            raise InvalidScoreRendererOutputError(
-                "Renderer must return ScoreRendererOutput."
-            )
+            raise InvalidScoreRendererOutputError("Renderer must return ScoreRendererOutput.")
         logs = _validated_logs(output.logs)
         pages = _build_pages(output.pages, logs=logs)
         try:

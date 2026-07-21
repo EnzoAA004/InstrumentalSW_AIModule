@@ -24,7 +24,7 @@ def _new_log_content(current: object, previous: str) -> tuple[str, str]:
         message = ""
     else:
         message = current
-    return current, message.strip()
+    return current, message
 
 
 def _capture_log(
@@ -132,11 +132,7 @@ class VerovioSvgScoreRenderer:
                 page_number=None,
                 logs=tuple(logs),
             ) from error
-        if (
-            isinstance(page_count, bool)
-            or not isinstance(page_count, int)
-            or page_count <= 0
-        ):
+        if isinstance(page_count, bool) or not isinstance(page_count, int) or page_count <= 0:
             raise ScorePageCountError(
                 "Score renderer returned an invalid page count.",
                 stage="page_count",

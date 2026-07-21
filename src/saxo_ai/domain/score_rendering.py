@@ -230,9 +230,7 @@ class SvgPageArtifact:
         if self.media_type != SVG_MEDIA_TYPE:
             raise InvalidSvgPageArtifactError(f"media_type must be {SVG_MEDIA_TYPE!r}")
         if self.file_extension != SVG_FILE_EXTENSION:
-            raise InvalidSvgPageArtifactError(
-                f"file_extension must be {SVG_FILE_EXTENSION!r}"
-            )
+            raise InvalidSvgPageArtifactError(f"file_extension must be {SVG_FILE_EXTENSION!r}")
         size = _non_negative_integer(
             self.size_bytes,
             field_name="size_bytes",
@@ -301,9 +299,7 @@ class ScoreRenderResult:
         if any(not isinstance(page, SvgPageArtifact) for page in self.pages):
             raise InvalidScoreRenderResultError("pages must contain SvgPageArtifact values")
         if not isinstance(self.diagnostics, ScoreRenderDiagnostics):
-            raise InvalidScoreRenderResultError(
-                "diagnostics must be ScoreRenderDiagnostics"
-            )
+            raise InvalidScoreRenderResultError("diagnostics must be ScoreRenderDiagnostics")
         if not isinstance(self.report, ScoreRenderReport):
             raise InvalidScoreRenderResultError("report must be ScoreRenderReport")
 
@@ -313,9 +309,7 @@ class ScoreRenderResult:
         if actual_numbers != expected_numbers:
             raise InvalidScoreRenderResultError("pages must be numbered exactly from 1 to N")
         if any(page.page_count != expected_count for page in self.pages):
-            raise InvalidScoreRenderResultError(
-                "every page_count must equal the result page count"
-            )
+            raise InvalidScoreRenderResultError("every page_count must equal the result page count")
         if self.report.page_count != expected_count:
             raise InvalidScoreRenderResultError("report page_count must match pages")
         if self.report.total_size_bytes != sum(page.size_bytes for page in self.pages):
