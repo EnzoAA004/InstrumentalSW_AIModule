@@ -1,10 +1,17 @@
 from __future__ import annotations
 
 import math
-from typing import Any, cast
+from itertools import pairwise
 
 import pytest
 
+from saxo_ai.application.rhythm_quantization import (
+    QuantizeMonophonicRhythm,
+    grid_step_to_seconds,
+    round_grid_position_half_up,
+    seconds_per_grid_step,
+    seconds_to_grid_step,
+)
 from saxo_ai.application.tempo_resolution import ConfigureManualTempo
 from saxo_ai.domain.models import SaxophoneType
 from saxo_ai.domain.note_confidence import (
@@ -19,6 +26,11 @@ from saxo_ai.domain.note_event_postprocessing import (
     PostProcessedTranscriptionResult,
 )
 from saxo_ai.domain.note_events import NoteEvent, NoteEventBatch
+from saxo_ai.domain.rhythm_quantization import (
+    QuantizedNoteEvent,
+    QuantizedRhythmResult,
+    RhythmQuantizationSettings,
+)
 from saxo_ai.domain.tempo import TempoResolution
 from saxo_ai.domain.transcription import (
     TranscriptionModelIdentity,
@@ -26,18 +38,6 @@ from saxo_ai.domain.transcription import (
     TranscriptionSettings,
 )
 from saxo_ai.domain.written_pitch import WrittenPitchNoteEvent, WrittenPitchTranscriptionResult
-
-from saxo_ai.application.rhythm_quantization import (
-    QuantizeMonophonicRhythm,
-    grid_step_to_seconds,
-    round_grid_position_half_up,
-    seconds_per_grid_step,
-    seconds_to_grid_step,
-)
-from saxo_ai.domain.rhythm_quantization import (
-    QuantizedNoteEvent,
-    RhythmQuantizationSettings,
-)
 
 
 def written_result(
@@ -74,8 +74,7 @@ def written_result(
         ),
     )
     annotations = tuple(
-        ConfidenceAnnotatedNoteEvent(note, specs[index][4])
-        for index, note in enumerate(notes)
+        ConfidenceAnnotatedNoteEvent(note, specs[index][4]) for index, note in enumerate(notes)
     )
     low_count = sum(annotation.is_low_confidence for annotation in annotations)
     annotated = ConfidenceAnnotatedTranscriptionResult(
@@ -106,8 +105,8 @@ def manual_resolution(
     return ConfigureManualTempo().execute(written_result(specs), bpm)
 
 
-def notes_from(result: object) -> tuple[QuantizedNoteEvent, ...]:
-    timeline = cast(Any, result).timeline
+def notes_from(result: QuantizedRhythmResult) -> tuple[QuantizedNoteEvent, ...]:
+    timeline = result.timeline
     return tuple(item for item in timeline if isinstance(item, QuantizedNoteEvent))
 
 
@@ -116,7 +115,7 @@ def quantize(
     *,
     bpm: float = 120.0,
     subdivisions: int = 4,
-):
+) -> QuantizedRhythmResult:
     return QuantizeMonophonicRhythm().execute(
         manual_resolution(specs, bpm=bpm),
         RhythmQuantizationSettings(subdivisions),
@@ -208,8 +207,7 @@ def test_overlap_chain_leaves_no_residual_overlap() -> None:
     notes = notes_from(result)
 
     assert all(
-        left.quantized_offset_step <= right.quantized_onset_step
-        for left, right in zip(notes, notes[1:])
+        left.quantized_offset_step <= right.quantized_onset_step for left, right in pairwise(notes)
     )
     assert all(note.duration_steps >= 1 for note in notes)
 
