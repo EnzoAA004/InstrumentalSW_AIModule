@@ -230,12 +230,12 @@ def test_contracts_are_immutable() -> None:
         resolution.revision = 2  # type: ignore[misc]
 
 
-@pytest.mark.parametrize("value", [120, 1.0, 16_777_215.0 / 60_000_000])
+@pytest.mark.parametrize("value", [60, 120, 60_000_000 / 16_777_215])
 def test_midi_settings_keep_existing_positive_bpm_behavior(value: float) -> None:
     assert MidiExportSettings(tempo_bpm=value).tempo_bpm == float(value)
 
 
-@pytest.mark.parametrize("value", [True, 0, -1, float("nan"), float("inf")])
+@pytest.mark.parametrize("value", [True, 0, -1, 1.0, float("nan"), float("inf")])
 def test_midi_settings_keep_rejecting_invalid_bpm(value: object) -> None:
     with pytest.raises(InvalidMidiExportSettingsError):
         MidiExportSettings(tempo_bpm=cast(Any, value))
