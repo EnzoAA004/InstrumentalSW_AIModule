@@ -19,14 +19,6 @@ from saxo_ai.domain.note_event_postprocessing import (
     PostProcessedTranscriptionResult,
 )
 from saxo_ai.domain.note_events import NoteEvent, NoteEventBatch
-from saxo_ai.domain.tempo import TempoResolution
-from saxo_ai.domain.transcription import (
-    TranscriptionModelIdentity,
-    TranscriptionResult,
-    TranscriptionSettings,
-)
-from saxo_ai.domain.written_pitch import WrittenPitchNoteEvent, WrittenPitchTranscriptionResult
-
 from saxo_ai.domain.rhythm_quantization import (
     DEFAULT_SUBDIVISIONS_PER_BEAT,
     OVERLAP_POLICY,
@@ -42,6 +34,13 @@ from saxo_ai.domain.rhythm_quantization import (
     RhythmQuantizationReport,
     RhythmQuantizationSettings,
 )
+from saxo_ai.domain.tempo import TempoResolution
+from saxo_ai.domain.transcription import (
+    TranscriptionModelIdentity,
+    TranscriptionResult,
+    TranscriptionSettings,
+)
+from saxo_ai.domain.written_pitch import WrittenPitchNoteEvent, WrittenPitchTranscriptionResult
 
 
 def written_result(
@@ -78,8 +77,7 @@ def written_result(
         ),
     )
     annotations = tuple(
-        ConfidenceAnnotatedNoteEvent(note, specs[index][4])
-        for index, note in enumerate(notes)
+        ConfidenceAnnotatedNoteEvent(note, specs[index][4]) for index, note in enumerate(notes)
     )
     low_count = sum(annotation.is_low_confidence for annotation in annotations)
     annotated = ConfidenceAnnotatedTranscriptionResult(
