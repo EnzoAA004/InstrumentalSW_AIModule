@@ -1,0 +1,77 @@
+name: SAX-035 README
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out feature branch
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref }}
+      - name: Update README
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("README.md")
+          text = path.read_text()
+          anchor = "Application calculates exact SHA-256 metadata and preserves the exact `QuantizedRhythmResult`, tempo revision, source notes, reports, and model provenance by reference. Verovio validates both in-memory bytes and a temporary `.musicxml` file without rendering. The complete contract is documented in [`docs/contracts/musicxml-export-v1.md`](docs/contracts/musicxml-export-v1.md). SAX-034 is not connected to FastAPI, persistence, Backend, or Frontend and does not implement SAX-035, SVG, or PDF.\n"
+          section = """
+
+## Revision-linked SVG score rendering
+
+SAX-035 adds `RenderMusicXmlToSvg` behind an in-memory `ScoreRenderer` port. The production adapter reuses pinned `verovio==6.2.1` to load an already validated `MusicXmlExportResult` and render one independent UTF-8 SVG artifact per page.
+
+```text
+policy version:     1.0
+media type:         image/svg+xml
+extension:          .svg
+page size:          2100 × 2970
+scale:              100
+page numbering:     1-based
+identifier policy:  xmlIdChecksum
+storage:            none
+```
+
+Every result preserves the exact MusicXML object and tempo revision used. Application validates each namespaced SVG document, calculates exact size and SHA-256, and returns pages atomically in ascending order. Verovio logs are retained as ordered diagnostics; load, page-count, and page-render errors expose captured logs separately without modifying previously generated MIDI or MusicXML artifacts.
+
+The baseline uses fixed layout settings, may produce multiple pages, and depends on Verovio 6.2.1. It does not claim professional engraving quality, permit visual editing, generate PDF, persist files, or expose rendering through HTTP. The complete contract is documented in [`docs/contracts/score-rendering-v1.md`](docs/contracts/score-rendering-v1.md).
+"""
+          if "## Revision-linked SVG score rendering" not in text:
+              text = text.replace(anchor, anchor + section)
+          text = text.replace(
+              "python -m pytest -m musicxml_integration\npython -m pytest -m baseline_integration",
+              "python -m pytest -m musicxml_integration\npython -m pytest -m score_render_integration\npython -m pytest -m baseline_integration",
+          )
+          text = text.replace(
+              "Real `midi_integration` and `musicxml_integration` tests run on all three supported Python versions. The real FiloSax `baseline_integration` is required only on Python 3.11; on Python 3.12 and 3.13 it skips with an explicit reason while the full core, FFmpeg, MIDI, and MusicXML integration suites continue to run.",
+              "Real `midi_integration`, `musicxml_integration`, and `score_render_integration` tests run on all three supported Python versions. The real FiloSax `baseline_integration` is required only on Python 3.11; on Python 3.12 and 3.13 it skips with an explicit reason while the full core, FFmpeg, MIDI, MusicXML, and SVG rendering suites continue to run.",
+          )
+          text = text.replace(
+              "├── infrastructure/  # Environment, hashing, FFmpeg, repositories, model, MIDI, tempo, and XML adapters",
+              "├── infrastructure/  # Environment, hashing, FFmpeg, repositories, model, MIDI, tempo, XML, and SVG adapters",
+          )
+          text = text.replace(
+              "The module does not connect duration validation, model inference, NoteEvent postprocessing, confidence annotations, written-pitch transposition, MIDI export, tempo resolution, rhythm quantization, or MusicXML export to endpoints; persist audio or derived artifacts; implement retries/workers/queues; train models; render a score; or use product cloud storage. SAX-034 does not implement SAX-035, SVG, PDF, layout, playback, Backend, or Frontend behavior.",
+              "The module does not connect duration validation, model inference, NoteEvent postprocessing, confidence annotations, written-pitch transposition, MIDI export, tempo resolution, rhythm quantization, MusicXML export, or SVG rendering to endpoints; persist audio or derived artifacts; implement retries/workers/queues; train models; generate PDF; or use product cloud storage. SAX-035 does not implement PDF, editing, playback, persistence, SAX-040, Backend, or Frontend behavior.",
+          )
+          path.write_text(text)
+          PY
+          if git diff --quiet; then
+            echo "README already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          git commit -m "docs(SAX-035): expose SVG rendering capability"
+          git push origin HEAD:${{ github.head_ref }}
