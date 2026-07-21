@@ -13,6 +13,7 @@ dependencies = [
   "mido==1.3.3",
   "python-multipart>=0.0.9,<1",
   "uvicorn[standard]>=0.30,<1",
+  "verovio==6.2.1",
 ]
 
 [project.optional-dependencies]
@@ -42,6 +43,7 @@ markers = [
   "integration: tests that require external audio or model runtimes",
   "baseline_integration: real pinned FiloSax checkpoint download and inference",
   "midi_integration: real in-memory Standard MIDI File encoding and parsing",
+  "musicxml_integration: real MusicXML import and external reader validation",
 ]
 
 [tool.coverage.run]
