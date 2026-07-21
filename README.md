@@ -125,6 +125,24 @@ The adapter validates its own bytes by reopening them with Mido. Integration tes
 
 The complete contract is documented in [`docs/contracts/midi-export-v1.md`](docs/contracts/midi-export-v1.md). This capability is not connected to FastAPI, job state, storage, Backend, or Frontend.
 
+## Tempo resolution
+
+SAX-032 adds a replaceable `TempoEstimator` port and a deterministic standard-library baseline based only on exact note onsets. It calculates consecutive inter-onset intervals, converts them to BPM candidates, selects their median, resolves configured-range octave equivalents, and reports IOI consensus.
+
+```text
+estimator:             median_onset_interval
+minimum BPM:           40.0
+maximum BPM:          240.0
+minimum intervals:      2
+consensus tolerance:    0.08
+```
+
+Confidence equals `inlier intervals / total intervals`; it is not calibrated accuracy, so `0.8` does not mean 80% tempo accuracy. Exact duplicate onsets are removed only inside estimation and never from the original result.
+
+Manual tempo works even when automatic estimation is unavailable. Every explicit override creates a new immutable revision while preserving the original and automatic estimate by reference. `ExportTempoResolvedMidi` regenerates MIDI through the existing SAX-031 exporter and retains the exact tempo revision used.
+
+The complete contract is documented in [`docs/contracts/tempo-resolution-v1.md`](docs/contracts/tempo-resolution-v1.md). SAX-032 does not analyze audio, estimate meter, quantize rhythm, create MusicXML, or connect the flow to FastAPI.
+
 ## Optional FiloSax baseline
 
 SAX-021 provides an internal, replaceable FiloSax audio-to-note baseline behind
@@ -185,8 +203,8 @@ Real `midi_integration` tests run on all three supported Python versions. The re
 src/saxo_ai/
 ├── api/             # FastAPI transport and HTTP error translation
 ├── application/     # Use cases, ports, stable errors, JSON, and artifact metadata
-├── domain/          # Immutable jobs, audio policy, note, pitch, and result contracts
-├── infrastructure/  # Environment, hashing, FFmpeg, repositories, model, and MIDI adapters
+├── domain/          # Immutable jobs, audio policy, note, pitch, tempo, and result contracts
+├── infrastructure/  # Environment, hashing, FFmpeg, repositories, model, MIDI, and tempo adapters
 └── main.py          # Composition root and dependency injection
 ```
 
@@ -194,4 +212,4 @@ Dependencies point inward. FastAPI does not appear in domain or application. Env
 
 ## Scope boundaries
 
-The module does not connect duration validation, model inference, NoteEvent postprocessing, confidence annotations, written-pitch transposition, or MIDI export to endpoints; persist audio or MIDI; implement retries/workers/queues; train models; generate MusicXML or a rendered score; or use product cloud storage. SAX-031 does not implement tempo estimation, rhythmic quantization, notation, playback, Backend, or Frontend behavior.
+The module does not connect duration validation, model inference, NoteEvent postprocessing, confidence annotations, written-pitch transposition, MIDI export, or tempo resolution to endpoints; persist audio or MIDI; implement retries/workers/queues; train models; generate MusicXML or a rendered score; or use product cloud storage. SAX-032 does not implement rhythmic quantization, notation, audio beat tracking, playback, Backend, or Frontend behavior.
