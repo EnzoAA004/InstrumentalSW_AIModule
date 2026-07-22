@@ -7,28 +7,184 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  diagnose:
+  close:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
           cache: pip
-      - run: sudo apt-get update && sudo apt-get install --yes ffmpeg
       - run: python -m pip install --upgrade pip && python -m pip install -e ".[dev]"
-      - name: Capture quality output
+      - name: Apply exact SAX-043 closure edits
         run: |
-          set +e
-          python scripts/check_quality.py > sax043-quality.log 2>&1
-          echo "exit_code=$?" >> sax043-quality.log
-          exit 0
-      - uses: actions/upload-artifact@v6
-        with:
-          name: sax043-ai-final-diagnostics
-          path: sax043-quality.log
-          retention-days: 1
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace(path: str, old: str, new: str, count: int = 1) -> None:
+              target = Path(path)
+              text = target.read_text(encoding="utf-8")
+              actual = text.count(old)
+              if actual != count:
+                  raise RuntimeError(f"{path}: expected {count} occurrence(s), found {actual}: {old!r}")
+              target.write_text(text.replace(old, new), encoding="utf-8")
+
+          unit = "tests/unit/test_transcription_revisions.py"
+          replace(
+              unit,
+              "    InMemoryTranscriptionReviewRepository,\n    InMemoryTranscriptionRevisionRepository,",
+              "    InMemoryTranscriptionReviewRegistrationRepository,\n"
+              "    InMemoryTranscriptionReviewRepository,\n"
+              "    InMemoryTranscriptionRevisionRepository,",
+          )
+          replace(
+              unit,
+              "from saxo_ai.infrastructure.repositories import (",
+              "from saxo_ai.domain.written_pitch import WrittenPitchTranscriptionResult\n"
+              "from saxo_ai.infrastructure.repositories import (",
+          )
+          replace(
+              unit,
+              "    events: tuple[tuple[int, int, float, float, int, float, bool], ...] | None = None,\n):",
+              "    events: tuple[tuple[int, int, float, float, int, float, bool], ...] | None = None,\n"
+              ") -> tuple[\n"
+              "    InMemoryTranscriptionJobRepository,\n"
+              "    InMemoryTranscriptionReviewRepository,\n"
+              "    InMemoryTranscriptionRevisionRepository,\n"
+              "    WrittenPitchTranscriptionResult,\n"
+              "    WrittenPitchTranscriptionResult,\n"
+              "]:",
+          )
+          replace(
+              unit,
+              "    revisions = InMemoryTranscriptionRevisionRepository()\n    jobs.save",
+              "    revisions = InMemoryTranscriptionRevisionRepository()\n"
+              "    registrations = InMemoryTranscriptionReviewRegistrationRepository(\n"
+              "        reviews, revisions\n"
+              "    )\n"
+              "    jobs.save",
+          )
+          replace(
+              unit,
+              "RegisterTranscriptionReview(jobs, reviews, revisions, fixed_clock)",
+              "RegisterTranscriptionReview(jobs, registrations, fixed_clock)",
+              count=2,
+          )
+          replace(
+              unit,
+              "        revision.revision_number = 5  # type: ignore[misc]",
+              "        setattr(revision, \"revision_number\", 5)",
+          )
+          replace(
+              unit,
+              "        revision.events = ()  # type: ignore[misc]",
+              "        setattr(revision, \"events\", ())",
+          )
+          replace(
+              unit,
+              "        assert revisions.latest(JOB_ID).revision_number == 0",
+              "        latest = revisions.latest(JOB_ID)\n"
+              "        assert latest is not None\n"
+              "        assert latest.revision_number == 0",
+              count=2,
+          )
+
+          api = "tests/api/test_transcription_revisions.py"
+          replace(
+              api,
+              "from datetime import UTC, datetime",
+              "from collections.abc import Callable\nfrom datetime import UTC, datetime",
+          )
+          replace(
+              api,
+              "def uuid_values():",
+              "def uuid_values() -> Callable[[], UUID]:",
+          )
+
+          routes = "src/saxo_ai/api/routes.py"
+          target = Path(routes)
+          text = target.read_text(encoding="utf-8")
+          if text.count("  # type: ignore[arg-type]") != 9:
+              raise RuntimeError("routes.py: unexpected number of arg-type ignores")
+          target.write_text(text.replace("  # type: ignore[arg-type]", ""), encoding="utf-8")
+
+          review_unit = "tests/unit/test_transcription_review.py"
+          replace(
+              review_unit,
+              "    InMemoryTranscriptionJobRepository,\n    InMemoryTranscriptionReviewRepository,",
+              "    InMemoryTranscriptionJobRepository,\n"
+              "    InMemoryTranscriptionReviewRegistrationRepository,\n"
+              "    InMemoryTranscriptionReviewRepository,\n"
+              "    InMemoryTranscriptionRevisionRepository,",
+          )
+          replace(
+              review_unit,
+              "from tests.review_helpers import JOB_ID, build_job, build_written_result\n\n\n",
+              "from tests.review_helpers import JOB_ID, build_job, build_written_result\n\n\n"
+              "def registration_repository(\n"
+              "    reviews: InMemoryTranscriptionReviewRepository,\n"
+              ") -> InMemoryTranscriptionReviewRegistrationRepository:\n"
+              "    return InMemoryTranscriptionReviewRegistrationRepository(\n"
+              "        reviews, InMemoryTranscriptionRevisionRepository()\n"
+              "    )\n\n\n",
+          )
+          replace(
+              review_unit,
+              "RegisterTranscriptionReview(jobs, reviews)",
+              "RegisterTranscriptionReview(jobs, registration_repository(reviews))",
+              count=5,
+          )
+
+          review_api = "tests/api/test_transcription_reviews.py"
+          replace(
+              review_api,
+              "    InMemoryTranscriptionJobRepository,\n    InMemoryTranscriptionReviewRepository,",
+              "    InMemoryTranscriptionJobRepository,\n"
+              "    InMemoryTranscriptionReviewRegistrationRepository,\n"
+              "    InMemoryTranscriptionReviewRepository,\n"
+              "    InMemoryTranscriptionRevisionRepository,",
+          )
+          replace(
+              review_api,
+              "    jobs.save(build_job())\n    RegisterTranscriptionReview(jobs, reviews).execute(JOB_ID, build_written_result())",
+              "    revisions = InMemoryTranscriptionRevisionRepository()\n"
+              "    registrations = InMemoryTranscriptionReviewRegistrationRepository(\n"
+              "        reviews, revisions\n"
+              "    )\n"
+              "    jobs.save(build_job())\n"
+              "    RegisterTranscriptionReview(jobs, registrations).execute(\n"
+              "        JOB_ID, build_written_result()\n"
+              "    )",
+          )
+          replace(
+              review_api,
+              "with TestClient(create_app(job_repository=jobs, review_repository=reviews)) as client:",
+              "with TestClient(\n"
+              "        create_app(\n"
+              "            job_repository=jobs,\n"
+              "            review_repository=reviews,\n"
+              "            revision_repository=revisions,\n"
+              "            review_registration_repository=registrations,\n"
+              "        )\n"
+              "    ) as client:",
+          )
+          PY
+          python -m ruff format src tests
+          python -m ruff check --fix src tests
+      - name: Commit closure edits
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src tests
+          if git diff --cached --quiet; then
+            echo "No closure edits"
+          else
+            git commit -m "fix(SAX-043): close atomicity and strict typing gaps"
+            git push origin HEAD:${{ github.head_ref || github.ref_name }}
+          fi
