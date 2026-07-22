@@ -68,6 +68,18 @@ class InvalidRevisionOperationError(ValueError):
     """Raised when a revision operation sequence is structurally invalid."""
 
 
+class RevisionArtifactsNotReadyError(LookupError):
+    """Raised when a known revision has no registered artifact bundle."""
+
+
+class RevisionArtifactNotFoundError(LookupError):
+    """Raised when a bundle does not contain the requested artifact ID."""
+
+
+class RevisionArtifactConflictError(RuntimeError):
+    """Raised when an incompatible bundle would replace registered artifacts."""
+
+
 class FfmpegNotAvailableError(RuntimeError):
     """Raised when the FFmpeg executable cannot be started."""
 
