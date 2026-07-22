@@ -19,6 +19,8 @@ Tests were committed before production revision modules:
 ```text
 test(SAX-043): define immutable revision contracts and operations
 test(SAX-043): define revision history conflicts and HTTP API
+test(SAX-043): require revision zero for a preexisting review
+test(SAX-043): require atomic review and revision initialization
 ```
 
 The first protected run failed because the new domain/application modules and repository implementations did not exist. Dependency installation and the existing SAX-042 suite were not used as the RED condition.
@@ -66,9 +68,13 @@ main.py
 
 Key behavior:
 
-- `RegisterTranscriptionReview` initializes revision zero once;
-- revision zero is derived without mutating `WrittenPitchTranscriptionResult`;
-- separate in-memory repositories own revision history and regeneration requests;
+- `RegisterTranscriptionReview` builds revision zero and performs one call to the atomic registration port;
+- one shared in-memory snapshot owns review plus revision history while query ports remain separate;
+- a preexisting identical review with no history receives exactly one revision zero;
+- repeated registration of the same instance is idempotent and a different instance is rejected;
+- simulated initialization failure leaves no partial review or revision-zero state;
+- revision zero is derived without mutating `WrittenPitchTranscriptionResult` or job status;
+- a separate repository owns regeneration requests;
 - update/add/delete apply to a temporary complete event list and append only after validation;
 - written pitch is authoritative input and concert pitch is derived from the instrument offset;
 - optimistic append compares the expected latest revision;
@@ -92,7 +98,9 @@ Temporary diagnostic/formatter workflows are not part of the final diff.
 
 ```text
 RegisterTranscriptionReview
-→ TranscriptionRevisionRepository.initialize(revision zero)
+→ build complete revision zero
+→ TranscriptionReviewRegistrationRepository.initialize(review, revision zero)
+→ one validated shared-snapshot replacement
 
 POST revision
 → CreateTranscriptionRevision

@@ -19,7 +19,9 @@ WrittenPitchTranscriptionResult
 → ...
 ```
 
-`RegisterTranscriptionReview` atomically initializes revision zero when the review is first registered. Re-registering the same exact result does not create a second revision zero.
+`RegisterTranscriptionReview` builds revision zero and delegates one logical write to `TranscriptionReviewRegistrationRepository.initialize(...)`. The in-memory implementation validates the complete aggregate before replacing one shared snapshot containing both the review and its revision history. Therefore readers cannot observe a review without revision zero or revision zero without its review.
+
+A preexisting identical review with an empty history is completed by creating exactly one revision zero. Re-registering the same result instance is idempotent and returns that exact object. A different review instance for the same job is rejected with a controlled mismatch error. Validation or simulated repository failure leaves both stores unchanged, and registration never changes `JobStatus`.
 
 Revision zero:
 

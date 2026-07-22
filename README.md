@@ -82,7 +82,7 @@ See [`docs/contracts/transcription-review-api-v1.md`](docs/contracts/transcripti
 
 ## Immutable human revisions
 
-SAX-043 initializes immutable revision zero when `RegisterTranscriptionReview` first stores the real SAX-042 result:
+SAX-043 initializes the real SAX-042 review and immutable revision zero through one atomic registration boundary:
 
 ```text
 WrittenPitchTranscriptionResult
@@ -91,6 +91,8 @@ WrittenPitchTranscriptionResult
 → revision 2
 → ...
 ```
+
+`TranscriptionReviewRegistrationRepository.initialize(...)` validates the aggregate before swapping one in-memory snapshot containing both the source review and revision history. A preexisting identical review with no history is completed with exactly one revision zero. Re-registering the same object is idempotent; a different review instance is rejected. Readers sharing the store cannot observe only one half of the initialization, and job status is unchanged.
 
 The source object and every historical revision remain unchanged. A complete new revision is appended for each explicit operation batch.
 
