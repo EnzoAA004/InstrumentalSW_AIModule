@@ -30,6 +30,10 @@ jobs:
           path = Path("tests/unit/test_transcription_revisions.py")
           text = path.read_text(encoding="utf-8")
           old = "RegisterTranscriptionReview(jobs, registrations, fixed_clock).execute(JOB_ID, result)"
+          first = text.find(old)
+          second = text.find(old, first + len(old))
+          if first < 0 or second < 0 or text.find(old, second + len(old)) >= 0:
+              raise RuntimeError("expected exactly two registration calls")
           new = (
               "RegisterTranscriptionReview(\n"
               "        jobs,\n"
@@ -37,9 +41,7 @@ jobs:
               "        fixed_clock,\n"
               "    ).execute(JOB_ID, result)"
           )
-          if text.count(old) != 1:
-              raise RuntimeError(f"expected one repeated-registration fixture, found {text.count(old)}")
-          path.write_text(text.replace(old, new), encoding="utf-8")
+          path.write_text(text[:second] + new + text[second + len(old):], encoding="utf-8")
           PY
           python -m ruff format tests/unit/test_transcription_revisions.py
           python -m ruff check tests/unit/test_transcription_revisions.py
