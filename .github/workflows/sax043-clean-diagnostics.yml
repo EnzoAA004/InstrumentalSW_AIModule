@@ -7,28 +7,64 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  diagnose:
+  correct:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
           cache: pip
-      - run: sudo apt-get update && sudo apt-get install --yes ffmpeg
       - run: python -m pip install --upgrade pip && python -m pip install -e ".[dev]"
-      - name: Capture clean quality output
+      - name: Correct strict types
         run: |
-          set +e
-          python scripts/check_quality.py > sax043-clean-quality.log 2>&1
-          echo "exit_code=$?" >> sax043-clean-quality.log
-          exit 0
-      - uses: actions/upload-artifact@v6
-        with:
-          name: sax043-clean-quality-diagnostics
-          path: sax043-clean-quality.log
-          retention-days: 1
+          python - <<'PY'
+          from pathlib import Path
+
+          repository = Path("src/saxo_ai/infrastructure/repositories.py")
+          text = repository.read_text(encoding="utf-8")
+          changes = {
+              "            existing = merged_reviews.get(job_id)\n            if existing is not None and existing is not result:\n":
+              "            existing_review = merged_reviews.get(job_id)\n            if existing_review is not None and existing_review is not result:\n",
+              "            existing = merged_revisions.get(job_id)\n            if existing is not None and existing != history:\n":
+              "            existing_history = merged_revisions.get(job_id)\n            if existing_history is not None and existing_history != history:\n",
+          }
+          for old, new in changes.items():
+              if text.count(old) != 1:
+                  raise RuntimeError(f"repositories.py: expected one match for {old!r}")
+              text = text.replace(old, new)
+          repository.write_text(text, encoding="utf-8")
+
+          test = Path("tests/unit/test_transcription_revisions.py")
+          text = test.read_text(encoding="utf-8")
+          old = (
+              "    InMemoryTranscriptionJobRepository,\n"
+              "    InMemoryTranscriptionReviewRegistrationRepository,\n"
+              "    InMemoryTranscriptionReviewRepository,\n"
+              "    InMemoryTranscriptionRevisionRepository,\n"
+          )
+          new = (
+              "    InMemoryTranscriptionJobRepository,\n"
+              "    InMemoryTranscriptionReviewRepository,\n"
+              "    InMemoryTranscriptionRevisionRepository,\n"
+          )
+          if text.count(old) != 1:
+              raise RuntimeError(f"test return annotation: expected one match, found {text.count(old)}")
+          test.write_text(text.replace(old, new), encoding="utf-8")
+          PY
+          python -m ruff format src/saxo_ai/infrastructure/repositories.py tests/unit/test_transcription_revisions.py
+          python -m ruff check src/saxo_ai/infrastructure/repositories.py tests/unit/test_transcription_revisions.py
+          python -m mypy
+      - name: Commit strict typing corrections
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/saxo_ai/infrastructure/repositories.py tests/unit/test_transcription_revisions.py
+          git commit -m "fix(SAX-043): satisfy strict aggregate typing"
+          git push origin HEAD:${{ github.head_ref || github.ref_name }}
