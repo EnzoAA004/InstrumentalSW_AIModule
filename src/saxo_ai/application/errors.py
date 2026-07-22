@@ -1,6 +1,11 @@
 from uuid import UUID
 
 from saxo_ai.domain.models import JobFailureCode
+from saxo_ai.domain.transcription_revisions import (
+    InvalidRevisionEventError as DomainInvalidRevisionEventError,
+)
+
+InvalidRevisionEventError = DomainInvalidRevisionEventError
 
 
 class UnsupportedAudioFormatError(ValueError):
@@ -49,6 +54,18 @@ class TranscriptionResultNotReadyError(LookupError):
 
 class TranscriptionReviewInstrumentMismatchError(ValueError):
     """Raised when a review result belongs to a different saxophone type."""
+
+
+class RevisionNotFoundError(LookupError):
+    """Raised when a requested immutable transcription revision does not exist."""
+
+
+class RevisionConflictError(RuntimeError):
+    """Raised when a writer does not target the latest transcription revision."""
+
+
+class InvalidRevisionOperationError(ValueError):
+    """Raised when a revision operation sequence is structurally invalid."""
 
 
 class FfmpegNotAvailableError(RuntimeError):

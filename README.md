@@ -23,9 +23,13 @@ GET  /health
 POST /api/v1/transcriptions
 GET  /api/v1/transcriptions/{job_id}
 GET  /api/v1/transcriptions/{job_id}/review
+GET  /api/v1/transcriptions/{job_id}/revisions
+GET  /api/v1/transcriptions/{job_id}/revisions/{revision_number}
+POST /api/v1/transcriptions/{job_id}/revisions
+POST /api/v1/transcriptions/{job_id}/revisions/{revision_number}/regeneration-requests
 ```
 
-Jobs and review results are in-memory only. A job begins with `UPLOADED`; the only current statuses are `UPLOADED` and `FAILED`.
+Jobs, review results, revisions, and regeneration requests are in-memory only. A job begins with `UPLOADED`; the only current statuses are `UPLOADED` and `FAILED`.
 
 ## Upload and status
 
@@ -70,42 +74,69 @@ summary.low_confidence_count
 ordered events
 ```
 
-Each event preserves:
+Each source event preserves concert/written MIDI, onset, offset, velocity, confidence, and low-confidence marker. Confidence is a model signal in `0..1`, not calibrated accuracy.
 
-```text
-index
-pitch_concert_midi
-written_pitch_midi
-onset_seconds
-offset_seconds
-velocity
-confidence
-is_low_confidence
-```
-
-Confidence interpretation is exactly:
-
-```text
-model_signal_not_calibrated_accuracy
-```
-
-Confidence remains a model signal in `0..1`; it is not a percentage or calibrated accuracy claim. The API adds no duration, note name, enharmonic spelling, key, measure, quantization, score, or audio field.
-
-A known job without a registered result returns HTTP 409:
-
-```json
-{
-  "code": "TRANSCRIPTION_RESULT_NOT_READY",
-  "message": "Transcription notes are not available yet.",
-  "field": "job_id"
-}
-```
-
-An unknown job returns 404. A malformed review UUID returns `400 INVALID_JOB_ID`. There is no public POST/PUT/PATCH/DELETE/seed route for review registration.
-
-`create_app` creates empty job and review repositories by default and permits repository injection in tests. Successful tests construct real domain results and register them through `RegisterTranscriptionReview`; the route does not return hardcoded notes.
+A known job without a registered result returns HTTP 409 `TRANSCRIPTION_RESULT_NOT_READY`. An unknown job returns 404. A malformed UUID returns `400 INVALID_JOB_ID`. There is no public route for registering the source review.
 
 See [`docs/contracts/transcription-review-api-v1.md`](docs/contracts/transcription-review-api-v1.md) and [`docs/tdd/iteration-017.md`](docs/tdd/iteration-017.md).
+
+## Immutable human revisions
+
+SAX-043 initializes the real SAX-042 review and immutable revision zero through one atomic registration boundary:
+
+```text
+WrittenPitchTranscriptionResult
+→ revision 0 (original)
+→ revision 1
+→ revision 2
+→ ...
+```
+
+`TranscriptionReviewRegistrationRepository.initialize(...)` validates the aggregate before swapping one in-memory snapshot containing both the source review and revision history. A preexisting identical review with no history is completed with exactly one revision zero. Re-registering the same object is idempotent; a different review instance is rejected. Readers sharing the store cannot observe only one half of the initialization, and job status is unchanged.
+
+The source object and every historical revision remain unchanged. A complete new revision is appended for each explicit operation batch.
+
+Stable IDs are:
+
+```text
+model source: source-{source_index}
+human added: human-{UUID}
+```
+
+Model events preserve source index, velocity, confidence, and low-confidence status. Human events have null model confidence and use velocity 64 when omitted.
+
+Editable values are written MIDI, onset, and offset. Concert MIDI is derived authoritatively:
+
+```text
+pitch_concert_midi = written_pitch_midi - saxophone offset
+```
+
+The API validates written and concert MIDI `0..127`, finite timing, velocity, provenance, exact fields, unique IDs, summary counts, history sequence, and instrument consistency. Update retains position, delete removes a position, add appends, no implicit sorting occurs, overlaps remain valid, and zero events are allowed.
+
+A revision request must use the current latest revision number. A stale base returns `409 REVISION_CONFLICT` and never overwrites concurrent work.
+
+Read endpoints expose complete immutable detail and summary history. Historical revisions cannot be updated or deleted.
+
+See [`docs/contracts/transcription-revisions-api-v1.md`](docs/contracts/transcription-revisions-api-v1.md) and [`docs/tdd/iteration-018.md`](docs/tdd/iteration-018.md).
+
+## Derived-artifact request boundary
+
+A successful edit has `derived_artifacts_status = STALE`. The explicit regeneration endpoint records one idempotent request per revision:
+
+```text
+status: REQUESTED
+requested_artifacts: midi, musicxml, svg
+```
+
+The read projection then reports `REGENERATION_REQUESTED`. The request creates no MIDI, MusicXML, or SVG bytes, does not call existing exporters, and does not claim completion.
+
+Editing, validation and revision history are implemented.
+
+A regeneration request is recorded explicitly.
+
+Artifact execution remains pending.
+
+There is no worker, queue, `BackgroundTasks`, percentage, ETA, completion state, object storage, or replacement artifact in SAX-043.
 
 ## Internal audio capabilities
 
@@ -153,7 +184,7 @@ tenor Bb    +14
 baritone Eb +21
 ```
 
-Concert and written MIDI remain distinct. Low-confidence events are never hidden, deleted, or reordered.
+Concert and written MIDI remain distinct. Low-confidence events are never hidden or assigned to human-added notes.
 
 Contracts:
 
@@ -167,7 +198,7 @@ Contracts:
 - [`docs/contracts/musicxml-export-v1.md`](docs/contracts/musicxml-export-v1.md)
 - [`docs/contracts/score-rendering-v1.md`](docs/contracts/score-rendering-v1.md)
 
-These internal capabilities are not automatically connected to uploaded jobs. SAX-042 exposes only results explicitly registered by future orchestration.
+These internal exporters are not automatically connected to uploaded jobs or SAX-043 regeneration requests.
 
 ## Optional FiloSax baseline
 
@@ -177,7 +208,7 @@ Install the controlled Python 3.11 baseline with:
 python scripts/install_baseline.py
 ```
 
-The installer verifies pinned source revisions and provenance. The baseline is not instantiated by the FastAPI composition root and no HTTP GET triggers model download or inference.
+The installer verifies pinned source revisions and provenance. The baseline is not instantiated by the FastAPI composition root and no HTTP GET or revision POST triggers model download or inference.
 
 See [`docs/baselines/hf-saxophone-v1.md`](docs/baselines/hf-saxophone-v1.md).
 
@@ -200,6 +231,6 @@ python -m mypy
 
 The protected quality command enforces pytest coverage of at least 90%, Ruff lint, Ruff format, and strict mypy. Any failed stage stops the quality gate and returns a non-zero exit code.
 
-## SAX-042 boundaries
+## SAX-043 boundaries
 
-SAX-042 does not implement automatic upload processing, audio storage, `BackgroundTasks`, worker, queue, persistence, new `JobStatus`, synthetic production notes, review write endpoints, editing, deletion, regeneration, playback, synchronization, SVG/PDF delivery, downloads, SAX-043, or later stories. A normal uploaded job can legitimately remain `TRANSCRIPTION_RESULT_NOT_READY`.
+SAX-043 does not implement automatic upload processing, audio storage, inference from revision HTTP, new `JobStatus`, synthetic production notes, historical mutation, confidence or existing-velocity editing, real MIDI/MusicXML/SVG regeneration, worker, queue, persistence, object storage, autosave, playback, synchronization, download, SAX-044, or later stories. A normal uploaded job can legitimately remain `TRANSCRIPTION_RESULT_NOT_READY` until a real result is registered internally.

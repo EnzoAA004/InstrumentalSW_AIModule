@@ -14,9 +14,19 @@ from saxo_ai.application.transcription_review import (
 from saxo_ai.domain.models import SaxophoneType
 from saxo_ai.infrastructure.repositories import (
     InMemoryTranscriptionJobRepository,
+    InMemoryTranscriptionReviewRegistrationRepository,
     InMemoryTranscriptionReviewRepository,
+    InMemoryTranscriptionRevisionRepository,
 )
 from tests.review_helpers import JOB_ID, build_job, build_written_result
+
+
+def registration_repository(
+    reviews: InMemoryTranscriptionReviewRepository,
+) -> InMemoryTranscriptionReviewRegistrationRepository:
+    return InMemoryTranscriptionReviewRegistrationRepository(
+        reviews, InMemoryTranscriptionRevisionRepository()
+    )
 
 
 def test_review_repository_preserves_exact_result_reference() -> None:
@@ -32,7 +42,7 @@ def test_review_repository_preserves_exact_result_reference() -> None:
 def test_register_requires_existing_job_and_matching_instrument() -> None:
     jobs = InMemoryTranscriptionJobRepository()
     reviews = InMemoryTranscriptionReviewRepository()
-    register = RegisterTranscriptionReview(jobs, reviews)
+    register = RegisterTranscriptionReview(jobs, registration_repository(reviews))
     result = build_written_result()
 
     with pytest.raises(TranscriptionJobNotFoundError):
@@ -51,7 +61,9 @@ def test_register_and_get_preserve_identity_and_build_exact_ordered_view() -> No
     result = build_written_result()
     jobs.save(job)
 
-    stored = RegisterTranscriptionReview(jobs, reviews).execute(JOB_ID, result)
+    stored = RegisterTranscriptionReview(jobs, registration_repository(reviews)).execute(
+        JOB_ID, result
+    )
     snapshot = GetTranscriptionReview(jobs, reviews).execute(JOB_ID)
 
     assert stored is result
@@ -100,7 +112,7 @@ def test_empty_review_is_valid_for_thresholds_and_all_saxophones(
     reviews = InMemoryTranscriptionReviewRepository()
     jobs.save(build_job(saxophone_type))
     result = build_written_result(saxophone_type=saxophone_type, threshold=threshold, events=())
-    RegisterTranscriptionReview(jobs, reviews).execute(JOB_ID, result)
+    RegisterTranscriptionReview(jobs, registration_repository(reviews)).execute(JOB_ID, result)
 
     snapshot = GetTranscriptionReview(jobs, reviews).execute(JOB_ID)
 
@@ -115,7 +127,9 @@ def test_review_view_is_deterministic() -> None:
     jobs = InMemoryTranscriptionJobRepository()
     reviews = InMemoryTranscriptionReviewRepository()
     jobs.save(build_job())
-    RegisterTranscriptionReview(jobs, reviews).execute(JOB_ID, build_written_result())
+    RegisterTranscriptionReview(jobs, registration_repository(reviews)).execute(
+        JOB_ID, build_written_result()
+    )
     get_review = GetTranscriptionReview(jobs, reviews)
 
     assert get_review.execute(JOB_ID) == get_review.execute(JOB_ID)

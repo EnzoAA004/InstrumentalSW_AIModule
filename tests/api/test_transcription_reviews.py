@@ -4,7 +4,9 @@ from tests.review_helpers import JOB_ID, build_job, build_written_result
 from saxo_ai.application.transcription_review import RegisterTranscriptionReview
 from saxo_ai.infrastructure.repositories import (
     InMemoryTranscriptionJobRepository,
+    InMemoryTranscriptionReviewRegistrationRepository,
     InMemoryTranscriptionReviewRepository,
+    InMemoryTranscriptionRevisionRepository,
 )
 from saxo_ai.main import create_app
 
@@ -12,10 +14,19 @@ from saxo_ai.main import create_app
 def test_review_api_returns_exact_job_linked_json_without_unknown_fields() -> None:
     jobs = InMemoryTranscriptionJobRepository()
     reviews = InMemoryTranscriptionReviewRepository()
+    revisions = InMemoryTranscriptionRevisionRepository()
+    registrations = InMemoryTranscriptionReviewRegistrationRepository(reviews, revisions)
     jobs.save(build_job())
-    RegisterTranscriptionReview(jobs, reviews).execute(JOB_ID, build_written_result())
+    RegisterTranscriptionReview(jobs, registrations).execute(JOB_ID, build_written_result())
 
-    with TestClient(create_app(job_repository=jobs, review_repository=reviews)) as client:
+    with TestClient(
+        create_app(
+            job_repository=jobs,
+            review_repository=reviews,
+            revision_repository=revisions,
+            review_registration_repository=registrations,
+        )
+    ) as client:
         response = client.get(f"/api/v1/transcriptions/{JOB_ID}/review")
 
     assert response.status_code == 200
