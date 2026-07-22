@@ -10,25 +10,23 @@ permissions:
   contents: read
 
 jobs:
-  diagnose:
+  format:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
           cache: pip
-      - run: sudo apt-get update && sudo apt-get install --yes ffmpeg
       - run: python -m pip install --upgrade pip && python -m pip install -e ".[dev]"
-      - name: Capture quality output
-        run: |
-          set +e
-          python scripts/check_quality.py > sax043-quality.log 2>&1
-          echo "exit_code=$?" >> sax043-quality.log
-          exit 0
+      - run: |
+          python -m ruff check --fix src tests
+          python -m ruff format src tests
       - uses: actions/upload-artifact@v6
         with:
-          name: sax043-ai-diagnostics
-          path: sax043-quality.log
+          name: sax043-ai-formatted
+          path: |
+            src
+            tests
           retention-days: 1
