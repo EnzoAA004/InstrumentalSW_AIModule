@@ -32,12 +32,12 @@ jobs:
           )
           path.write_text(text)
           PY
-          python -m ruff check --fix \
+          python -m ruff format \
             src/saxo_ai/domain/revision_artifacts.py \
             src/saxo_ai/infrastructure/repositories.py \
             tests/integration/test_revision_artifact_exporters.py \
             tests/unit/test_revision_artifact_repository.py
-          python -m ruff format \
+          python -m ruff check --fix \
             src/saxo_ai/domain/revision_artifacts.py \
             src/saxo_ai/infrastructure/repositories.py \
             tests/integration/test_revision_artifact_exporters.py \
