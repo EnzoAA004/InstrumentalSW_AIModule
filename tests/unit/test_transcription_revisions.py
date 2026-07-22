@@ -31,11 +31,9 @@ from saxo_ai.domain.transcription_revisions import (
     TranscriptionRevisionEvent,
 )
 from saxo_ai.domain.written_pitch import WrittenPitchTranscriptionResult
-from saxo_ai.domain.written_pitch import WrittenPitchTranscriptionResult
 from saxo_ai.infrastructure.repositories import (
     InMemoryRegenerationRequestRepository,
     InMemoryTranscriptionJobRepository,
-    InMemoryTranscriptionReviewRegistrationRepository,
     InMemoryTranscriptionReviewRegistrationRepository,
     InMemoryTranscriptionReviewRepository,
     InMemoryTranscriptionRevisionRepository,
@@ -112,7 +110,7 @@ def test_registration_initializes_exact_immutable_revision_zero_once() -> None:
     assert revisions.get(JOB_ID, 0) is revision
 
     with pytest.raises(FrozenInstanceError):
-        setattr(revision, "revision_number", 5)
+        revision.__setattr__("revision_number", 5)
 
 
 def test_revision_zero_supports_all_saxophones_and_empty_results() -> None:
@@ -345,4 +343,4 @@ def test_revision_event_contract_is_frozen_and_rejects_inconsistent_origin_metad
             events=(),
             derived_artifacts_status=DerivedArtifactsStatus.CURRENT,
         )
-        setattr(revision, "events", ())
+        revision.__setattr__("events", ())
