@@ -51,6 +51,22 @@ class TranscriptionReviewInstrumentMismatchError(ValueError):
     """Raised when a review result belongs to a different saxophone type."""
 
 
+class RevisionNotFoundError(LookupError):
+    """Raised when a requested immutable transcription revision does not exist."""
+
+
+class RevisionConflictError(RuntimeError):
+    """Raised when a writer does not target the latest transcription revision."""
+
+
+class InvalidRevisionOperationError(ValueError):
+    """Raised when a revision operation sequence is structurally invalid."""
+
+
+class InvalidRevisionEventError(ValueError):
+    """Raised when authoritative revision-event validation fails."""
+
+
 class FfmpegNotAvailableError(RuntimeError):
     """Raised when the FFmpeg executable cannot be started."""
 
