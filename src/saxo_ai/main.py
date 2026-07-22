@@ -7,6 +7,7 @@ from saxo_ai.api.routes import build_router
 from saxo_ai.application.ports import (
     RegenerationRequestRepository,
     TranscriptionJobRepository,
+    TranscriptionReviewRegistrationRepository,
     TranscriptionReviewRepository,
     TranscriptionRevisionRepository,
 )
@@ -29,6 +30,7 @@ from saxo_ai.infrastructure.hashing import Sha256AudioContentHasher
 from saxo_ai.infrastructure.repositories import (
     InMemoryRegenerationRequestRepository,
     InMemoryTranscriptionJobRepository,
+    InMemoryTranscriptionReviewRegistrationRepository,
     InMemoryTranscriptionReviewRepository,
     InMemoryTranscriptionRevisionRepository,
 )
@@ -44,6 +46,7 @@ def create_app(
     job_repository: TranscriptionJobRepository | None = None,
     review_repository: TranscriptionReviewRepository | None = None,
     revision_repository: TranscriptionRevisionRepository | None = None,
+    review_registration_repository: TranscriptionReviewRegistrationRepository | None = None,
     regeneration_request_repository: RegenerationRequestRepository | None = None,
     clock: Clock = _utc_now,
     uuid_factory: UuidFactory = uuid4,
@@ -52,16 +55,21 @@ def create_app(
     jobs = job_repository or InMemoryTranscriptionJobRepository()
     reviews = review_repository or InMemoryTranscriptionReviewRepository()
     revisions = revision_repository or InMemoryTranscriptionRevisionRepository()
+    registrations = review_registration_repository or _registration_repository(
+        reviews,
+        revisions,
+    )
     regeneration_requests = (
         regeneration_request_repository or InMemoryRegenerationRequestRepository()
     )
-    register_review = RegisterTranscriptionReview(jobs, reviews, revisions, clock)
+    register_review = RegisterTranscriptionReview(jobs, registrations, clock)
     get_review = GetTranscriptionReview(jobs, reviews)
     application = FastAPI(title="InstrumentalSW AI Module", version="0.1.0")
     application.state.audio_processing_limits = runtime_limits
     application.state.transcription_job_repository = jobs
     application.state.transcription_review_repository = reviews
     application.state.transcription_revision_repository = revisions
+    application.state.transcription_review_registration_repository = registrations
     application.state.regeneration_request_repository = regeneration_requests
     application.state.register_transcription_review = register_review
     application.include_router(
@@ -86,6 +94,19 @@ def create_app(
         )
     )
     return application
+
+
+def _registration_repository(
+    reviews: TranscriptionReviewRepository,
+    revisions: TranscriptionRevisionRepository,
+) -> TranscriptionReviewRegistrationRepository:
+    if not isinstance(reviews, InMemoryTranscriptionReviewRepository) or not isinstance(
+        revisions, InMemoryTranscriptionRevisionRepository
+    ):
+        raise ValueError(
+            "custom review or revision repositories require a matching registration repository"
+        )
+    return InMemoryTranscriptionReviewRegistrationRepository(reviews, revisions)
 
 
 app = create_app()
