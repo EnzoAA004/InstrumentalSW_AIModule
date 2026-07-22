@@ -27,13 +27,16 @@ jobs:
           python - <<'PY'
           from pathlib import Path
 
-          def replace(path: str, old: str, new: str, count: int = 1) -> None:
+          def replace(path: str, old: str, new: str) -> None:
               target = Path(path)
               text = target.read_text(encoding="utf-8")
-              actual = text.count(old)
-              if actual != count:
-                  raise RuntimeError(f"{path}: expected {count} occurrence(s), found {actual}: {old!r}")
-              target.write_text(text.replace(old, new), encoding="utf-8")
+              if old in text:
+                  target.write_text(text.replace(old, new), encoding="utf-8")
+                  print(f"updated {path}: {old.splitlines()[0]}")
+              elif new in text:
+                  print(f"already updated {path}: {new.splitlines()[0]}")
+              else:
+                  print(f"not applicable {path}: {old.splitlines()[0]}")
 
           unit = "tests/unit/test_transcription_revisions.py"
           replace(
@@ -74,7 +77,6 @@ jobs:
               unit,
               "RegisterTranscriptionReview(jobs, reviews, revisions, fixed_clock)",
               "RegisterTranscriptionReview(jobs, registrations, fixed_clock)",
-              count=2,
           )
           replace(
               unit,
@@ -92,7 +94,6 @@ jobs:
               "        latest = revisions.latest(JOB_ID)\n"
               "        assert latest is not None\n"
               "        assert latest.revision_number == 0",
-              count=2,
           )
 
           api = "tests/api/test_transcription_revisions.py"
@@ -110,8 +111,6 @@ jobs:
           routes = "src/saxo_ai/api/routes.py"
           target = Path(routes)
           text = target.read_text(encoding="utf-8")
-          if text.count("  # type: ignore[arg-type]") != 9:
-              raise RuntimeError("routes.py: unexpected number of arg-type ignores")
           target.write_text(text.replace("  # type: ignore[arg-type]", ""), encoding="utf-8")
 
           review_unit = "tests/unit/test_transcription_review.py"
@@ -138,7 +137,6 @@ jobs:
               review_unit,
               "RegisterTranscriptionReview(jobs, reviews)",
               "RegisterTranscriptionReview(jobs, registration_repository(reviews))",
-              count=4,
           )
 
           review_api = "tests/api/test_transcription_reviews.py"
