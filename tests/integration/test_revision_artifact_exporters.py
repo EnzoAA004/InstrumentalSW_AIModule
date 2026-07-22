@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from hashlib import sha256
+from typing import cast
 from uuid import UUID
 
 import pytest
 from tests.score_render_helpers import long_musicxml_result, midi_result
 
+from saxo_ai.application.ports import TranscriptionJobRepository, TranscriptionRevisionRepository
 from saxo_ai.application.revision_artifacts import RegisterRevisionArtifacts
 from saxo_ai.application.score_rendering import RenderMusicXmlToSvg
 from saxo_ai.domain.revision_artifacts import (
@@ -23,7 +26,7 @@ JOB_ID = UUID("11111111-1111-1111-1111-111111111111")
 
 
 class ExistingJobs:
-    def get(self, job_id: UUID):
+    def get(self, job_id: UUID) -> object | None:
         return object() if job_id == JOB_ID else None
 
 
@@ -33,7 +36,7 @@ class ExistingRevision:
 
 
 class ExistingRevisions:
-    def get(self, job_id: UUID, revision_number: int):
+    def get(self, job_id: UUID, revision_number: int) -> object | None:
         return ExistingRevision() if (job_id, revision_number) == (JOB_ID, 7) else None
 
 
@@ -47,8 +50,6 @@ def descriptor(
     content: bytes,
     order: int,
 ) -> RevisionArtifact:
-    from hashlib import sha256
-
     metadata = RevisionArtifactDescriptor(
         artifact_id=artifact_id,
         artifact_type=artifact_type,
@@ -107,12 +108,19 @@ def test_real_existing_exporters_materialize_and_register_midi_musicxml_and_mult
     repository = InMemoryRevisionArtifactRepository()
 
     registered = RegisterRevisionArtifacts(
-        ExistingJobs(), ExistingRevisions(), repository
+        cast(TranscriptionJobRepository, ExistingJobs()),
+        cast(TranscriptionRevisionRepository, ExistingRevisions()),
+        repository,
     ).execute(bundle)
 
     assert registered is bundle
-    assert repository.get_artifact(JOB_ID, 7, "midi").content == midi.artifact.content
-    assert repository.get_artifact(JOB_ID, 7, "musicxml").content == musicxml.artifact.content
+    midi_artifact = repository.get_artifact(JOB_ID, 7, "midi")
+    musicxml_artifact = repository.get_artifact(JOB_ID, 7, "musicxml")
+    assert midi_artifact is not None
+    assert musicxml_artifact is not None
+    assert midi_artifact.content == midi.artifact.content
+    assert musicxml_artifact.content == musicxml.artifact.content
     for page in rendered.pages:
         stored = repository.get_artifact(JOB_ID, 7, f"svg-page-{page.page_number:03d}")
+        assert stored is not None
         assert stored.content == page.content
