@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
-from hashlib import sha256
 import re
 from uuid import UUID
+
+from saxo_ai.checksums import sha256_hex
 
 
 class InvalidRevisionArtifactError(ValueError):
@@ -90,7 +91,7 @@ class RevisionArtifact:
             raise InvalidRevisionArtifactError("content must be non-empty immutable bytes")
         if len(self.content) != self.descriptor.size_bytes:
             raise InvalidRevisionArtifactError("size_bytes must equal the exact content length")
-        if sha256(self.content).hexdigest() != self.descriptor.sha256:
+        if sha256_hex(self.content) != self.descriptor.sha256:
             raise InvalidRevisionArtifactError("sha256 must match the exact content bytes")
 
 
