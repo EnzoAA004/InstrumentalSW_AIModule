@@ -41,9 +41,13 @@ def build_written_result(
     threshold: float = 0.5,
     events: tuple[tuple[int, int, float, float, int, float, bool], ...] | None = None,
 ) -> WrittenPitchTranscriptionResult:
-    rows = events if events is not None else (
-        (60, 69, 0.0, 0.5, 90, 0.42, True),
-        (67, 76, 0.25, 1.0, 100, 0.82, False),
+    rows = (
+        events
+        if events is not None
+        else (
+            (60, 69, 0.0, 0.5, 90, 0.42, True),
+            (67, 76, 0.25, 1.0, 100, 0.82, False),
+        )
     )
     notes = tuple(
         NoteEvent(
