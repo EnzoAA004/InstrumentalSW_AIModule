@@ -64,7 +64,9 @@ def repositories() -> tuple[
     revisions = InMemoryTranscriptionRevisionRepository()
     registration = InMemoryTranscriptionReviewRegistrationRepository(reviews, revisions)
     jobs.save(build_job())
-    RegisterTranscriptionReview(jobs, registration, lambda: NOW).execute(JOB_ID, build_written_result())
+    RegisterTranscriptionReview(jobs, registration, lambda: NOW).execute(
+        JOB_ID, build_written_result()
+    )
     return jobs, revisions, InMemoryRevisionArtifactRepository()
 
 

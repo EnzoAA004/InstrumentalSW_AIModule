@@ -235,3 +235,5 @@ class InMemoryRegenerationRequestRepository:
 from saxo_ai.infrastructure.revision_artifact_repository import (  # noqa: E402
     InMemoryRevisionArtifactRepository,
 )
+
+__all__ = ["InMemoryRevisionArtifactRepository"]

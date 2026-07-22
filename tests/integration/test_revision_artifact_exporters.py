@@ -63,7 +63,9 @@ def descriptor(
     return RevisionArtifact(metadata, content)
 
 
-def test_real_existing_exporters_materialize_and_register_midi_musicxml_and_multiple_svg_pages() -> None:
+def test_real_existing_exporters_materialize_and_register_midi_musicxml_and_multiple_svg_pages() -> (
+    None
+):
     musicxml = long_musicxml_result(note_count=96, revision=7)
     midi = midi_result(musicxml)
     rendered = RenderMusicXmlToSvg(VerovioSvgScoreRenderer()).execute(
