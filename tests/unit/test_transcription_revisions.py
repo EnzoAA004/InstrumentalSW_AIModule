@@ -250,7 +250,9 @@ def test_authoritative_event_validation_rejects_invalid_midi_timing_and_velocity
     creator = CreateTranscriptionRevision(revisions, later_clock, fixed_human_uuid)
     with pytest.raises(InvalidRevisionEventError):
         creator.execute(JOB_ID, base_revision_number=0, operations=(operation,))
-    assert revisions.latest(JOB_ID).revision_number == 0
+    latest = revisions.latest(JOB_ID)
+    assert latest is not None
+    assert latest.revision_number == 0
 
 
 def test_history_is_sequential_and_optimistic_conflict_never_overwrites() -> None:
