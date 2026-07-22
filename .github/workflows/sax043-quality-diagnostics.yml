@@ -32,149 +32,37 @@ jobs:
               text = target.read_text(encoding="utf-8")
               if old in text:
                   target.write_text(text.replace(old, new), encoding="utf-8")
-                  print(f"updated {path}: {old.splitlines()[0]}")
-              elif new in text:
-                  print(f"already updated {path}: {new.splitlines()[0]}")
-              else:
-                  print(f"not applicable {path}: {old.splitlines()[0]}")
+              elif new not in text:
+                  print(f"not applicable: {path}: {old.splitlines()[0]}")
 
           unit = "tests/unit/test_transcription_revisions.py"
-          replace(
-              unit,
-              "    InMemoryTranscriptionReviewRepository,\n    InMemoryTranscriptionRevisionRepository,",
-              "    InMemoryTranscriptionReviewRegistrationRepository,\n"
-              "    InMemoryTranscriptionReviewRepository,\n"
-              "    InMemoryTranscriptionRevisionRepository,",
-          )
-          replace(
-              unit,
-              "from saxo_ai.infrastructure.repositories import (",
-              "from saxo_ai.domain.written_pitch import WrittenPitchTranscriptionResult\n"
-              "from saxo_ai.infrastructure.repositories import (",
-          )
-          replace(
-              unit,
-              "    events: tuple[tuple[int, int, float, float, int, float, bool], ...] | None = None,\n):",
-              "    events: tuple[tuple[int, int, float, float, int, float, bool], ...] | None = None,\n"
-              ") -> tuple[\n"
-              "    InMemoryTranscriptionJobRepository,\n"
-              "    InMemoryTranscriptionReviewRepository,\n"
-              "    InMemoryTranscriptionRevisionRepository,\n"
-              "    WrittenPitchTranscriptionResult,\n"
-              "    WrittenPitchTranscriptionResult,\n"
-              "]:",
-          )
-          replace(
-              unit,
-              "    revisions = InMemoryTranscriptionRevisionRepository()\n    jobs.save",
-              "    revisions = InMemoryTranscriptionRevisionRepository()\n"
-              "    registrations = InMemoryTranscriptionReviewRegistrationRepository(\n"
-              "        reviews, revisions\n"
-              "    )\n"
-              "    jobs.save",
-          )
-          replace(
-              unit,
-              "RegisterTranscriptionReview(jobs, reviews, revisions, fixed_clock)",
-              "RegisterTranscriptionReview(jobs, registrations, fixed_clock)",
-          )
-          replace(
-              unit,
-              "        revision.revision_number = 5  # type: ignore[misc]",
-              "        setattr(revision, \"revision_number\", 5)",
-          )
-          replace(
-              unit,
-              "        revision.events = ()  # type: ignore[misc]",
-              "        setattr(revision, \"events\", ())",
-          )
-          replace(
-              unit,
-              "        assert revisions.latest(JOB_ID).revision_number == 0",
-              "        latest = revisions.latest(JOB_ID)\n"
-              "        assert latest is not None\n"
-              "        assert latest.revision_number == 0",
-          )
+          replace(unit, "    InMemoryTranscriptionReviewRepository,\n    InMemoryTranscriptionRevisionRepository,", "    InMemoryTranscriptionReviewRegistrationRepository,\n    InMemoryTranscriptionReviewRepository,\n    InMemoryTranscriptionRevisionRepository,")
+          replace(unit, "from saxo_ai.infrastructure.repositories import (", "from saxo_ai.domain.written_pitch import WrittenPitchTranscriptionResult\nfrom saxo_ai.infrastructure.repositories import (")
+          replace(unit, "    events: tuple[tuple[int, int, float, float, int, float, bool], ...] | None = None,\n):", "    events: tuple[tuple[int, int, float, float, int, float, bool], ...] | None = None,\n) -> tuple[\n    InMemoryTranscriptionJobRepository,\n    InMemoryTranscriptionReviewRepository,\n    InMemoryTranscriptionRevisionRepository,\n    WrittenPitchTranscriptionResult,\n    WrittenPitchTranscriptionResult,\n]:")
+          replace(unit, "    revisions = InMemoryTranscriptionRevisionRepository()\n    jobs.save", "    revisions = InMemoryTranscriptionRevisionRepository()\n    registrations = InMemoryTranscriptionReviewRegistrationRepository(reviews, revisions)\n    jobs.save")
+          replace(unit, "RegisterTranscriptionReview(jobs, reviews, revisions, fixed_clock)", "RegisterTranscriptionReview(jobs, registrations, fixed_clock)")
+          replace(unit, "        revision.revision_number = 5  # type: ignore[misc]", "        setattr(revision, \"revision_number\", 5)")
+          replace(unit, "        revision.events = ()  # type: ignore[misc]", "        setattr(revision, \"events\", ())")
+          replace(unit, "        assert revisions.latest(JOB_ID).revision_number == 0", "        latest = revisions.latest(JOB_ID)\n        assert latest is not None\n        assert latest.revision_number == 0")
 
           api = "tests/api/test_transcription_revisions.py"
-          replace(
-              api,
-              "from datetime import UTC, datetime",
-              "from collections.abc import Callable\nfrom datetime import UTC, datetime",
-          )
-          replace(
-              api,
-              "def uuid_values():",
-              "def uuid_values() -> Callable[[], UUID]:",
-          )
+          replace(api, "from datetime import UTC, datetime", "from collections.abc import Callable\nfrom datetime import UTC, datetime")
+          replace(api, "def uuid_values():", "def uuid_values() -> Callable[[], UUID]:")
 
-          routes = "src/saxo_ai/api/routes.py"
-          target = Path(routes)
-          text = target.read_text(encoding="utf-8")
-          target.write_text(text.replace("  # type: ignore[arg-type]", ""), encoding="utf-8")
+          routes = Path("src/saxo_ai/api/routes.py")
+          routes.write_text(routes.read_text(encoding="utf-8").replace("  # type: ignore[arg-type]", ""), encoding="utf-8")
 
           review_unit = "tests/unit/test_transcription_review.py"
-          replace(
-              review_unit,
-              "    InMemoryTranscriptionJobRepository,\n    InMemoryTranscriptionReviewRepository,",
-              "    InMemoryTranscriptionJobRepository,\n"
-              "    InMemoryTranscriptionReviewRegistrationRepository,\n"
-              "    InMemoryTranscriptionReviewRepository,\n"
-              "    InMemoryTranscriptionRevisionRepository,",
-          )
-          replace(
-              review_unit,
-              "from tests.review_helpers import JOB_ID, build_job, build_written_result\n\n\n",
-              "from tests.review_helpers import JOB_ID, build_job, build_written_result\n\n\n"
-              "def registration_repository(\n"
-              "    reviews: InMemoryTranscriptionReviewRepository,\n"
-              ") -> InMemoryTranscriptionReviewRegistrationRepository:\n"
-              "    return InMemoryTranscriptionReviewRegistrationRepository(\n"
-              "        reviews, InMemoryTranscriptionRevisionRepository()\n"
-              "    )\n\n\n",
-          )
-          replace(
-              review_unit,
-              "RegisterTranscriptionReview(jobs, reviews)",
-              "RegisterTranscriptionReview(jobs, registration_repository(reviews))",
-          )
+          replace(review_unit, "    InMemoryTranscriptionJobRepository,\n    InMemoryTranscriptionReviewRepository,", "    InMemoryTranscriptionJobRepository,\n    InMemoryTranscriptionReviewRegistrationRepository,\n    InMemoryTranscriptionReviewRepository,\n    InMemoryTranscriptionRevisionRepository,")
+          replace(review_unit, "from tests.review_helpers import JOB_ID, build_job, build_written_result\n\n\n", "from tests.review_helpers import JOB_ID, build_job, build_written_result\n\n\ndef registration_repository(\n    reviews: InMemoryTranscriptionReviewRepository,\n) -> InMemoryTranscriptionReviewRegistrationRepository:\n    return InMemoryTranscriptionReviewRegistrationRepository(\n        reviews, InMemoryTranscriptionRevisionRepository()\n    )\n\n\n")
+          replace(review_unit, "RegisterTranscriptionReview(jobs, reviews)", "RegisterTranscriptionReview(jobs, registration_repository(reviews))")
 
           review_api = "tests/api/test_transcription_reviews.py"
-          replace(
-              review_api,
-              "    InMemoryTranscriptionJobRepository,\n    InMemoryTranscriptionReviewRepository,",
-              "    InMemoryTranscriptionJobRepository,\n"
-              "    InMemoryTranscriptionReviewRegistrationRepository,\n"
-              "    InMemoryTranscriptionReviewRepository,\n"
-              "    InMemoryTranscriptionRevisionRepository,",
-          )
-          replace(
-              review_api,
-              "    jobs.save(build_job())\n    RegisterTranscriptionReview(jobs, reviews).execute(JOB_ID, build_written_result())",
-              "    revisions = InMemoryTranscriptionRevisionRepository()\n"
-              "    registrations = InMemoryTranscriptionReviewRegistrationRepository(\n"
-              "        reviews, revisions\n"
-              "    )\n"
-              "    jobs.save(build_job())\n"
-              "    RegisterTranscriptionReview(jobs, registrations).execute(\n"
-              "        JOB_ID, build_written_result()\n"
-              "    )",
-          )
-          replace(
-              review_api,
-              "with TestClient(create_app(job_repository=jobs, review_repository=reviews)) as client:",
-              "with TestClient(\n"
-              "        create_app(\n"
-              "            job_repository=jobs,\n"
-              "            review_repository=reviews,\n"
-              "            revision_repository=revisions,\n"
-              "            review_registration_repository=registrations,\n"
-              "        )\n"
-              "    ) as client:",
-          )
+          replace(review_api, "    InMemoryTranscriptionJobRepository,\n    InMemoryTranscriptionReviewRepository,", "    InMemoryTranscriptionJobRepository,\n    InMemoryTranscriptionReviewRegistrationRepository,\n    InMemoryTranscriptionReviewRepository,\n    InMemoryTranscriptionRevisionRepository,")
+          replace(review_api, "    jobs.save(build_job())\n    RegisterTranscriptionReview(jobs, reviews).execute(JOB_ID, build_written_result())", "    revisions = InMemoryTranscriptionRevisionRepository()\n    registrations = InMemoryTranscriptionReviewRegistrationRepository(reviews, revisions)\n    jobs.save(build_job())\n    RegisterTranscriptionReview(jobs, registrations).execute(\n        JOB_ID, build_written_result()\n    )")
+          replace(review_api, "with TestClient(create_app(job_repository=jobs, review_repository=reviews)) as client:", "with TestClient(\n        create_app(\n            job_repository=jobs,\n            review_repository=reviews,\n            revision_repository=revisions,\n            review_registration_repository=registrations,\n        )\n    ) as client:")
           PY
           python -m ruff format src tests
-          python -m ruff check --fix src tests
       - name: Commit closure edits
         run: |
           git config user.name "github-actions[bot]"
