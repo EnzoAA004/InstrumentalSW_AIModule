@@ -178,15 +178,15 @@ def _bind_shared_store(
     with review_store.lock, revision_store.lock:
         merged_reviews = dict(review_store.snapshot.reviews)
         for job_id, result in revision_store.snapshot.reviews.items():
-            existing = merged_reviews.get(job_id)
-            if existing is not None and existing is not result:
+            existing_review = merged_reviews.get(job_id)
+            if existing_review is not None and existing_review is not result:
                 raise TranscriptionReviewInstrumentMismatchError
             merged_reviews[job_id] = result
 
         merged_revisions = dict(review_store.snapshot.revisions)
         for job_id, history in revision_store.snapshot.revisions.items():
-            existing = merged_revisions.get(job_id)
-            if existing is not None and existing != history:
+            existing_history = merged_revisions.get(job_id)
+            if existing_history is not None and existing_history != history:
                 raise ValueError("cannot bind incompatible revision repositories")
             merged_revisions[job_id] = history
 

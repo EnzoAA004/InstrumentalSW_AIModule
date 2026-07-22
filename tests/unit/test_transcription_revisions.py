@@ -67,7 +67,6 @@ def setup_registered(
     events: tuple[tuple[int, int, float, float, int, float, bool], ...] | None = None,
 ) -> tuple[
     InMemoryTranscriptionJobRepository,
-    InMemoryTranscriptionReviewRegistrationRepository,
     InMemoryTranscriptionReviewRepository,
     InMemoryTranscriptionRevisionRepository,
     WrittenPitchTranscriptionResult,
