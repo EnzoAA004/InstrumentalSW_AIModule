@@ -65,6 +65,16 @@ Temporary diagnostic/formatter workflows were removed before the final tree.
 - real MIDI, MusicXML and multiple SVG-page registration;
 - full regression suite and real Python 3.11 baseline.
 
+## Protected quality invariants
+
+The protected matrix remains unchanged and continues to run Python 3.11, 3.12 and 3.13. Python 3.11 installs and executes the real pinned baseline. The workflow blob remains:
+
+```text
+62f8ce2737a78081a37397b1e8b7a095c00fc1b7
+```
+
+The quality runner still enforces at least 90% total coverage, Ruff lint, Ruff format and strict mypy. No SAX-045-specific exclusion or threshold reduction was introduced.
+
 ## Traceability
 
 ```text
