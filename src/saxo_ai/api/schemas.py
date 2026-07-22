@@ -4,6 +4,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 from saxo_ai.domain.models import InputMode, JobStatus, SaxophoneType
+from saxo_ai.domain.revision_artifacts import ArtifactType
 from saxo_ai.domain.transcription_revisions import (
     DerivedArtifactsStatus,
     EventOrigin,
@@ -129,3 +130,24 @@ class RegenerationRequestResponse(BaseModel):
     revision_number: int
     status: RegenerationRequestStatus
     requested_artifacts: tuple[str, ...]
+
+
+class RevisionArtifactDescriptorResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    artifact_id: str
+    artifact_type: ArtifactType
+    filename: str
+    media_type: str
+    extension: str
+    size_bytes: int
+    sha256: str
+    order: int
+
+
+class RevisionArtifactListResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    job_id: UUID
+    revision_number: int
+    artifacts: tuple[RevisionArtifactDescriptorResponse, ...]
