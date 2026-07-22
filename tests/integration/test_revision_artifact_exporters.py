@@ -5,7 +5,6 @@ from typing import cast
 from uuid import UUID
 
 import pytest
-from tests.score_render_helpers import long_musicxml_result, midi_result
 
 from saxo_ai.application.ports import TranscriptionJobRepository, TranscriptionRevisionRepository
 from saxo_ai.application.revision_artifacts import RegisterRevisionArtifacts
@@ -19,6 +18,7 @@ from saxo_ai.domain.revision_artifacts import (
 from saxo_ai.domain.score_rendering import ScoreRenderSettings
 from saxo_ai.infrastructure.repositories import InMemoryRevisionArtifactRepository
 from saxo_ai.infrastructure.verovio_svg import VerovioSvgScoreRenderer
+from tests.score_render_helpers import long_musicxml_result, midi_result
 
 pytestmark = [pytest.mark.integration, pytest.mark.score_render_integration]
 
@@ -63,9 +63,7 @@ def descriptor(
     return RevisionArtifact(metadata, content)
 
 
-def test_real_existing_exporters_materialize_and_register_midi_musicxml_and_multiple_svg_pages() -> (
-    None
-):
+def test_real_exporters_register_midi_musicxml_and_multiple_svg_pages() -> None:
     musicxml = long_musicxml_result(note_count=96, revision=7)
     midi = midi_result(musicxml)
     rendered = RenderMusicXmlToSvg(VerovioSvgScoreRenderer()).execute(
