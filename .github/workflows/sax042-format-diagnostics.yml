@@ -1,0 +1,45 @@
+name: SAX-042 Format Diagnostics
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+      - name: Install project
+        run: python -m pip install --upgrade pip && python -m pip install -e ".[dev]"
+      - name: Apply pinned Ruff fixes and formatting
+        run: |
+          python -m ruff check --fix src tests
+          python -m ruff format src tests
+      - name: Upload formatted sources
+        uses: actions/upload-artifact@v6
+        with:
+          name: sax042-ai-formatted-sources
+          path: |
+            src/saxo_ai/api/routes.py
+            src/saxo_ai/api/schemas.py
+            src/saxo_ai/application/errors.py
+            src/saxo_ai/application/ports.py
+            src/saxo_ai/application/transcription_review.py
+            src/saxo_ai/infrastructure/repositories.py
+            src/saxo_ai/main.py
+            tests/api/test_transcription_reviews.py
+            tests/review_helpers.py
+            tests/unit/test_transcription_review.py
+          retention-days: 1
