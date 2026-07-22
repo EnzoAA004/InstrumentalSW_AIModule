@@ -3,8 +3,9 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from hashlib import sha256
 
+import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from tests.review_helpers import JOB_ID, build_job, build_written_result
 
 from saxo_ai.application.midi_export import ExportWrittenPitchToMidi
 from saxo_ai.domain.revision_artifacts import (
@@ -20,6 +21,7 @@ from saxo_ai.infrastructure.repositories import (
     InMemoryTranscriptionRevisionRepository,
 )
 from saxo_ai.main import create_app
+from tests.review_helpers import JOB_ID, build_job, build_written_result
 
 NOW = datetime(2026, 7, 22, 12, 0, tzinfo=UTC)
 MIDI_BYTES = b"MThd-exact-download"
@@ -43,7 +45,7 @@ def bundle() -> RevisionArtifactBundle:
     )
 
 
-def registered_app(*, with_artifacts: bool = True):
+def registered_app(*, with_artifacts: bool = True) -> FastAPI:
     jobs = InMemoryTranscriptionJobRepository()
     reviews = InMemoryTranscriptionReviewRepository()
     revisions = InMemoryTranscriptionRevisionRepository()
@@ -103,8 +105,8 @@ def test_download_returns_exact_bytes_and_security_headers() -> None:
     assert response.headers["etag"] == f'"sha256-{digest}"'
 
 
-def test_get_never_executes_exporters(monkeypatch) -> None:
-    def forbidden(*args, **kwargs):
+def test_get_never_executes_exporters(monkeypatch: pytest.MonkeyPatch) -> None:
+    def forbidden(*args: object, **kwargs: object) -> None:
         raise AssertionError("download GET must not execute MIDI export")
 
     monkeypatch.setattr(ExportWrittenPitchToMidi, "execute", forbidden)
