@@ -198,7 +198,7 @@ python -m ruff format --check src tests scripts
 python -m mypy
 ```
 
-The protected quality command enforces pytest statement/branch coverage of at least 90%, Ruff lint/format, and strict mypy.
+The protected quality command enforces pytest statement/branch coverage of at least 90%, Ruff lint/format, and strict mypy. Any failed stage stops the quality gate and returns a non-zero exit code.
 
 ## SAX-042 boundaries
 
