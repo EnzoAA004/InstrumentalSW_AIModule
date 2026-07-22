@@ -103,7 +103,11 @@ def test_registration_initializes_exact_immutable_revision_zero_once() -> None:
     assert revision.events[0].confidence == 0.42
     assert revision.events[0].is_low_confidence is True
 
-    RegisterTranscriptionReview(jobs, registrations, fixed_clock).execute(JOB_ID, result)
+    RegisterTranscriptionReview(
+        jobs,
+        InMemoryTranscriptionReviewRegistrationRepository(reviews, revisions),
+        fixed_clock,
+    ).execute(JOB_ID, result)
     assert len(revisions.list(JOB_ID)) == 1
     assert revisions.get(JOB_ID, 0) is revision
 
