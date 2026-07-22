@@ -7,6 +7,7 @@ from saxo_ai.domain.audio import (
     OriginalAudioReference,
 )
 from saxo_ai.domain.models import AudioContentMetadata, TranscriptionJob
+from saxo_ai.domain.written_pitch import WrittenPitchTranscriptionResult
 
 
 class BinaryStream(Protocol):
@@ -36,3 +37,9 @@ class TranscriptionJobRepository(Protocol):
     def save(self, job: TranscriptionJob) -> None: ...
 
     def get(self, job_id: UUID) -> TranscriptionJob | None: ...
+
+
+class TranscriptionReviewRepository(Protocol):
+    def save(self, job_id: UUID, result: WrittenPitchTranscriptionResult) -> None: ...
+
+    def get(self, job_id: UUID) -> WrittenPitchTranscriptionResult | None: ...

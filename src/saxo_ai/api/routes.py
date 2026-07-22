@@ -2,21 +2,29 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
+from fastapi.responses import JSONResponse
 
-from saxo_ai.api.schemas import HealthResponse, TranscriptionJobResponse
+from saxo_ai.api.schemas import (
+    HealthResponse,
+    TranscriptionJobResponse,
+    TranscriptionReviewResponse,
+)
 from saxo_ai.application.errors import (
     AudioSizeLimitExceededError,
     EmptyAudioFileError,
     TranscriptionJobNotFoundError,
+    TranscriptionResultNotReadyError,
     UnsupportedAudioFormatError,
 )
 from saxo_ai.application.services import CreateTranscriptionJob, GetTranscriptionJob
+from saxo_ai.application.transcription_review import GetTranscriptionReview
 from saxo_ai.domain.models import InputMode, SaxophoneType
 
 
 def build_router(
     create_job: CreateTranscriptionJob,
     get_job: GetTranscriptionJob,
+    get_review: GetTranscriptionReview,
 ) -> APIRouter:
     router = APIRouter()
 
@@ -77,5 +85,50 @@ def build_router(
                 detail="Transcription job not found.",
             ) from error
         return TranscriptionJobResponse.model_validate(job)
+
+    @router.get(
+        "/api/v1/transcriptions/{job_id}/review",
+        response_model=TranscriptionReviewResponse,
+        responses={
+            400: {"description": "Invalid job ID"},
+            404: {"description": "Unknown job"},
+            409: {"description": "Result not ready"},
+        },
+    )
+    def get_transcription_review(
+        job_id: str,
+    ) -> TranscriptionReviewResponse | JSONResponse:
+        try:
+            parsed_job_id = UUID(job_id)
+        except ValueError:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={
+                    "code": "INVALID_JOB_ID",
+                    "message": "Job ID must be a valid UUID.",
+                    "field": "job_id",
+                },
+            )
+        try:
+            snapshot = get_review.execute(parsed_job_id)
+        except TranscriptionJobNotFoundError:
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content={
+                    "code": "TRANSCRIPTION_NOT_FOUND",
+                    "message": "Transcription job not found.",
+                    "field": "job_id",
+                },
+            )
+        except TranscriptionResultNotReadyError:
+            return JSONResponse(
+                status_code=status.HTTP_409_CONFLICT,
+                content={
+                    "code": "TRANSCRIPTION_RESULT_NOT_READY",
+                    "message": "Transcription notes are not available yet.",
+                    "field": "job_id",
+                },
+            )
+        return TranscriptionReviewResponse.model_validate(snapshot)
 
     return router
