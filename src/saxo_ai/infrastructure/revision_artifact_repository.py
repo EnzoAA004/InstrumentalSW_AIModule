@@ -23,9 +23,7 @@ class InMemoryRevisionArtifactRepository:
             self._bundles[key] = bundle
             return bundle
 
-    def get_bundle(
-        self, job_id: UUID, revision_number: int
-    ) -> RevisionArtifactBundle | None:
+    def get_bundle(self, job_id: UUID, revision_number: int) -> RevisionArtifactBundle | None:
         with self._lock:
             return self._bundles.get((job_id, revision_number))
 

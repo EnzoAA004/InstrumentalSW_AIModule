@@ -84,9 +84,7 @@ class RegenerationRequestRepository(Protocol):
 class RevisionArtifactRepository(Protocol):
     def save(self, bundle: RevisionArtifactBundle) -> RevisionArtifactBundle: ...
 
-    def get_bundle(
-        self, job_id: UUID, revision_number: int
-    ) -> RevisionArtifactBundle | None: ...
+    def get_bundle(self, job_id: UUID, revision_number: int) -> RevisionArtifactBundle | None: ...
 
     def get_artifact(
         self, job_id: UUID, revision_number: int, artifact_id: str

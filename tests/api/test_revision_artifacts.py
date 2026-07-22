@@ -89,9 +89,7 @@ def test_list_exposes_complete_descriptors_without_bytes_or_base64() -> None:
 
 def test_download_returns_exact_bytes_and_security_headers() -> None:
     with TestClient(registered_app()) as client:
-        response = client.get(
-            f"/api/v1/transcriptions/{JOB_ID}/revisions/0/artifacts/midi"
-        )
+        response = client.get(f"/api/v1/transcriptions/{JOB_ID}/revisions/0/artifacts/midi")
 
     digest = sha256(MIDI_BYTES).hexdigest()
     assert response.status_code == 200
@@ -111,20 +109,19 @@ def test_get_never_executes_exporters(monkeypatch) -> None:
 
     monkeypatch.setattr(ExportWrittenPitchToMidi, "execute", forbidden)
     with TestClient(registered_app()) as client:
-        assert client.get(
-            f"/api/v1/transcriptions/{JOB_ID}/revisions/0/artifacts"
-        ).status_code == 200
-        assert client.get(
-            f"/api/v1/transcriptions/{JOB_ID}/revisions/0/artifacts/midi"
-        ).status_code == 200
+        assert (
+            client.get(f"/api/v1/transcriptions/{JOB_ID}/revisions/0/artifacts").status_code == 200
+        )
+        assert (
+            client.get(f"/api/v1/transcriptions/{JOB_ID}/revisions/0/artifacts/midi").status_code
+            == 200
+        )
 
 
 def test_stable_not_ready_missing_and_invalid_errors() -> None:
     with TestClient(registered_app(with_artifacts=False)) as client:
         not_ready = client.get(f"/api/v1/transcriptions/{JOB_ID}/revisions/0/artifacts")
-        revision_missing = client.get(
-            f"/api/v1/transcriptions/{JOB_ID}/revisions/99/artifacts"
-        )
+        revision_missing = client.get(f"/api/v1/transcriptions/{JOB_ID}/revisions/99/artifacts")
         invalid = client.get("/api/v1/transcriptions/not-a-uuid/revisions/0/artifacts")
         unknown_job = client.get(
             "/api/v1/transcriptions/22222222-2222-2222-2222-222222222222/revisions/0/artifacts"
@@ -146,9 +143,7 @@ def test_stable_not_ready_missing_and_invalid_errors() -> None:
 
 def test_unknown_artifact_is_404_and_no_public_write_route_exists() -> None:
     with TestClient(registered_app()) as client:
-        missing = client.get(
-            f"/api/v1/transcriptions/{JOB_ID}/revisions/0/artifacts/musicxml"
-        )
+        missing = client.get(f"/api/v1/transcriptions/{JOB_ID}/revisions/0/artifacts/musicxml")
         write = client.post(
             f"/api/v1/transcriptions/{JOB_ID}/revisions/0/artifacts",
             json={},

@@ -5,6 +5,7 @@ from typing import cast
 from uuid import UUID
 
 import pytest
+from tests.score_render_helpers import long_musicxml_result, midi_result
 
 from saxo_ai.application.ports import (
     TranscriptionJobRepository,
@@ -21,7 +22,6 @@ from saxo_ai.domain.revision_artifacts import (
 from saxo_ai.domain.score_rendering import ScoreRenderSettings
 from saxo_ai.infrastructure.repositories import InMemoryRevisionArtifactRepository
 from saxo_ai.infrastructure.verovio_svg import VerovioSvgScoreRenderer
-from tests.score_render_helpers import long_musicxml_result, midi_result
 
 pytestmark = [pytest.mark.integration, pytest.mark.score_render_integration]
 

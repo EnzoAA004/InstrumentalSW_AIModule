@@ -91,9 +91,7 @@ class GetRevisionArtifact:
         self._revisions = revisions
         self._artifacts = artifacts
 
-    def execute(
-        self, job_id: UUID, revision_number: int, artifact_id: str
-    ) -> RevisionArtifact:
+    def execute(self, job_id: UUID, revision_number: int, artifact_id: str) -> RevisionArtifact:
         _require_job_revision(
             job_id,
             revision_number,

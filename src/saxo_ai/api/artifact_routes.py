@@ -53,9 +53,7 @@ def build_artifact_router(
     @router.get(
         "/api/v1/transcriptions/{job_id}/revisions/{revision_number}/artifacts/{artifact_id}"
     )
-    def download_revision_artifact(
-        job_id: str, revision_number: str, artifact_id: str
-    ) -> Response:
+    def download_revision_artifact(job_id: str, revision_number: str, artifact_id: str) -> Response:
         parsed_job_id = _parse_job_id(job_id)
         if isinstance(parsed_job_id, JSONResponse):
             return parsed_job_id
