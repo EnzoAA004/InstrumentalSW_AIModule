@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from saxo_ai.domain.models import JobFailureCode
+from saxo_ai.domain.transcription_revisions import InvalidRevisionEventError
 
 
 class UnsupportedAudioFormatError(ValueError):
@@ -61,10 +62,6 @@ class RevisionConflictError(RuntimeError):
 
 class InvalidRevisionOperationError(ValueError):
     """Raised when a revision operation sequence is structurally invalid."""
-
-
-class InvalidRevisionEventError(ValueError):
-    """Raised when authoritative revision-event validation fails."""
 
 
 class FfmpegNotAvailableError(RuntimeError):
