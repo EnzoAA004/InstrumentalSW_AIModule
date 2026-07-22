@@ -1,7 +1,6 @@
 from uuid import UUID
 
 from saxo_ai.domain.models import JobFailureCode
-from saxo_ai.domain.transcription_revisions import InvalidRevisionEventError
 
 
 class UnsupportedAudioFormatError(ValueError):

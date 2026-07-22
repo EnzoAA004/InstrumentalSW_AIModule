@@ -20,13 +20,15 @@ from saxo_ai.domain.transcription_revisions import (
     REQUESTED_DERIVED_ARTIFACTS,
     DerivedArtifactsStatus,
     EventOrigin,
-    InvalidRevisionEventError as DomainInvalidRevisionEventError,
     RegenerationRequest,
     RegenerationRequestStatus,
     TranscriptionRevision,
     TranscriptionRevisionEvent,
     TranscriptionRevisionHistory,
     TranscriptionRevisionHistoryEntry,
+)
+from saxo_ai.domain.transcription_revisions import (
+    InvalidRevisionEventError as DomainInvalidRevisionEventError,
 )
 from saxo_ai.domain.transposition import written_pitch_offset_for
 from saxo_ai.domain.written_pitch import WrittenPitchTranscriptionResult
@@ -123,9 +125,7 @@ class CreateTranscriptionRevision:
         working = list(latest.events)
         touched: set[str] = set()
         all_historical_ids = {
-            event.event_id
-            for revision in self._revisions.list(job_id)
-            for event in revision.events
+            event.event_id for revision in self._revisions.list(job_id) for event in revision.events
         }
         for operation in operations:
             if isinstance(operation, UpdateRevisionEvent):
@@ -188,9 +188,7 @@ class CreateTranscriptionRevision:
             )
         concert = written_pitch_midi - written_pitch_offset_for(revision.saxophone_type)
         if not 0 <= concert <= 127:
-            raise InvalidRevisionEventError(
-                "derived pitch_concert_midi must be between 0 and 127"
-            )
+            raise InvalidRevisionEventError("derived pitch_concert_midi must be between 0 and 127")
         return concert
 
     def _updated_event(
@@ -266,16 +264,13 @@ class GetTranscriptionRevisionHistory:
         revisions = self._revisions.list(job_id)
         if not revisions:
             raise RevisionNotFoundError
-        projected = tuple(
-            _with_request_status(revision, self._requests) for revision in revisions
-        )
+        projected = tuple(_with_request_status(revision, self._requests) for revision in revisions)
         return TranscriptionRevisionHistory(
             job_id=job_id,
             latest_revision_number=projected[-1].revision_number,
             revision_count=len(projected),
             revisions=tuple(
-                TranscriptionRevisionHistoryEntry.from_revision(revision)
-                for revision in projected
+                TranscriptionRevisionHistoryEntry.from_revision(revision) for revision in projected
             ),
         )
 
@@ -317,6 +312,4 @@ def _with_request_status(
 ) -> TranscriptionRevision:
     if requests is None or requests.get(revision.job_id, revision.revision_number) is None:
         return revision
-    return revision.with_derived_artifacts_status(
-        DerivedArtifactsStatus.REGENERATION_REQUESTED
-    )
+    return revision.with_derived_artifacts_status(DerivedArtifactsStatus.REGENERATION_REQUESTED)

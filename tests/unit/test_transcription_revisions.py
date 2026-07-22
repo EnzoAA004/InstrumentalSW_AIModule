@@ -69,7 +69,9 @@ def setup_registered(
     revisions = InMemoryTranscriptionRevisionRepository()
     jobs.save(build_job(saxophone_type))
     result = build_written_result(saxophone_type=saxophone_type, events=events)
-    returned = RegisterTranscriptionReview(jobs, reviews, revisions, fixed_clock).execute(JOB_ID, result)
+    returned = RegisterTranscriptionReview(jobs, reviews, revisions, fixed_clock).execute(
+        JOB_ID, result
+    )
     return jobs, reviews, revisions, result, returned
 
 
@@ -131,7 +133,9 @@ def test_update_add_delete_create_complete_new_revision_without_mutating_source(
         JOB_ID,
         base_revision_number=0,
         operations=(
-            UpdateRevisionEvent("source-0", written_pitch_midi=70, onset_seconds=0.1, offset_seconds=0.6),
+            UpdateRevisionEvent(
+                "source-0", written_pitch_midi=70, onset_seconds=0.1, offset_seconds=0.6
+            ),
             AddRevisionEvent(written_pitch_midi=72, onset_seconds=0.7, offset_seconds=1.0),
             DeleteRevisionEvent("source-1"),
         ),
@@ -177,9 +181,13 @@ def test_update_preserves_position_delete_removes_and_add_appends_without_sortin
         JOB_ID,
         base_revision_number=0,
         operations=(
-            UpdateRevisionEvent("source-1", written_pitch_midi=75, onset_seconds=0.05, offset_seconds=0.2),
+            UpdateRevisionEvent(
+                "source-1", written_pitch_midi=75, onset_seconds=0.05, offset_seconds=0.2
+            ),
             DeleteRevisionEvent("source-0"),
-            AddRevisionEvent(written_pitch_midi=74, onset_seconds=0.01, offset_seconds=0.1, velocity=11),
+            AddRevisionEvent(
+                written_pitch_midi=74, onset_seconds=0.01, offset_seconds=0.1, velocity=11
+            ),
         ),
     )
     assert [event.event_id for event in created.events] == ["source-1", f"human-{HUMAN_ID}"]
@@ -223,7 +231,9 @@ def test_revision_operations_are_atomic_and_reject_invalid_sequences() -> None:
         AddRevisionEvent(72, 0.0, 0.5, velocity=128),
     ],
 )
-def test_authoritative_event_validation_rejects_invalid_midi_timing_and_velocity(operation: object) -> None:
+def test_authoritative_event_validation_rejects_invalid_midi_timing_and_velocity(
+    operation: object,
+) -> None:
     _jobs, _reviews, revisions, _result, _returned = setup_registered()
     creator = CreateTranscriptionRevision(revisions, later_clock, fixed_human_uuid)
     with pytest.raises(InvalidRevisionEventError):

@@ -93,9 +93,7 @@ def build_router(
             ) from error
         return TranscriptionJobResponse.model_validate(job)
 
-    @router.get(
-        "/api/v1/transcriptions/{job_id}", response_model=TranscriptionJobResponse
-    )
+    @router.get("/api/v1/transcriptions/{job_id}", response_model=TranscriptionJobResponse)
     def get_transcription(job_id: UUID) -> TranscriptionJobResponse:
         try:
             return TranscriptionJobResponse.model_validate(get_job.execute(job_id))
@@ -116,9 +114,7 @@ def build_router(
         if isinstance(parsed_job_id, JSONResponse):
             return parsed_job_id
         try:
-            return TranscriptionReviewResponse.model_validate(
-                get_review.execute(parsed_job_id)
-            )
+            return TranscriptionReviewResponse.model_validate(get_review.execute(parsed_job_id))
         except TranscriptionJobNotFoundError:
             return _error(
                 404,
@@ -279,9 +275,7 @@ def _parse_revision_payload(payload: object) -> tuple[int, tuple[RevisionOperati
         )
     base = payload["base_revision_number"]
     if isinstance(base, bool) or not isinstance(base, int) or base < 0:
-        raise InvalidRevisionOperationError(
-            "base_revision_number must be a non-negative integer"
-        )
+        raise InvalidRevisionOperationError("base_revision_number must be a non-negative integer")
     raw_operations = payload["operations"]
     if not isinstance(raw_operations, list) or not raw_operations:
         raise InvalidRevisionOperationError("at least one operation is required")
@@ -300,9 +294,7 @@ def _parse_operation(value: object) -> RevisionOperation:
             "onset_seconds",
             "offset_seconds",
         }:
-            raise InvalidRevisionOperationError(
-                "update requires exactly its editable fields"
-            )
+            raise InvalidRevisionOperationError("update requires exactly its editable fields")
         return UpdateRevisionEvent(
             event_id=value["event_id"],  # type: ignore[arg-type]
             written_pitch_midi=value["written_pitch_midi"],  # type: ignore[arg-type]

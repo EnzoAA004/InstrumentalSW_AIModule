@@ -47,7 +47,9 @@ class TranscriptionReviewRepository(Protocol):
 
 
 class TranscriptionRevisionRepository(Protocol):
-    def initialize(self, job_id: UUID, revision: TranscriptionRevision) -> TranscriptionRevision: ...
+    def initialize(
+        self, job_id: UUID, revision: TranscriptionRevision
+    ) -> TranscriptionRevision: ...
 
     def latest(self, job_id: UUID) -> TranscriptionRevision | None: ...
 

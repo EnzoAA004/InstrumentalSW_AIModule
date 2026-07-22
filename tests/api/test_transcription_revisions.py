@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi.testclient import TestClient
+from tests.review_helpers import JOB_ID, build_job, build_written_result
 
 from saxo_ai.infrastructure.repositories import (
     InMemoryRegenerationRequestRepository,
@@ -12,7 +13,6 @@ from saxo_ai.infrastructure.repositories import (
     InMemoryTranscriptionRevisionRepository,
 )
 from saxo_ai.main import create_app
-from tests.review_helpers import JOB_ID, build_job, build_written_result
 
 NOW = datetime(2026, 7, 22, 12, 0, tzinfo=UTC)
 HUMAN_ID = UUID("22222222-2222-2222-2222-222222222222")
@@ -187,12 +187,8 @@ def test_regeneration_request_is_202_idempotent_and_does_not_claim_artifacts() -
                 ],
             },
         )
-        first = client.post(
-            f"/api/v1/transcriptions/{JOB_ID}/revisions/1/regeneration-requests"
-        )
-        second = client.post(
-            f"/api/v1/transcriptions/{JOB_ID}/revisions/1/regeneration-requests"
-        )
+        first = client.post(f"/api/v1/transcriptions/{JOB_ID}/revisions/1/regeneration-requests")
+        second = client.post(f"/api/v1/transcriptions/{JOB_ID}/revisions/1/regeneration-requests")
         detail = client.get(f"/api/v1/transcriptions/{JOB_ID}/revisions/1")
 
     assert created.status_code == 201
@@ -285,7 +281,11 @@ def test_invalid_operations_use_stable_envelopes_and_unknown_fields_are_rejected
 
 def test_historical_revisions_cannot_be_mutated_or_deleted_through_http() -> None:
     with registered_client() as client:
-        assert client.put(f"/api/v1/transcriptions/{JOB_ID}/revisions/0", json={}).status_code == 405
-        assert client.patch(f"/api/v1/transcriptions/{JOB_ID}/revisions/0", json={}).status_code == 405
+        assert (
+            client.put(f"/api/v1/transcriptions/{JOB_ID}/revisions/0", json={}).status_code == 405
+        )
+        assert (
+            client.patch(f"/api/v1/transcriptions/{JOB_ID}/revisions/0", json={}).status_code == 405
+        )
         assert client.delete(f"/api/v1/transcriptions/{JOB_ID}/revisions/0").status_code == 405
         assert client.post(f"/api/v1/transcriptions/{JOB_ID}/review", json={}).status_code == 405

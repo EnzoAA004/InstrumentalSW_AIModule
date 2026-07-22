@@ -116,8 +116,12 @@ class TranscriptionRevisionSummary:
 
     def __post_init__(self) -> None:
         values = (self.event_count, self.model_event_count, self.human_event_count)
-        if any(isinstance(value, bool) or not isinstance(value, int) or value < 0 for value in values):
-            raise InvalidTranscriptionRevisionError("revision summary counts must be non-negative integers")
+        if any(
+            isinstance(value, bool) or not isinstance(value, int) or value < 0 for value in values
+        ):
+            raise InvalidTranscriptionRevisionError(
+                "revision summary counts must be non-negative integers"
+            )
         if self.event_count != self.model_event_count + self.human_event_count:
             raise InvalidTranscriptionRevisionError("revision summary counts must be consistent")
 
@@ -239,6 +243,8 @@ class RegenerationRequest:
         if self.status is not RegenerationRequestStatus.REQUESTED:
             raise InvalidTranscriptionRevisionError("regeneration status must be REQUESTED")
         if self.requested_artifacts != REQUESTED_DERIVED_ARTIFACTS:
-            raise InvalidTranscriptionRevisionError("requested artifacts must be midi, musicxml, svg")
+            raise InvalidTranscriptionRevisionError(
+                "requested artifacts must be midi, musicxml, svg"
+            )
         if not isinstance(self.requested_at, datetime) or self.requested_at.tzinfo is None:
             raise InvalidTranscriptionRevisionError("requested_at must be timezone-aware")
