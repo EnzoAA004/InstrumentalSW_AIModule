@@ -200,7 +200,7 @@ def test_regeneration_request_is_202_idempotent_and_does_not_claim_artifacts() -
     assert second.status_code == 202
     assert first.json() == second.json()
     assert first.json() == {
-        "request_id": str(REQUEST_ID),
+        "request_id": str(HUMAN_ID),
         "job_id": str(JOB_ID),
         "revision_number": 1,
         "status": "REQUESTED",
