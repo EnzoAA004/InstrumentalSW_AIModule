@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   format:
@@ -15,6 +15,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
@@ -23,10 +25,14 @@ jobs:
       - run: |
           python -m ruff check --fix src tests
           python -m ruff format src tests
-      - uses: actions/upload-artifact@v6
-        with:
-          name: sax043-ai-formatted
-          path: |
-            src
-            tests
-          retention-days: 1
+      - name: Commit exact Ruff output
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src tests
+          if git diff --cached --quiet; then
+            echo "No formatter changes"
+          else
+            git commit -m "refactor(SAX-043): apply pinned Ruff formatting"
+            git push origin HEAD:${{ github.head_ref || github.ref_name }}
+          fi
