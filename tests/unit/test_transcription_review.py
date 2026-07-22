@@ -29,6 +29,14 @@ def registration_repository(
     )
 
 
+def registration_repository(
+    reviews: InMemoryTranscriptionReviewRepository,
+) -> InMemoryTranscriptionReviewRegistrationRepository:
+    return InMemoryTranscriptionReviewRegistrationRepository(
+        reviews, InMemoryTranscriptionRevisionRepository()
+    )
+
+
 def test_review_repository_preserves_exact_result_reference() -> None:
     repository = InMemoryTranscriptionReviewRepository()
     result = build_written_result()

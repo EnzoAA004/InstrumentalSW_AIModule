@@ -31,9 +31,11 @@ from saxo_ai.domain.transcription_revisions import (
     TranscriptionRevisionEvent,
 )
 from saxo_ai.domain.written_pitch import WrittenPitchTranscriptionResult
+from saxo_ai.domain.written_pitch import WrittenPitchTranscriptionResult
 from saxo_ai.infrastructure.repositories import (
     InMemoryRegenerationRequestRepository,
     InMemoryTranscriptionJobRepository,
+    InMemoryTranscriptionReviewRegistrationRepository,
     InMemoryTranscriptionReviewRegistrationRepository,
     InMemoryTranscriptionReviewRepository,
     InMemoryTranscriptionRevisionRepository,
@@ -67,6 +69,7 @@ def setup_registered(
     events: tuple[tuple[int, int, float, float, int, float, bool], ...] | None = None,
 ) -> tuple[
     InMemoryTranscriptionJobRepository,
+    InMemoryTranscriptionReviewRegistrationRepository,
     InMemoryTranscriptionReviewRepository,
     InMemoryTranscriptionRevisionRepository,
     WrittenPitchTranscriptionResult,
