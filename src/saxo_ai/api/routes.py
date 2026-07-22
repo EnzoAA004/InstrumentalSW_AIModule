@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Body, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import JSONResponse
 
 from saxo_ai.api.schemas import (
@@ -94,27 +94,20 @@ def build_router(
         return TranscriptionJobResponse.model_validate(job)
 
     @router.get(
-        "/api/v1/transcriptions/{job_id}",
-        response_model=TranscriptionJobResponse,
+        "/api/v1/transcriptions/{job_id}", response_model=TranscriptionJobResponse
     )
     def get_transcription(job_id: UUID) -> TranscriptionJobResponse:
         try:
-            job = get_job.execute(job_id)
+            return TranscriptionJobResponse.model_validate(get_job.execute(job_id))
         except TranscriptionJobNotFoundError as error:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Transcription job not found.",
             ) from error
-        return TranscriptionJobResponse.model_validate(job)
 
     @router.get(
         "/api/v1/transcriptions/{job_id}/review",
         response_model=TranscriptionReviewResponse,
-        responses={
-            400: {"description": "Invalid job ID"},
-            404: {"description": "Unknown job"},
-            409: {"description": "Result not ready"},
-        },
     )
     def get_transcription_review(
         job_id: str,
@@ -123,17 +116,18 @@ def build_router(
         if isinstance(parsed_job_id, JSONResponse):
             return parsed_job_id
         try:
-            snapshot = get_review.execute(parsed_job_id)
+            return TranscriptionReviewResponse.model_validate(
+                get_review.execute(parsed_job_id)
+            )
         except TranscriptionJobNotFoundError:
             return _error(
-                status.HTTP_404_NOT_FOUND,
+                404,
                 "TRANSCRIPTION_NOT_FOUND",
                 "Transcription job not found.",
                 "job_id",
             )
         except TranscriptionResultNotReadyError:
             return _result_not_ready()
-        return TranscriptionReviewResponse.model_validate(snapshot)
 
     @router.get(
         "/api/v1/transcriptions/{job_id}/revisions",
@@ -145,37 +139,38 @@ def build_router(
         parsed_job_id = _parse_job_id(job_id)
         if isinstance(parsed_job_id, JSONResponse):
             return parsed_job_id
-        readiness = _require_review(parsed_job_id, get_review)
-        if readiness is not None:
-            return readiness
+        unavailable = _require_review(parsed_job_id, get_review)
+        if unavailable is not None:
+            return unavailable
         try:
-            history = get_revision_history.execute(parsed_job_id)
+            return TranscriptionRevisionHistoryResponse.model_validate(
+                get_revision_history.execute(parsed_job_id)
+            )
         except RevisionNotFoundError:
             return _result_not_ready()
-        return TranscriptionRevisionHistoryResponse.model_validate(history)
 
     @router.get(
         "/api/v1/transcriptions/{job_id}/revisions/{revision_number}",
         response_model=TranscriptionRevisionResponse,
     )
     def get_transcription_revision(
-        job_id: str,
-        revision_number: str,
+        job_id: str, revision_number: str
     ) -> TranscriptionRevisionResponse | JSONResponse:
         parsed_job_id = _parse_job_id(job_id)
         if isinstance(parsed_job_id, JSONResponse):
             return parsed_job_id
-        readiness = _require_review(parsed_job_id, get_review)
-        if readiness is not None:
-            return readiness
+        unavailable = _require_review(parsed_job_id, get_review)
+        if unavailable is not None:
+            return unavailable
         parsed_revision = _parse_revision_number(revision_number)
         if parsed_revision is None:
             return _revision_not_found()
         try:
-            revision = get_revision.execute(parsed_job_id, parsed_revision)
+            return TranscriptionRevisionResponse.model_validate(
+                get_revision.execute(parsed_job_id, parsed_revision)
+            )
         except RevisionNotFoundError:
             return _revision_not_found()
-        return TranscriptionRevisionResponse.model_validate(revision)
 
     @router.post(
         "/api/v1/transcriptions/{job_id}/revisions",
@@ -184,14 +179,14 @@ def build_router(
     )
     def create_transcription_revision(
         job_id: str,
-        payload: object,
+        payload: Annotated[object, Body()],
     ) -> TranscriptionRevisionResponse | JSONResponse:
         parsed_job_id = _parse_job_id(job_id)
         if isinstance(parsed_job_id, JSONResponse):
             return parsed_job_id
-        readiness = _require_review(parsed_job_id, get_review)
-        if readiness is not None:
-            return readiness
+        unavailable = _require_review(parsed_job_id, get_review)
+        if unavailable is not None:
+            return unavailable
         try:
             base_revision_number, operations = _parse_revision_payload(payload)
             revision = create_revision.execute(
@@ -199,28 +194,23 @@ def build_router(
                 base_revision_number=base_revision_number,
                 operations=operations,
             )
+            return TranscriptionRevisionResponse.model_validate(revision)
         except RevisionConflictError:
             return _error(
-                status.HTTP_409_CONFLICT,
+                409,
                 "REVISION_CONFLICT",
                 "The transcription revision has changed.",
                 "base_revision_number",
             )
         except InvalidRevisionEventError as error:
-            return _error(
-                status.HTTP_422_UNPROCESSABLE_CONTENT,
-                "INVALID_REVISION_EVENT",
-                str(error),
-                "operations",
-            )
+            return _error(422, "INVALID_REVISION_EVENT", str(error), "operations")
         except (InvalidRevisionOperationError, RevisionNotFoundError) as error:
             return _error(
-                status.HTTP_422_UNPROCESSABLE_CONTENT,
+                422,
                 "INVALID_REVISION_OPERATION",
                 str(error) or "The revision operation is invalid.",
                 "operations",
             )
-        return TranscriptionRevisionResponse.model_validate(revision)
 
     @router.post(
         "/api/v1/transcriptions/{job_id}/revisions/{revision_number}/regeneration-requests",
@@ -228,23 +218,23 @@ def build_router(
         status_code=status.HTTP_202_ACCEPTED,
     )
     def request_transcription_revision_regeneration(
-        job_id: str,
-        revision_number: str,
+        job_id: str, revision_number: str
     ) -> RegenerationRequestResponse | JSONResponse:
         parsed_job_id = _parse_job_id(job_id)
         if isinstance(parsed_job_id, JSONResponse):
             return parsed_job_id
-        readiness = _require_review(parsed_job_id, get_review)
-        if readiness is not None:
-            return readiness
+        unavailable = _require_review(parsed_job_id, get_review)
+        if unavailable is not None:
+            return unavailable
         parsed_revision = _parse_revision_number(revision_number)
         if parsed_revision is None:
             return _revision_not_found()
         try:
-            request = request_regeneration.execute(parsed_job_id, parsed_revision)
+            return RegenerationRequestResponse.model_validate(
+                request_regeneration.execute(parsed_job_id, parsed_revision)
+            )
         except RevisionNotFoundError:
             return _revision_not_found()
-        return RegenerationRequestResponse.model_validate(request)
 
     return router
 
@@ -253,12 +243,7 @@ def _parse_job_id(job_id: str) -> UUID | JSONResponse:
     try:
         return UUID(job_id)
     except ValueError:
-        return _error(
-            status.HTTP_400_BAD_REQUEST,
-            "INVALID_JOB_ID",
-            "Job ID must be a valid UUID.",
-            "job_id",
-        )
+        return _error(400, "INVALID_JOB_ID", "Job ID must be a valid UUID.", "job_id")
 
 
 def _parse_revision_number(value: str) -> int | None:
@@ -274,7 +259,7 @@ def _require_review(job_id: UUID, get_review: GetTranscriptionReview) -> JSONRes
         get_review.execute(job_id)
     except TranscriptionJobNotFoundError:
         return _error(
-            status.HTTP_404_NOT_FOUND,
+            404,
             "TRANSCRIPTION_NOT_FOUND",
             "Transcription job not found.",
             "job_id",
@@ -285,11 +270,18 @@ def _require_review(job_id: UUID, get_review: GetTranscriptionReview) -> JSONRes
 
 
 def _parse_revision_payload(payload: object) -> tuple[int, tuple[RevisionOperation, ...]]:
-    if not isinstance(payload, dict) or set(payload) != {"base_revision_number", "operations"}:
-        raise InvalidRevisionOperationError("request must contain only base_revision_number and operations")
+    if not isinstance(payload, dict) or set(payload) != {
+        "base_revision_number",
+        "operations",
+    }:
+        raise InvalidRevisionOperationError(
+            "request must contain only base_revision_number and operations"
+        )
     base = payload["base_revision_number"]
     if isinstance(base, bool) or not isinstance(base, int) or base < 0:
-        raise InvalidRevisionOperationError("base_revision_number must be a non-negative integer")
+        raise InvalidRevisionOperationError(
+            "base_revision_number must be a non-negative integer"
+        )
     raw_operations = payload["operations"]
     if not isinstance(raw_operations, list) or not raw_operations:
         raise InvalidRevisionOperationError("at least one operation is required")
@@ -301,15 +293,16 @@ def _parse_operation(value: object) -> RevisionOperation:
         raise InvalidRevisionOperationError("each operation must have a supported type")
     operation_type = value["type"]
     if operation_type == "update":
-        expected = {
+        if set(value) != {
             "type",
             "event_id",
             "written_pitch_midi",
             "onset_seconds",
             "offset_seconds",
-        }
-        if set(value) != expected:
-            raise InvalidRevisionOperationError("update requires exactly its editable fields")
+        }:
+            raise InvalidRevisionOperationError(
+                "update requires exactly its editable fields"
+            )
         return UpdateRevisionEvent(
             event_id=value["event_id"],  # type: ignore[arg-type]
             written_pitch_midi=value["written_pitch_midi"],  # type: ignore[arg-type]
@@ -320,7 +313,9 @@ def _parse_operation(value: object) -> RevisionOperation:
         required = {"type", "written_pitch_midi", "onset_seconds", "offset_seconds"}
         allowed = {*required, "velocity"}
         if not required <= set(value) or not set(value) <= allowed:
-            raise InvalidRevisionOperationError("add requires pitch, onset, offset and optional velocity")
+            raise InvalidRevisionOperationError(
+                "add requires pitch, onset, offset and optional velocity"
+            )
         return AddRevisionEvent(
             written_pitch_midi=value["written_pitch_midi"],  # type: ignore[arg-type]
             onset_seconds=value["onset_seconds"],  # type: ignore[arg-type]
@@ -336,7 +331,7 @@ def _parse_operation(value: object) -> RevisionOperation:
 
 def _result_not_ready() -> JSONResponse:
     return _error(
-        status.HTTP_409_CONFLICT,
+        409,
         "TRANSCRIPTION_RESULT_NOT_READY",
         "Transcription notes are not available yet.",
         "job_id",
@@ -345,7 +340,7 @@ def _result_not_ready() -> JSONResponse:
 
 def _revision_not_found() -> JSONResponse:
     return _error(
-        status.HTTP_404_NOT_FOUND,
+        404,
         "REVISION_NOT_FOUND",
         "Transcription revision not found.",
         "revision_number",
