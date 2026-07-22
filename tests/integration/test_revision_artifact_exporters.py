@@ -6,7 +6,10 @@ from uuid import UUID
 
 import pytest
 
-from saxo_ai.application.ports import TranscriptionJobRepository, TranscriptionRevisionRepository
+from saxo_ai.application.ports import (
+    TranscriptionJobRepository,
+    TranscriptionRevisionRepository,
+)
 from saxo_ai.application.revision_artifacts import RegisterRevisionArtifacts
 from saxo_ai.application.score_rendering import RenderMusicXmlToSvg
 from saxo_ai.domain.revision_artifacts import (
