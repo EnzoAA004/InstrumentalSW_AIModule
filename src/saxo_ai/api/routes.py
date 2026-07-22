@@ -89,13 +89,28 @@ def build_router(
     @router.get(
         "/api/v1/transcriptions/{job_id}/review",
         response_model=TranscriptionReviewResponse,
-        responses={404: {"description": "Unknown job"}, 409: {"description": "Result not ready"}},
+        responses={
+            400: {"description": "Invalid job ID"},
+            404: {"description": "Unknown job"},
+            409: {"description": "Result not ready"},
+        },
     )
     def get_transcription_review(
-        job_id: UUID,
+        job_id: str,
     ) -> TranscriptionReviewResponse | JSONResponse:
         try:
-            snapshot = get_review.execute(job_id)
+            parsed_job_id = UUID(job_id)
+        except ValueError:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={
+                    "code": "INVALID_JOB_ID",
+                    "message": "Job ID must be a valid UUID.",
+                    "field": "job_id",
+                },
+            )
+        try:
+            snapshot = get_review.execute(parsed_job_id)
         except TranscriptionJobNotFoundError:
             return JSONResponse(
                 status_code=status.HTTP_404_NOT_FOUND,
