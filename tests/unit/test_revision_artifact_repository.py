@@ -4,7 +4,6 @@ from datetime import UTC, datetime
 from hashlib import sha256
 
 import pytest
-from tests.review_helpers import JOB_ID, build_job, build_written_result
 
 from saxo_ai.application.errors import (
     RevisionArtifactConflictError,
@@ -32,6 +31,7 @@ from saxo_ai.infrastructure.repositories import (
     InMemoryTranscriptionReviewRepository,
     InMemoryTranscriptionRevisionRepository,
 )
+from tests.review_helpers import JOB_ID, build_job, build_written_result
 
 NOW = datetime(2026, 7, 22, 12, 0, tzinfo=UTC)
 
