@@ -81,6 +81,18 @@ def test_review_api_distinguishes_unknown_and_not_ready_jobs() -> None:
     }
 
 
+def test_review_api_rejects_malformed_uuid_with_stable_400() -> None:
+    with TestClient(create_app()) as client:
+        response = client.get("/api/v1/transcriptions/not-a-uuid/review")
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "code": "INVALID_JOB_ID",
+        "message": "Job ID must be a valid UUID.",
+        "field": "job_id",
+    }
+
+
 def test_review_api_has_no_public_write_route() -> None:
     with TestClient(create_app()) as client:
         response = client.post(
