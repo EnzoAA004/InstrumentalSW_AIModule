@@ -7,6 +7,7 @@ from saxo_ai.domain.audio import (
     OriginalAudioReference,
 )
 from saxo_ai.domain.models import AudioContentMetadata, TranscriptionJob
+from saxo_ai.domain.transcription_revisions import RegenerationRequest, TranscriptionRevision
 from saxo_ai.domain.written_pitch import WrittenPitchTranscriptionResult
 
 
@@ -43,3 +44,26 @@ class TranscriptionReviewRepository(Protocol):
     def save(self, job_id: UUID, result: WrittenPitchTranscriptionResult) -> None: ...
 
     def get(self, job_id: UUID) -> WrittenPitchTranscriptionResult | None: ...
+
+
+class TranscriptionRevisionRepository(Protocol):
+    def initialize(self, job_id: UUID, revision: TranscriptionRevision) -> TranscriptionRevision: ...
+
+    def latest(self, job_id: UUID) -> TranscriptionRevision | None: ...
+
+    def get(self, job_id: UUID, revision_number: int) -> TranscriptionRevision | None: ...
+
+    def list(self, job_id: UUID) -> tuple[TranscriptionRevision, ...]: ...
+
+    def append(
+        self,
+        job_id: UUID,
+        expected_latest_revision: int,
+        revision: TranscriptionRevision,
+    ) -> None: ...
+
+
+class RegenerationRequestRepository(Protocol):
+    def get(self, job_id: UUID, revision_number: int) -> RegenerationRequest | None: ...
+
+    def save(self, request: RegenerationRequest) -> RegenerationRequest: ...
