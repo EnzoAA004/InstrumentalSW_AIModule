@@ -6,94 +6,145 @@ Python/FastAPI module for InstrumentalSW (Saxo), developed through reproducible 
 
 - Python `>=3.11,<3.14`
 - `pip`
-- FFmpeg for real canonical-audio integration tests
-
-Verify FFmpeg with:
+- FFmpeg for canonical-audio integration tests
 
 ```bash
 ffmpeg -version
-```
-
-Unit tests do not require FFmpeg. Real conversion tests are marked `integration`; locally they skip with a clear reason when FFmpeg is absent. CI installs FFmpeg and sets `SAXO_REQUIRE_FFMPEG=1`, so absence fails the workflow.
-
-## Install and run
-
-```bash
 python -m pip install -e ".[dev]"
 python -m uvicorn saxo_ai.main:app --reload
 ```
 
-## Minimal API
+Unit tests do not require FFmpeg. CI installs FFmpeg and runs the protected quality matrix on Python 3.11, 3.12, and 3.13. The optional real FiloSax baseline is required only on Python 3.11.
 
-- `GET /health`
-- `POST /api/v1/transcriptions`
-- `GET /api/v1/transcriptions/{job_id}`
-
-Jobs are stored only in memory and begin with status `UPLOADED`. Each job includes the SHA-256 calculated from bounded upload reads. SAX-013 rejects oversized uploads during that same traversal before a job is created. Canonical content and duration validation remain disconnected from these endpoints.
-
-## Canonical audio capability
-
-The internal converter accepts a generic non-seekable source and writes to a caller-provided destination. Its default representation is:
+## HTTP API
 
 ```text
-container:                 wav
-codec:                     pcm_s16le
-sample_rate_hz:            16000
-channels:                  1
-sample_width_bits:         16
-amplitude_normalization:   none
-preprocessing schema:      1.0
+GET  /health
+POST /api/v1/transcriptions
+GET  /api/v1/transcriptions/{job_id}
+GET  /api/v1/transcriptions/{job_id}/review
 ```
 
-Input and output are copied in bounded 64 KiB blocks through an automatically cleaned temporary workspace. The WAV result is validated semantically with Python's `wave` module.
+Jobs and review results are in-memory only. A job begins with `UPLOADED`; the only current statuses are `UPLOADED` and `FAILED`.
 
-## Invalid audio content
+## Upload and status
 
-`AUDIO_CONTENT_INVALID` is the stable domain failure code used only when an already accepted MP3/WAV cannot be decoded by the real FFmpeg conversion command. It is distinct from an unsupported extension and technical infrastructure failures.
-
-On invalid content, the internal validation use case stores a new immutable `FAILED` version of the job and produces no canonical destination bytes. This capability is not exposed through HTTP yet.
-
-## Audio processing limits
-
-Default limits are:
+`POST /api/v1/transcriptions` accepts MP3/WAV multipart fields:
 
 ```text
-max_size_bytes:        104857600 bytes (100 MiB)
-max_duration_seconds:  900.0 seconds (15 minutes)
+file
+saxophone_type: soprano | alto | tenor | baritone
+input_mode:     solo | mixture
 ```
 
-Override them at application startup with:
+The upload path performs bounded hashing and creates a job record. It does not run transcription or retain audio. `GET /api/v1/transcriptions/{job_id}` returns the current in-memory job state.
+
+## Transcription review API
+
+SAX-042 exposes an immutable note review only when a real `WrittenPitchTranscriptionResult` has already been registered through the internal application case:
 
 ```text
-SAXO_MAX_AUDIO_SIZE_BYTES
-SAXO_MAX_AUDIO_DURATION_SECONDS
+WrittenPitchTranscriptionResult
+→ RegisterTranscriptionReview
+→ TranscriptionReviewRepository
+→ GetTranscriptionReview
+→ GET /api/v1/transcriptions/{job_id}/review
 ```
 
-Invalid values fail startup instead of silently using defaults. Tests may inject `AudioProcessingLimits` directly into `create_app`.
+The GET is read-only. It never executes inference, processes the upload, loads or stores audio, creates synthetic notes, changes job status, or starts background work.
 
-An upload above the size limit stops after at most `maximum + 1` returned bytes and responds with HTTP 413 and code `AUDIO_SIZE_LIMIT_EXCEEDED`; no job is created. A semantically valid canonical WAV above the duration limit becomes an internal failed job with `AUDIO_DURATION_LIMIT_EXCEEDED`. Duration validation is not connected to HTTP yet.
+HTTP 200 preserves:
 
-## Versioned NoteEvent contract
+```text
+job_id
+schema_version: 1.0
+note_event_schema_version: 1.0
+low_confidence_policy_version: 1.0
+written_pitch_policy_version: 1.0
+saxophone_type
+low_confidence_threshold
+confidence_interpretation
+confidence_method
+summary.event_count
+summary.low_confidence_count
+ordered events
+```
 
-SAX-020 defines a model-independent `NoteEvent` and ordered `NoteEventBatch` with current schema version `"1.0"`. The contract uses concert-pitch MIDI, onset/offset seconds, MIDI-compatible velocity, and confidence, with strict standard-library JSON round trips.
+Each event preserves:
 
-The complete schema is documented in [`docs/contracts/note-event-v1.md`](docs/contracts/note-event-v1.md).
+```text
+index
+pitch_concert_midi
+written_pitch_midi
+onset_seconds
+offset_seconds
+velocity
+confidence
+is_low_confidence
+```
 
-## Deterministic NoteEvent postprocessing
+Confidence interpretation is exactly:
 
-SAX-022 adds the internal `PostProcessTranscriptionEvents` use case. Its immutable policy defaults to a minimum duration of `0.030` seconds, removes only events strictly shorter than that boundary, and reduces exact duplicates identified by concert pitch plus exact onset/offset times. The retained representative is selected by confidence, then velocity, then first appearance.
+```text
+model_signal_not_calibrated_accuracy
+```
 
-A no-op returns the original `NoteEventBatch` object. The report remains separate from NoteEvent JSON schema `1.0`. See [`docs/contracts/note-event-postprocessing-v1.md`](docs/contracts/note-event-postprocessing-v1.md).
+Confidence remains a model signal in `0..1`; it is not a percentage or calibrated accuracy claim. The API adds no duration, note name, enharmonic spelling, key, measure, quantization, score, or audio field.
 
-## Low-confidence review view
+A known job without a registered result returns HTTP 409:
 
-SAX-023 adds the internal `MarkLowConfidenceEvents` use case and a versioned JSON review view. The initial configurable threshold is `0.50`; an event is marked only when `confidence < threshold`. Every postprocessed note remains present with its original object reference and order.
+```json
+{
+  "code": "TRANSCRIPTION_RESULT_NOT_READY",
+  "message": "Transcription notes are not available yet.",
+  "field": "job_id"
+}
+```
 
-Confidence is an engine signal, not calibrated accuracy: `0.8` does not mean 80% accuracy. The view adds only `is_low_confidence` and is documented in [`docs/contracts/note-confidence-v1.md`](docs/contracts/note-confidence-v1.md). It is not connected to FastAPI or a frontend yet.
+An unknown job returns 404. A malformed review UUID returns `400 INVALID_JOB_ID`. There is no public POST/PUT/PATCH/DELETE/seed route for review registration.
 
-## Written saxophone pitch
+`create_app` creates empty job and review repositories by default and permits repository injection in tests. Successful tests construct real domain results and register them through `RegisterTranscriptionReview`; the route does not return hardcoded notes.
 
-SAX-030 adds the internal `TransposeWrittenPitchEvents` use case. It preserves every concert-pitch `NoteEvent` and derives a separate integer `written_pitch_midi` through the existing instrument rule:
+See [`docs/contracts/transcription-review-api-v1.md`](docs/contracts/transcription-review-api-v1.md) and [`docs/tdd/iteration-017.md`](docs/tdd/iteration-017.md).
+
+## Internal audio capabilities
+
+The module includes bounded upload hashing, explicit size/duration limits, canonical WAV conversion through FFmpeg, stable invalid-content failures, and immutable job revisions. Canonical conversion writes only to caller-provided destinations and is not connected to the upload endpoint.
+
+Default canonical representation:
+
+```text
+container:               wav
+codec:                   pcm_s16le
+sample_rate_hz:          16000
+channels:                1
+sample_width_bits:       16
+amplitude_normalization: none
+preprocessing schema:    1.0
+```
+
+Default processing limits:
+
+```text
+max_size_bytes:        104857600
+max_duration_seconds:  900.0
+```
+
+## Note and notation contracts
+
+The internal pipeline contains immutable, model-independent contracts for:
+
+- NoteEvent schema 1.0;
+- deterministic event postprocessing;
+- low-confidence annotation;
+- written saxophone pitch;
+- concert-pitch MIDI export;
+- tempo estimation and manual revision;
+- monophonic rhythm quantization;
+- transposing MusicXML 4.0 export;
+- revision-linked SVG score rendering.
+
+The written-pitch rule is:
 
 ```text
 soprano Bb   +2
@@ -102,136 +153,35 @@ tenor Bb    +14
 baritone Eb +21
 ```
 
-The scalar function rejects invalid concert pitches, invalid saxophone types, and any attempted written pitch outside `0..127`; it never clips or changes octave. The complete immutable contract, atomic batch behavior, and exact MIDI boundaries are documented in [`docs/contracts/written-pitch-v1.md`](docs/contracts/written-pitch-v1.md).
+Concert and written MIDI remain distinct. Low-confidence events are never hidden, deleted, or reordered.
 
-SAX-030 itself creates no file. SAX-031 consumes its immutable result while preserving both sounding concert pitch and written-pitch provenance.
+Contracts:
 
-## Deterministic concert-pitch MIDI export
+- [`docs/contracts/note-event-v1.md`](docs/contracts/note-event-v1.md)
+- [`docs/contracts/note-event-postprocessing-v1.md`](docs/contracts/note-event-postprocessing-v1.md)
+- [`docs/contracts/note-confidence-v1.md`](docs/contracts/note-confidence-v1.md)
+- [`docs/contracts/written-pitch-v1.md`](docs/contracts/written-pitch-v1.md)
+- [`docs/contracts/midi-export-v1.md`](docs/contracts/midi-export-v1.md)
+- [`docs/contracts/tempo-resolution-v1.md`](docs/contracts/tempo-resolution-v1.md)
+- [`docs/contracts/rhythm-quantization-v1.md`](docs/contracts/rhythm-quantization-v1.md)
+- [`docs/contracts/musicxml-export-v1.md`](docs/contracts/musicxml-export-v1.md)
+- [`docs/contracts/score-rendering-v1.md`](docs/contracts/score-rendering-v1.md)
 
-SAX-031 adds the internal `ExportWrittenPitchToMidi` use case behind a `MidiFileEncoder` application port. The production adapter uses pinned `mido==1.3.3` to generate and parse a deterministic Standard MIDI File entirely in memory.
-
-```text
-file type:             1
-ticks per beat:        480
-tracks:                2
-channel:               0
-pitch representation:  concert
-default tempo:         120 BPM
-```
-
-The playback note always comes from the original `pitch_concert_midi`; `written_pitch_midi` remains available only through provenance for notation stories. Source velocity zero becomes note-on velocity one and is reported. A positive duration that rounds to zero receives one technical tick without changing the source seconds. At the same tick, note-off is ordered before note-on, and all emitted delta times are non-negative.
-
-The adapter validates its own bytes by reopening them with Mido. Integration tests also check the binary header, open a temporary `.mid` file, preserve overlaps, and verify an empty batch. The artifact contains bytes, media type, extension, size, and application-calculated SHA-256; it contains no path and is not persisted.
-
-The complete contract is documented in [`docs/contracts/midi-export-v1.md`](docs/contracts/midi-export-v1.md). This capability is not connected to FastAPI, job state, storage, Backend, or Frontend.
-
-## Tempo resolution
-
-SAX-032 adds a replaceable `TempoEstimator` port and a deterministic standard-library baseline based only on exact note onsets. It calculates consecutive inter-onset intervals, converts them to BPM candidates, selects their median, resolves configured-range octave equivalents, and reports IOI consensus.
-
-```text
-estimator:             median_onset_interval
-minimum BPM:           40.0
-maximum BPM:          240.0
-minimum intervals:      2
-consensus tolerance:    0.08
-```
-
-Confidence equals `inlier intervals / total intervals`; it is not calibrated accuracy, so `0.8` does not mean 80% tempo accuracy. Exact duplicate onsets are removed only inside estimation and never from the original result.
-
-Manual tempo works even when automatic estimation is unavailable. Every explicit override creates a new immutable revision while preserving the original and automatic estimate by reference. `ExportTempoResolvedMidi` regenerates MIDI through the existing SAX-031 exporter and retains the exact tempo revision used.
-
-The complete contract is documented in [`docs/contracts/tempo-resolution-v1.md`](docs/contracts/tempo-resolution-v1.md). SAX-032 does not analyze audio, estimate meter, quantize rhythm, create MusicXML, or connect the flow to FastAPI.
-
-## Monophonic rhythm quantization
-
-SAX-033 adds the internal `QuantizeMonophonicRhythm` use case. It maps original note boundaries to a configurable uniform grid using the effective BPM from the exact `TempoResolution` revision. The default is four steps per beat, with beat interpreted as a quarter note.
-
-```text
-policy version:         1.0
-subdivisions per beat:    4
-rounding:                nearest_half_up
-overlap policy:          truncate_earlier_then_shift_same_step
-rests:                   explicit positive grid gaps
-```
-
-Onset and offset are rounded independently with decimal half-up semantics; any zero-duration candidate receives one step. A later attack truncates the prior note, while notes colliding in the same step are shifted after the prior offset without removal or fusion. Positive initial and internal gaps become `QuantizedRest`; no final duration is invented.
-
-Every quantized note keeps its original `WrittenPitchNoteEvent` reference and index, and signed onset/offset deltas report how notated timing differs from real timing. A new tempo override requires a new quantization result tied to that exact revision. The complete contract is documented in [`docs/contracts/rhythm-quantization-v1.md`](docs/contracts/rhythm-quantization-v1.md). SAX-033 creates no measures, time signature, notation spelling, MusicXML, score, endpoint, persistence, Backend, or Frontend behavior.
-
-## Validated transposing MusicXML export
-
-SAX-034 adds `ExportQuantizedRhythmToMusicXml` behind separate encoder and reader ports. It emits deterministic, uncompressed UTF-8 MusicXML 4.0 `score-partwise` for one written saxophone part.
-
-```text
-document:              score-partwise 4.0
-extension:             .musicxml
-media type:            application/vnd.recordare.musicxml+xml
-pitch:                 written, prefer flats
-meter:                 manual, default 4/4
-divisions:             SAX-033 subdivisions per beat
-external reader:       Verovio 6.2.1
-```
-
-The standard-library encoder segments notes and existing rests at barlines, emits continuity ties only for segments of the same source note, preserves partial final measures, and creates a valid empty score without invented duration. Instrument names and `<transpose>` metadata cover soprano, alto, tenor, and baritone while remaining coherent with SAX-030 offsets.
-
-Application calculates exact SHA-256 metadata and preserves the exact `QuantizedRhythmResult`, tempo revision, source notes, reports, and model provenance by reference. Verovio validates both in-memory bytes and a temporary `.musicxml` file without rendering. The complete contract is documented in [`docs/contracts/musicxml-export-v1.md`](docs/contracts/musicxml-export-v1.md). SAX-034 is not connected to FastAPI, persistence, Backend, or Frontend and does not implement SAX-035, SVG, or PDF.
-
-## Revision-linked SVG score rendering
-
-SAX-035 adds `RenderMusicXmlToSvg` behind an in-memory `ScoreRenderer` port. The production adapter reuses pinned `verovio==6.2.1` to load an already validated `MusicXmlExportResult` and render one independent UTF-8 SVG artifact per page.
-
-```text
-policy version:     1.0
-media type:         image/svg+xml
-extension:          .svg
-page size:          2100 × 2970
-scale:              100
-page numbering:     1-based
-identifier policy:  xmlIdChecksum
-storage:            none
-```
-
-Every result preserves the exact MusicXML object and tempo revision used. Application validates each namespaced SVG document, calculates exact size and SHA-256, and returns pages atomically in ascending order. Verovio logs are retained as ordered diagnostics; load, page-count, and page-render errors expose captured logs separately without modifying previously generated MIDI or MusicXML artifacts.
-
-The baseline uses fixed layout settings, may produce multiple pages, and depends on Verovio 6.2.1. It does not claim professional engraving quality, permit visual editing, generate PDF, persist files, or expose rendering through HTTP. The complete contract is documented in [`docs/contracts/score-rendering-v1.md`](docs/contracts/score-rendering-v1.md).
+These internal capabilities are not automatically connected to uploaded jobs. SAX-042 exposes only results explicitly registered by future orchestration.
 
 ## Optional FiloSax baseline
 
-SAX-021 provides an internal, replaceable FiloSax audio-to-note baseline behind
-`TranscriptionEngine` and `TranscribeCanonicalAudio`. Python 3.11 is the validated inference
-environment.
-
-Install the optional model stack with the controlled installer:
+Install the controlled Python 3.11 baseline with:
 
 ```bash
 python scripts/install_baseline.py
 ```
 
-The installer uses no pip cache, force-installs both Git distributions from exact commits with
-`--no-deps`, and verifies their PEP 610 `direct_url.json` metadata:
+The installer verifies pinned source revisions and provenance. The baseline is not instantiated by the FastAPI composition root and no HTTP GET triggers model download or inference.
 
-```text
-hf-midi-transcription
-  version: 0.1.1
-  source:  96f6797881e9497cbfc8f8e5deccea9c1f2f7adc
+See [`docs/baselines/hf-saxophone-v1.md`](docs/baselines/hf-saxophone-v1.md).
 
-piano-transcription-inference
-  version: 0.1.0
-  source:  7568dc7f78b625e40cf9776e2806d164006610e3
-```
-
-The model is not downloaded during installation. It is resolved only when inference or the real
-integration test runs. Reproducibility also fixes the Hugging Face model revision and verifies the
-checkpoint filename, byte size, and SHA-256 before loading.
-
-See [`docs/baselines/hf-saxophone-v1.md`](docs/baselines/hf-saxophone-v1.md) for the distinction
-between package version, source revision, model revision, and checkpoint checksum.
-
-The baseline is not instantiated by the FastAPI composition root and is not connected to any
-endpoint.
-
-## Quality and tests
+## Quality
 
 ```bash
 python scripts/check_quality.py
@@ -248,23 +198,8 @@ python -m ruff format --check src tests scripts
 python -m mypy
 ```
 
-The quality command runs pytest with statement/branch coverage and a 90% threshold, Ruff lint, Ruff format check, and strict mypy. GitHub Actions runs it for Python 3.11, 3.12, and 3.13. The runner stops at the first failed control and returns a non-zero exit code.
+The protected quality command enforces pytest statement/branch coverage of at least 90%, Ruff lint/format, and strict mypy.
 
-Real `midi_integration`, `musicxml_integration`, and `score_render_integration` tests run on all three supported Python versions. The real FiloSax `baseline_integration` is required only on Python 3.11; on Python 3.12 and 3.13 it skips with an explicit reason while the full core, FFmpeg, MIDI, MusicXML, and SVG rendering suites continue to run.
+## SAX-042 boundaries
 
-## Architecture
-
-```text
-src/saxo_ai/
-├── api/             # FastAPI transport and HTTP error translation
-├── application/     # Use cases, ports, stable errors, JSON, artifacts, quantization, and scores
-├── domain/          # Immutable jobs, audio, note, pitch, tempo, rhythm, score, and result contracts
-├── infrastructure/  # Environment, hashing, FFmpeg, repositories, model, MIDI, tempo, XML, and SVG adapters
-└── main.py          # Composition root and dependency injection
-```
-
-Dependencies point inward. FastAPI does not appear in domain or application. Environment variables are loaded only at the infrastructure/composition boundary. FFmpeg, Hugging Face, PyTorch, Mido, Verovio, subprocesses, and temporary files remain infrastructure concerns. Content hashing is calculated outside domain.
-
-## Scope boundaries
-
-The module does not connect duration validation, model inference, NoteEvent postprocessing, confidence annotations, written-pitch transposition, MIDI export, tempo resolution, rhythm quantization, MusicXML export, or SVG rendering to endpoints; persist audio or derived artifacts; implement retries/workers/queues; train models; generate PDF; or use product cloud storage. SAX-035 does not implement PDF, editing, playback, persistence, SAX-040, Backend, or Frontend behavior.
+SAX-042 does not implement automatic upload processing, audio storage, `BackgroundTasks`, worker, queue, persistence, new `JobStatus`, synthetic production notes, review write endpoints, editing, deletion, regeneration, playback, synchronization, SVG/PDF delivery, downloads, SAX-043, or later stories. A normal uploaded job can legitimately remain `TRANSCRIPTION_RESULT_NOT_READY`.
