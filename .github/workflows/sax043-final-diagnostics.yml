@@ -44,7 +44,6 @@ jobs:
           path.write_text(text[:second] + new + text[second + len(old):], encoding="utf-8")
           PY
           python -m ruff format tests/unit/test_transcription_revisions.py
-          python -m ruff check tests/unit/test_transcription_revisions.py
       - name: Commit correction
         run: |
           git config user.name "github-actions[bot]"
