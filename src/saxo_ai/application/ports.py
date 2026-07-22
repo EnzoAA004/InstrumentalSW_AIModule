@@ -7,6 +7,7 @@ from saxo_ai.domain.audio import (
     OriginalAudioReference,
 )
 from saxo_ai.domain.models import AudioContentMetadata, TranscriptionJob
+from saxo_ai.domain.revision_artifacts import RevisionArtifact, RevisionArtifactBundle
 from saxo_ai.domain.transcription_revisions import RegenerationRequest, TranscriptionRevision
 from saxo_ai.domain.written_pitch import WrittenPitchTranscriptionResult
 
@@ -78,3 +79,15 @@ class RegenerationRequestRepository(Protocol):
     def get(self, job_id: UUID, revision_number: int) -> RegenerationRequest | None: ...
 
     def save(self, request: RegenerationRequest) -> RegenerationRequest: ...
+
+
+class RevisionArtifactRepository(Protocol):
+    def save(self, bundle: RevisionArtifactBundle) -> RevisionArtifactBundle: ...
+
+    def get_bundle(
+        self, job_id: UUID, revision_number: int
+    ) -> RevisionArtifactBundle | None: ...
+
+    def get_artifact(
+        self, job_id: UUID, revision_number: int, artifact_id: str
+    ) -> RevisionArtifact | None: ...
