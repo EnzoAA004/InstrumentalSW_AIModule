@@ -46,6 +46,15 @@ class TranscriptionReviewRepository(Protocol):
     def get(self, job_id: UUID) -> WrittenPitchTranscriptionResult | None: ...
 
 
+class TranscriptionReviewRegistrationRepository(Protocol):
+    def initialize(
+        self,
+        job_id: UUID,
+        result: WrittenPitchTranscriptionResult,
+        revision_zero: TranscriptionRevision,
+    ) -> WrittenPitchTranscriptionResult: ...
+
+
 class TranscriptionRevisionRepository(Protocol):
     def initialize(
         self, job_id: UUID, revision: TranscriptionRevision
