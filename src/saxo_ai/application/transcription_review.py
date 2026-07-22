@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from uuid import UUID
 
 from saxo_ai.application.errors import (
@@ -8,7 +9,12 @@ from saxo_ai.application.errors import (
     TranscriptionResultNotReadyError,
     TranscriptionReviewInstrumentMismatchError,
 )
-from saxo_ai.application.ports import TranscriptionJobRepository, TranscriptionReviewRepository
+from saxo_ai.application.ports import (
+    TranscriptionJobRepository,
+    TranscriptionReviewRepository,
+    TranscriptionRevisionRepository,
+)
+from saxo_ai.application.transcription_revisions import Clock, build_revision_zero
 from saxo_ai.domain.models import SaxophoneType
 from saxo_ai.domain.note_confidence import CONFIDENCE_INTERPRETATION
 from saxo_ai.domain.note_events import NOTE_EVENT_SCHEMA_VERSION
@@ -55,9 +61,13 @@ class RegisterTranscriptionReview:
         self,
         jobs: TranscriptionJobRepository,
         reviews: TranscriptionReviewRepository,
+        revisions: TranscriptionRevisionRepository | None = None,
+        clock: Clock | None = None,
     ) -> None:
         self._jobs = jobs
         self._reviews = reviews
+        self._revisions = revisions
+        self._clock = clock
 
     def execute(
         self,
@@ -69,6 +79,14 @@ class RegisterTranscriptionReview:
             raise TranscriptionJobNotFoundError
         if result.saxophone_type is not job.saxophone_type:
             raise TranscriptionReviewInstrumentMismatchError
+        existing = self._reviews.get(job_id)
+        if existing is not None:
+            if existing is not result:
+                raise TranscriptionReviewInstrumentMismatchError
+            return existing
+        if self._revisions is not None:
+            created_at = self._clock() if self._clock is not None else datetime.now(UTC)
+            self._revisions.initialize(job_id, build_revision_zero(job_id, result, created_at))
         self._reviews.save(job_id, result)
         return result
 
