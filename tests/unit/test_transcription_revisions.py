@@ -30,9 +30,11 @@ from saxo_ai.domain.transcription_revisions import (
     TranscriptionRevision,
     TranscriptionRevisionEvent,
 )
+from saxo_ai.domain.written_pitch import WrittenPitchTranscriptionResult
 from saxo_ai.infrastructure.repositories import (
     InMemoryRegenerationRequestRepository,
     InMemoryTranscriptionJobRepository,
+    InMemoryTranscriptionReviewRegistrationRepository,
     InMemoryTranscriptionReviewRepository,
     InMemoryTranscriptionRevisionRepository,
 )
@@ -63,15 +65,20 @@ def setup_registered(
     *,
     saxophone_type: SaxophoneType = SaxophoneType.ALTO,
     events: tuple[tuple[int, int, float, float, int, float, bool], ...] | None = None,
-):
+) -> tuple[
+    InMemoryTranscriptionJobRepository,
+    InMemoryTranscriptionReviewRepository,
+    InMemoryTranscriptionRevisionRepository,
+    WrittenPitchTranscriptionResult,
+    WrittenPitchTranscriptionResult,
+]:
     jobs = InMemoryTranscriptionJobRepository()
     reviews = InMemoryTranscriptionReviewRepository()
     revisions = InMemoryTranscriptionRevisionRepository()
+    registrations = InMemoryTranscriptionReviewRegistrationRepository(reviews, revisions)
     jobs.save(build_job(saxophone_type))
     result = build_written_result(saxophone_type=saxophone_type, events=events)
-    returned = RegisterTranscriptionReview(jobs, reviews, revisions, fixed_clock).execute(
-        JOB_ID, result
-    )
+    returned = RegisterTranscriptionReview(jobs, registrations, fixed_clock).execute(JOB_ID, result)
     return jobs, reviews, revisions, result, returned
 
 
@@ -93,12 +100,12 @@ def test_registration_initializes_exact_immutable_revision_zero_once() -> None:
     assert revision.events[0].confidence == 0.42
     assert revision.events[0].is_low_confidence is True
 
-    RegisterTranscriptionReview(jobs, reviews, revisions, fixed_clock).execute(JOB_ID, result)
+    RegisterTranscriptionReview(jobs, registrations, fixed_clock).execute(JOB_ID, result)
     assert len(revisions.list(JOB_ID)) == 1
     assert revisions.get(JOB_ID, 0) is revision
 
     with pytest.raises(FrozenInstanceError):
-        revision.revision_number = 5  # type: ignore[misc]
+        setattr(revision, "revision_number", 5)
 
 
 def test_revision_zero_supports_all_saxophones_and_empty_results() -> None:
@@ -214,7 +221,9 @@ def test_revision_operations_are_atomic_and_reject_invalid_sequences() -> None:
     for operations in invalid_operation_sets:
         with pytest.raises(InvalidRevisionOperationError):
             creator.execute(JOB_ID, base_revision_number=0, operations=operations)
-        assert revisions.latest(JOB_ID).revision_number == 0
+        latest = revisions.latest(JOB_ID)
+        assert latest is not None
+        assert latest.revision_number == 0
         assert len(revisions.list(JOB_ID)) == 1
 
 
@@ -327,4 +336,4 @@ def test_revision_event_contract_is_frozen_and_rejects_inconsistent_origin_metad
             events=(),
             derived_artifacts_status=DerivedArtifactsStatus.CURRENT,
         )
-        revision.events = ()  # type: ignore[misc]
+        setattr(revision, "events", ())

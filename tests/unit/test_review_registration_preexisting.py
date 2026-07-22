@@ -26,9 +26,7 @@ def test_registration_requires_revision_zero_for_preexisting_review() -> None:
     jobs.save(job)
     reviews.save(JOB_ID, result)
 
-    returned = RegisterTranscriptionReview(jobs, registrations, fixed_clock).execute(
-        JOB_ID, result
-    )
+    returned = RegisterTranscriptionReview(jobs, registrations, fixed_clock).execute(JOB_ID, result)
 
     assert returned is result
     assert reviews.get(JOB_ID) is result

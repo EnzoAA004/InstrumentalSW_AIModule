@@ -296,10 +296,10 @@ def _parse_operation(value: object) -> RevisionOperation:
         }:
             raise InvalidRevisionOperationError("update requires exactly its editable fields")
         return UpdateRevisionEvent(
-            event_id=value["event_id"],  # type: ignore[arg-type]
-            written_pitch_midi=value["written_pitch_midi"],  # type: ignore[arg-type]
-            onset_seconds=value["onset_seconds"],  # type: ignore[arg-type]
-            offset_seconds=value["offset_seconds"],  # type: ignore[arg-type]
+            event_id=value["event_id"],
+            written_pitch_midi=value["written_pitch_midi"],
+            onset_seconds=value["onset_seconds"],
+            offset_seconds=value["offset_seconds"],
         )
     if operation_type == "add":
         required = {"type", "written_pitch_midi", "onset_seconds", "offset_seconds"}
@@ -309,15 +309,15 @@ def _parse_operation(value: object) -> RevisionOperation:
                 "add requires pitch, onset, offset and optional velocity"
             )
         return AddRevisionEvent(
-            written_pitch_midi=value["written_pitch_midi"],  # type: ignore[arg-type]
-            onset_seconds=value["onset_seconds"],  # type: ignore[arg-type]
-            offset_seconds=value["offset_seconds"],  # type: ignore[arg-type]
-            velocity=value.get("velocity", 64),  # type: ignore[arg-type]
+            written_pitch_midi=value["written_pitch_midi"],
+            onset_seconds=value["onset_seconds"],
+            offset_seconds=value["offset_seconds"],
+            velocity=value.get("velocity", 64),
         )
     if operation_type == "delete":
         if set(value) != {"type", "event_id"}:
             raise InvalidRevisionOperationError("delete accepts only event_id")
-        return DeleteRevisionEvent(event_id=value["event_id"])  # type: ignore[arg-type]
+        return DeleteRevisionEvent(event_id=value["event_id"])
     raise InvalidRevisionOperationError("unsupported revision operation type")
 
 

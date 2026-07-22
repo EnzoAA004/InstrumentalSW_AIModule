@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -23,7 +24,7 @@ def fixed_clock() -> datetime:
     return NOW
 
 
-def uuid_values():
+def uuid_values() -> Callable[[], UUID]:
     values = iter((HUMAN_ID, REQUEST_ID))
     return lambda: next(values)
 
