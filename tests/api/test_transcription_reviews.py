@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+from tests.review_helpers import JOB_ID, build_job, build_written_result
 
 from saxo_ai.application.transcription_review import RegisterTranscriptionReview
 from saxo_ai.infrastructure.repositories import (
@@ -6,7 +7,6 @@ from saxo_ai.infrastructure.repositories import (
     InMemoryTranscriptionReviewRepository,
 )
 from saxo_ai.main import create_app
-from tests.review_helpers import JOB_ID, build_job, build_written_result
 
 
 def test_review_api_returns_exact_job_linked_json_without_unknown_fields() -> None:
