@@ -27,9 +27,11 @@ GET  /api/v1/transcriptions/{job_id}/revisions
 GET  /api/v1/transcriptions/{job_id}/revisions/{revision_number}
 POST /api/v1/transcriptions/{job_id}/revisions
 POST /api/v1/transcriptions/{job_id}/revisions/{revision_number}/regeneration-requests
+GET  /api/v1/transcriptions/{job_id}/revisions/{revision_number}/artifacts
+GET  /api/v1/transcriptions/{job_id}/revisions/{revision_number}/artifacts/{artifact_id}
 ```
 
-Jobs, review results, revisions, and regeneration requests are in-memory only. A job begins with `UPLOADED`; the only current statuses are `UPLOADED` and `FAILED`.
+Jobs, review results, revisions, regeneration requests, and registered artifact bundles are in-memory only. A job begins with `UPLOADED`; the only current statuses are `UPLOADED` and `FAILED`.
 
 ## Upload and status
 
@@ -130,13 +132,94 @@ requested_artifacts: midi, musicxml, svg
 
 The read projection then reports `REGENERATION_REQUESTED`. The request creates no MIDI, MusicXML, or SVG bytes, does not call existing exporters, and does not claim completion.
 
-Editing, validation and revision history are implemented.
-
-A regeneration request is recorded explicitly.
-
-Artifact execution remains pending.
+Editing, validation and revision history are implemented. A regeneration request is recorded explicitly. Artifact execution remains pending.
 
 There is no worker, queue, `BackgroundTasks`, percentage, ETA, completion state, object storage, or replacement artifact in SAX-043.
+
+## Revision artifact downloads
+
+SAX-045 exposes read-only list and binary download transport for already-materialized artifacts that have been registered internally for a concrete immutable revision.
+
+Architecture:
+
+```text
+FastAPI artifact routes
+→ ListRevisionArtifacts / GetRevisionArtifact
+→ separate RevisionArtifactRepository
+→ in-memory RevisionArtifactBundle
+```
+
+The independent repository supports:
+
+```text
+save(bundle)
+get_bundle(job_id, revision_number)
+get_artifact(job_id, revision_number, artifact_id)
+```
+
+`RegisterRevisionArtifacts` is internal and has no HTTP route. It verifies that the job and revision exist, preserves exact immutable bytes, is idempotent for an exact/equal bundle, and rejects an incompatible replacement.
+
+A registered bundle is non-empty and binds every artifact to:
+
+```text
+job_id
+revision_number
+artifact_id
+artifact_type
+```
+
+Descriptors contain:
+
+```text
+artifact_id
+artifact_type
+filename
+media_type
+extension
+size_bytes
+sha256
+order
+```
+
+Supported public types are exactly:
+
+```text
+MIDI     audio/midi                                  .mid
+MusicXML application/vnd.recordare.musicxml+xml      .musicxml
+SVG      image/svg+xml                               .svg
+```
+
+Stable IDs are safe identifiers such as `midi`, `musicxml`, and `svg-page-001`; paths are not IDs. IDs and filenames are unique within the revision, order is deterministic `0..N-1`, filenames are safe relative basenames, `size_bytes` equals the exact byte length, and `sha256` is the exact lowercase 64-character digest.
+
+The list endpoint returns descriptors without bytes or base64. The binary endpoint returns exact bytes with:
+
+```text
+Content-Type
+Content-Disposition: attachment; filename="safe-name.ext"
+Content-Length
+X-Content-Type-Options: nosniff
+Cache-Control: private, no-store
+X-Content-SHA256
+ETag: "sha256-{digest}"
+```
+
+Stable errors distinguish:
+
+```text
+400 INVALID_JOB_ID
+404 TRANSCRIPTION_NOT_FOUND
+404 REVISION_NOT_FOUND
+404 ARTIFACT_NOT_FOUND
+409 ARTIFACTS_NOT_READY
+```
+
+Integration tests materialize real MIDI, MusicXML, and multiple SVG pages using the existing SAX-031, SAX-034, and SAX-035 capabilities, then register the resulting bytes. Neither GET route invokes an exporter, rhythm quantizer, MusicXML encoder, Verovio renderer, transcription model, or regeneration worker.
+
+There is no public artifact write route, database, filesystem, object storage, signed URL, ZIP, PDF, or automatic generation.
+
+MIDI, MusicXML and SVG download transport is implemented for registered artifacts. Artifact generation from a normal uploaded job remains pending. PDF is not implemented.
+
+See [`docs/contracts/revision-artifact-download-api-v1.md`](docs/contracts/revision-artifact-download-api-v1.md) and [`docs/tdd/iteration-019.md`](docs/tdd/iteration-019.md).
 
 ## Internal audio capabilities
 
@@ -198,7 +281,7 @@ Contracts:
 - [`docs/contracts/musicxml-export-v1.md`](docs/contracts/musicxml-export-v1.md)
 - [`docs/contracts/score-rendering-v1.md`](docs/contracts/score-rendering-v1.md)
 
-These internal exporters are not automatically connected to uploaded jobs or SAX-043 regeneration requests.
+These internal exporters are not automatically connected to uploaded jobs or SAX-043 regeneration requests. SAX-045 registers their already-produced bytes only through an internal application use case.
 
 ## Optional FiloSax baseline
 
@@ -231,6 +314,6 @@ python -m mypy
 
 The protected quality command enforces pytest coverage of at least 90%, Ruff lint, Ruff format, and strict mypy. Any failed stage stops the quality gate and returns a non-zero exit code.
 
-## SAX-043 boundaries
+## Boundaries
 
-SAX-043 does not implement automatic upload processing, audio storage, inference from revision HTTP, new `JobStatus`, synthetic production notes, historical mutation, confidence or existing-velocity editing, real MIDI/MusicXML/SVG regeneration, worker, queue, persistence, object storage, autosave, playback, synchronization, download, SAX-044, or later stories. A normal uploaded job can legitimately remain `TRANSCRIPTION_RESULT_NOT_READY` until a real result is registered internally.
+SAX-045 does not implement automatic upload processing, artifact generation from GET, pending regeneration execution, a worker, queue, `BackgroundTasks`, persistence, filesystem storage, object storage, signed URLs, ZIP, PDF, a new `JobStatus`, a public artifact registration endpoint, authentication, authorization, retention, playback, or SAX-050. A normal uploaded job can legitimately have no artifact bundle and return `ARTIFACTS_NOT_READY`.
