@@ -162,7 +162,11 @@ class DatasetLicense:
         if not isinstance(self.kind, DatasetLicenseKind):
             raise InvalidDatasetProvenanceError("license kind must be spdx or custom")
         identifier = _require_non_empty("license identifier", self.identifier)
-        pattern = _SPDX_IDENTIFIER if self.kind is DatasetLicenseKind.SPDX else _CUSTOM_LICENSE_ID
+        pattern = (
+            _SPDX_IDENTIFIER
+            if self.kind is DatasetLicenseKind.SPDX
+            else _CUSTOM_LICENSE_ID
+        )
         if pattern.fullmatch(identifier) is None:
             raise InvalidDatasetProvenanceError(
                 "license identifier is incompatible with the declared license kind"
