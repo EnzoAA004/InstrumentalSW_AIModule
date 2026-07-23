@@ -6,6 +6,7 @@ from hashlib import sha256
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from tests.review_helpers import JOB_ID, build_job, build_written_result
 
 from saxo_ai.application.midi_export import ExportWrittenPitchToMidi
 from saxo_ai.domain.revision_artifacts import (
@@ -21,7 +22,6 @@ from saxo_ai.infrastructure.repositories import (
     InMemoryTranscriptionRevisionRepository,
 )
 from saxo_ai.main import create_app
-from tests.review_helpers import JOB_ID, build_job, build_written_result
 
 NOW = datetime(2026, 7, 22, 12, 0, tzinfo=UTC)
 MIDI_BYTES = b"MThd-exact-download"
