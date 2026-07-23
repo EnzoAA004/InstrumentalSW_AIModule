@@ -295,6 +295,18 @@ The installer verifies pinned source revisions and provenance. The baseline is n
 
 See [`docs/baselines/hf-saxophone-v1.md`](docs/baselines/hf-saxophone-v1.md).
 
+## Dataset provenance and license registry
+
+SAX-050 adds the versioned dataset-level registry `dataset-registry/registry-v1.json` with schema version `1.0`. FiloSax is registered as `restricted` under custom terms, with official evidence and conservative use decisions.
+
+The registry records governance metadata only. Its conditions do not grant legal permission or replace official terms, and no dataset content is stored. SAX-051 file-level preparation remains pending.
+
+See [`docs/contracts/dataset-provenance-license-v1.md`](docs/contracts/dataset-provenance-license-v1.md). Validate the complete repository with:
+
+```bash
+python scripts/check_quality.py
+```
+
 ## Quality
 
 ```bash
@@ -316,4 +328,4 @@ The protected quality command enforces pytest coverage of at least 90%, Ruff lin
 
 ## Boundaries
 
-SAX-045 does not implement automatic upload processing, artifact generation from GET, pending regeneration execution, a worker, queue, `BackgroundTasks`, persistence, filesystem storage, object storage, signed URLs, ZIP, PDF, a new `JobStatus`, a public artifact registration endpoint, authentication, authorization, retention, playback, or SAX-050. A normal uploaded job can legitimately have no artifact bundle and return `ARTIFACTS_NOT_READY`.
+SAX-050 does not download or prepare FiloSax, create file-level manifests, reconstruct backing tracks, define splits, run metrics or training, expose dataset APIs, or begin SAX-051. It does not modify automatic upload processing, baseline runtime, checkpoint resolution, inference, tempo, quantization, MusicXML, SVG, revision history, artifact downloads, workers, queues, persistence, authentication, Backend or Frontend.
