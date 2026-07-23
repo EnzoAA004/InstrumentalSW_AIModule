@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from hashlib import sha256
 from uuid import UUID
 
@@ -38,13 +39,58 @@ def descriptor(
     )
 
 
-def artifact(**overrides: object) -> RevisionArtifact:
-    content = overrides.pop("content", b"MThd-synthetic")
-    assert isinstance(content, bytes)
+def artifact(
+    *,
+    artifact_id: str = "midi",
+    artifact_type: ArtifactType = ArtifactType.MIDI,
+    filename: str = "transcription-r0.mid",
+    media_type: str = "audio/midi",
+    extension: str = ".mid",
+    content: bytes = b"MThd-synthetic",
+    order: int = 0,
+) -> RevisionArtifact:
     return RevisionArtifact(
-        descriptor=descriptor(content=content, **overrides),
+        descriptor=descriptor(
+            artifact_id=artifact_id,
+            artifact_type=artifact_type,
+            filename=filename,
+            media_type=media_type,
+            extension=extension,
+            content=content,
+            order=order,
+        ),
         content=content,
     )
+
+
+def descriptor_with_artifact_id(value: str) -> RevisionArtifactDescriptor:
+    return descriptor(artifact_id=value)
+
+
+def descriptor_with_filename(value: str) -> RevisionArtifactDescriptor:
+    return descriptor(filename=value)
+
+
+def descriptor_with_midi_svg_media_type() -> RevisionArtifactDescriptor:
+    return descriptor(artifact_type=ArtifactType.MIDI, media_type="image/svg+xml")
+
+
+def descriptor_with_midi_svg_extension() -> RevisionArtifactDescriptor:
+    return descriptor(artifact_type=ArtifactType.MIDI, extension=".svg")
+
+
+def descriptor_with_svg_midi_filename() -> RevisionArtifactDescriptor:
+    return descriptor(
+        artifact_type=ArtifactType.SVG,
+        filename="page.mid",
+        media_type="image/svg+xml",
+        extension=".svg",
+    )
+
+
+def descriptor_with_unsupported_pdf_type() -> RevisionArtifactDescriptor:
+    # Deliberately violates the static contract to exercise the runtime type guard.
+    return descriptor(artifact_type="pdf")  # type: ignore[arg-type]
 
 
 def test_valid_bundle_preserves_exact_immutable_bytes_and_deterministic_order() -> None:
@@ -76,34 +122,37 @@ def test_valid_bundle_preserves_exact_immutable_bytes_and_deterministic_order() 
 
 
 @pytest.mark.parametrize(
-    ("field", "value"),
+    ("factory", "value"),
     [
-        ("artifact_id", "../midi"),
-        ("artifact_id", "midi/path"),
-        ("filename", "../score.mid"),
-        ("filename", "folder/score.mid"),
-        ("filename", ".hidden.mid"),
-        ("filename", "score\n.mid"),
+        (descriptor_with_artifact_id, "../midi"),
+        (descriptor_with_artifact_id, "midi/path"),
+        (descriptor_with_filename, "../score.mid"),
+        (descriptor_with_filename, "folder/score.mid"),
+        (descriptor_with_filename, ".hidden.mid"),
+        (descriptor_with_filename, "score\n.mid"),
     ],
 )
-def test_descriptor_rejects_unsafe_ids_and_filenames(field: str, value: str) -> None:
-    kwargs = {field: value}
+def test_descriptor_rejects_unsafe_ids_and_filenames(
+    factory: Callable[[str], RevisionArtifactDescriptor], value: str
+) -> None:
     with pytest.raises(InvalidRevisionArtifactError):
-        descriptor(**kwargs)
+        factory(value)
 
 
 @pytest.mark.parametrize(
-    "kwargs",
+    "factory",
     [
-        {"artifact_type": ArtifactType.MIDI, "media_type": "image/svg+xml"},
-        {"artifact_type": ArtifactType.MIDI, "extension": ".svg"},
-        {"artifact_type": ArtifactType.SVG, "filename": "page.mid", "extension": ".svg"},
-        {"artifact_type": "pdf"},
+        descriptor_with_midi_svg_media_type,
+        descriptor_with_midi_svg_extension,
+        descriptor_with_svg_midi_filename,
+        descriptor_with_unsupported_pdf_type,
     ],
 )
-def test_descriptor_rejects_incompatible_type_metadata(kwargs: dict[str, object]) -> None:
+def test_descriptor_rejects_incompatible_type_metadata(
+    factory: Callable[[], RevisionArtifactDescriptor],
+) -> None:
     with pytest.raises((InvalidRevisionArtifactError, ValueError)):
-        descriptor(**kwargs)
+        factory()
 
 
 def test_artifact_rejects_wrong_size_and_sha() -> None:
