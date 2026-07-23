@@ -63,7 +63,7 @@ def test_bundle_rejects_wrong_job_revision_and_collection_shapes() -> None:
     with pytest.raises(InvalidRevisionArtifactError):
         RevisionArtifactBundle("not-a-uuid", 0, (artifact,))  # type: ignore[arg-type]
     with pytest.raises(InvalidRevisionArtifactError):
-        RevisionArtifactBundle(JOB_ID, True, (artifact,))  # type: ignore[arg-type]
+        RevisionArtifactBundle(JOB_ID, True, (artifact,))
     with pytest.raises(InvalidRevisionArtifactError):
         RevisionArtifactBundle(JOB_ID, -1, (artifact,))
     with pytest.raises(InvalidRevisionArtifactError):
