@@ -69,10 +69,7 @@ def load_dataset_registry(path: Path) -> DatasetRegistry:
             "registry file could not be read as UTF-8"
         ) from error
     try:
-        parsed = cast(
-            object,
-            json.loads(text, object_pairs_hook=_reject_duplicate_keys),
-        )
+        parsed = cast(object, json.loads(text, object_pairs_hook=_reject_duplicate_keys))
     except json.JSONDecodeError as error:
         raise InvalidDatasetRegistryJsonError(
             "registry file must contain valid JSON"
