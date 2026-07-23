@@ -71,7 +71,8 @@ def _require_https_uri(field_name: str, value: object) -> str:
     match = _HTTPS_URI.fullmatch(uri)
     if match is None or "\\" in uri:
         raise InvalidDatasetProvenanceError(f"{field_name} must be a safe HTTPS URI")
-    authority, remainder = match.groups()
+    authority = match.group(1)
+    remainder = match.group(2)
     if "@" in authority:
         raise InvalidDatasetProvenanceError(f"{field_name} must not contain credentials")
     hostname = authority.split(":", maxsplit=1)[0].lower()
