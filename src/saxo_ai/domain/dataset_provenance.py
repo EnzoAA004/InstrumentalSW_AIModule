@@ -82,9 +82,7 @@ def _require_https_uri(field_name: str, value: object) -> str:
         or hostname.startswith("127.")
         or hostname in {"0.0.0.0", "::1", "[::1]"}
     ):
-        raise InvalidDatasetProvenanceError(
-            f"{field_name} must reference a public HTTPS host"
-        )
+        raise InvalidDatasetProvenanceError(f"{field_name} must reference a public HTTPS host")
     path = remainder.split("?", maxsplit=1)[0].split("#", maxsplit=1)[0]
     if any(segment == ".." for segment in path.split("/")):
         raise InvalidDatasetProvenanceError(f"{field_name} must not contain path traversal")
@@ -136,13 +134,8 @@ class DatasetUseRule:
             raise InvalidDatasetProvenanceError("dataset use decision is not supported")
         if not isinstance(self.conditions, tuple):
             raise InvalidDatasetProvenanceError("conditions must be an immutable tuple")
-        if any(
-            not isinstance(value, str) or not value.strip()
-            for value in self.conditions
-        ):
-            raise InvalidDatasetProvenanceError(
-                "conditions must contain non-empty strings"
-            )
+        if any(not isinstance(value, str) or not value.strip() for value in self.conditions):
+            raise InvalidDatasetProvenanceError("conditions must contain non-empty strings")
         if self.decision is DatasetUseDecision.NOT_STATED and self.conditions:
             raise InvalidDatasetProvenanceError(
                 "not_stated must remain empty and must not imply permission"
@@ -180,11 +173,7 @@ class DatasetLicense:
                 "license identifier is incompatible with the declared license kind"
             )
         object.__setattr__(self, "identifier", identifier)
-        object.__setattr__(
-            self,
-            "title",
-            _require_non_empty("license title", self.title),
-        )
+        object.__setattr__(self, "title", _require_non_empty("license title", self.title))
         object.__setattr__(
             self,
             "terms_uri",
@@ -195,9 +184,7 @@ class DatasetLicense:
         )
         citation = self.required_citation
         if not isinstance(citation, str):
-            raise InvalidDatasetProvenanceError(
-                "license required_citation must be a string"
-            )
+            raise InvalidDatasetProvenanceError("license required_citation must be a string")
         if attribution_required and not citation.strip():
             raise InvalidDatasetProvenanceError(
                 "attribution_required requires a non-empty required_citation"
@@ -234,23 +221,12 @@ class DatasetProvenanceRecord:
         object.__setattr__(self, "dataset_id", dataset_id)
         object.__setattr__(self, "title", _require_non_empty("title", self.title))
         if not isinstance(self.creators, tuple) or not self.creators:
-            raise InvalidDatasetProvenanceError(
-                "creators must be a non-empty immutable tuple"
-            )
-        if any(
-            not isinstance(value, str) or not value.strip()
-            for value in self.creators
-        ):
-            raise InvalidDatasetProvenanceError(
-                "creators must contain non-empty strings"
-            )
+            raise InvalidDatasetProvenanceError("creators must be a non-empty immutable tuple")
+        if any(not isinstance(value, str) or not value.strip() for value in self.creators):
+            raise InvalidDatasetProvenanceError("creators must contain non-empty strings")
         if len(set(self.creators)) != len(self.creators):
             raise InvalidDatasetProvenanceError("creators must not contain duplicates")
-        object.__setattr__(
-            self,
-            "publisher",
-            _require_non_empty("publisher", self.publisher),
-        )
+        object.__setattr__(self, "publisher", _require_non_empty("publisher", self.publisher))
         object.__setattr__(
             self,
             "release_reference",
@@ -272,9 +248,7 @@ class DatasetProvenanceRecord:
         if not isinstance(self.use_rules, tuple) or any(
             not isinstance(rule, DatasetUseRule) for rule in self.use_rules
         ):
-            raise InvalidDatasetProvenanceError(
-                "use_rules must contain DatasetUseRule values"
-            )
+            raise InvalidDatasetProvenanceError("use_rules must contain DatasetUseRule values")
         expected_uses = tuple(DatasetUse)
         actual_uses = tuple(rule.use for rule in self.use_rules)
         if actual_uses != expected_uses:
@@ -282,13 +256,9 @@ class DatasetProvenanceRecord:
                 "use_rules must contain every DatasetUse exactly once in deterministic order"
             )
         if not isinstance(self.evidence, tuple) or not self.evidence:
-            raise InvalidDatasetProvenanceError(
-                "evidence must be a non-empty immutable tuple"
-            )
+            raise InvalidDatasetProvenanceError("evidence must be a non-empty immutable tuple")
         if any(not isinstance(value, DatasetEvidence) for value in self.evidence):
-            raise InvalidDatasetProvenanceError(
-                "evidence must contain DatasetEvidence values"
-            )
+            raise InvalidDatasetProvenanceError("evidence must contain DatasetEvidence values")
         evidence_keys = tuple((value.kind, value.uri) for value in self.evidence)
         if len(set(evidence_keys)) != len(evidence_keys):
             raise InvalidDatasetProvenanceError("evidence entries must be unique")
@@ -305,12 +275,8 @@ class DatasetRegistry:
                 f"schema_version must be {DATASET_REGISTRY_SCHEMA_VERSION}"
             )
         if not isinstance(self.datasets, tuple) or not self.datasets:
-            raise InvalidDatasetProvenanceError(
-                "datasets must be a non-empty immutable tuple"
-            )
-        if any(
-            not isinstance(value, DatasetProvenanceRecord) for value in self.datasets
-        ):
+            raise InvalidDatasetProvenanceError("datasets must be a non-empty immutable tuple")
+        if any(not isinstance(value, DatasetProvenanceRecord) for value in self.datasets):
             raise InvalidDatasetProvenanceError(
                 "datasets must contain DatasetProvenanceRecord values"
             )
