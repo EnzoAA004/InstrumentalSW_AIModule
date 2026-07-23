@@ -1,0 +1,96 @@
+{
+  "schema_version": "1.0",
+  "datasets": [
+    {
+      "dataset_id": "filosax",
+      "title": "Filosax",
+      "creators": [
+        "Dave Foster",
+        "Simon Dixon"
+      ],
+      "publisher": "Zenodo",
+      "release_reference": "zenodo-record-6335779",
+      "canonical_uri": "https://zenodo.org/records/6335779",
+      "doi": "10.5281/zenodo.6335779",
+      "access_mode": "restricted",
+      "license": {
+        "kind": "custom",
+        "identifier": "filosax-custom-terms",
+        "title": "Filosax restricted research usage terms",
+        "terms_uri": "https://dave-foster.github.io/filosax/",
+        "attribution_required": true,
+        "required_citation": "D. Foster and S. Dixon (2021), Filosax: A Dataset of Annotated Jazz Saxophone Recordings, 22nd International Society for Music Information Retrieval Conference.",
+        "terms_may_change": true
+      },
+      "use_rules": [
+        {
+          "use": "download",
+          "decision": "requires_permission",
+          "conditions": [
+            "Access to the restricted files requires acceptance or approval under the official terms."
+          ]
+        },
+        {
+          "use": "internal_noncommercial_research",
+          "decision": "allowed_with_conditions",
+          "conditions": [
+            "Use must be non-commercial research.",
+            "Use is limited to the authorized individual and members of that individual's research group or organization.",
+            "Permission is not transferable.",
+            "Use must comply with the current official terms."
+          ]
+        },
+        {
+          "use": "commercial_use",
+          "decision": "prohibited",
+          "conditions": [
+            "The official terms limit use to non-commercial research purposes."
+          ]
+        },
+        {
+          "use": "redistribution",
+          "decision": "prohibited",
+          "conditions": [
+            "Sale, lease, publication, or distribution to a third party requires written permission from the Filosax administrator."
+          ]
+        },
+        {
+          "use": "reproduction_material_distribution",
+          "decision": "prohibited",
+          "conditions": [
+            "Data or material enabling reproduction of Filosax must not be sold, leased, published, or distributed to a third party without written permission from the Filosax administrator."
+          ]
+        },
+        {
+          "use": "publication_of_results",
+          "decision": "allowed_with_conditions",
+          "conditions": [
+            "Publicly released research results must clearly indicate use of Filosax and cite the official paper."
+          ]
+        },
+        {
+          "use": "derived_asset_distribution",
+          "decision": "not_stated",
+          "conditions": []
+        }
+      ],
+      "evidence": [
+        {
+          "kind": "official_documentation",
+          "uri": "https://dave-foster.github.io/filosax/",
+          "reviewed_on": "2026-07-23"
+        },
+        {
+          "kind": "repository_record",
+          "uri": "https://zenodo.org/records/6335779",
+          "reviewed_on": "2026-07-23"
+        },
+        {
+          "kind": "paper",
+          "uri": "https://zenodo.org/records/5625643",
+          "reviewed_on": "2026-07-23"
+        }
+      ]
+    }
+  ]
+}
