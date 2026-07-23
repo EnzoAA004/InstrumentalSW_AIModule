@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import FrozenInstanceError, replace
+from typing import cast
 
 import pytest
 
@@ -149,7 +150,7 @@ def test_valid_provenance_is_frozen_slotted_and_tuple_based() -> None:
     assert not hasattr(record, "__dict__")
     assert not hasattr(registry, "__dict__")
     with pytest.raises(FrozenInstanceError):
-        record.title = "Changed"  # type: ignore[misc]
+        setattr(record, "title", "Changed")
 
 
 def test_provenance_rejects_missing_or_duplicate_identity_fields() -> None:
@@ -265,9 +266,9 @@ def test_attribution_and_terms_change_flags_are_strict() -> None:
     with pytest.raises(InvalidDatasetProvenanceError):
         replace(valid_license(), required_citation="")
     with pytest.raises(InvalidDatasetProvenanceError):
-        replace(valid_license(), attribution_required=1)  # type: ignore[arg-type]
+        replace(valid_license(), attribution_required=cast(bool, 1))
     with pytest.raises(InvalidDatasetProvenanceError):
-        replace(valid_license(), terms_may_change=0)  # type: ignore[arg-type]
+        replace(valid_license(), terms_may_change=cast(bool, 0))
 
 
 @pytest.mark.parametrize("bad_conditions", [[], ("",), ("valid", "   ")])
@@ -278,7 +279,7 @@ def test_use_rule_requires_a_tuple_of_non_empty_conditions(
         DatasetUseRule(
             use=DatasetUse.DOWNLOAD,
             decision=DatasetUseDecision.REQUIRES_PERMISSION,
-            conditions=bad_conditions,  # type: ignore[arg-type]
+            conditions=cast(tuple[str, ...], bad_conditions),
         )
 
 
