@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Callable
+from enum import StrEnum
 from pathlib import Path
 from typing import TypeVar
 
@@ -20,7 +20,7 @@ from saxo_ai.domain.dataset_provenance import (
     InvalidDatasetProvenanceError,
 )
 
-_EnumValue = TypeVar("_EnumValue")
+_EnumValue = TypeVar("_EnumValue", bound=StrEnum)
 
 _REGISTRY_FIELDS = frozenset({"schema_version", "datasets"})
 _DATASET_FIELDS = frozenset(
@@ -252,11 +252,11 @@ def _require_exact_fields(
 
 
 def _decode_enum(
-    constructor: Callable[[str], _EnumValue], value: object, context: str
+    enum_type: type[_EnumValue], value: object, context: str
 ) -> _EnumValue:
     text = _require_string(value, context)
     try:
-        return constructor(text)
+        return enum_type(text)
     except ValueError as error:
         raise InvalidDatasetRegistryJsonError(
             f"{context} contains an unknown value"
