@@ -52,11 +52,17 @@ def valid_license() -> DatasetLicense:
 def valid_use_rules() -> tuple[DatasetUseRule, ...]:
     decisions = {
         DatasetUse.DOWNLOAD: DatasetUseDecision.REQUIRES_PERMISSION,
-        DatasetUse.INTERNAL_NONCOMMERCIAL_RESEARCH: DatasetUseDecision.ALLOWED_WITH_CONDITIONS,
+        DatasetUse.INTERNAL_NONCOMMERCIAL_RESEARCH: (
+            DatasetUseDecision.ALLOWED_WITH_CONDITIONS
+        ),
         DatasetUse.COMMERCIAL_USE: DatasetUseDecision.PROHIBITED,
         DatasetUse.REDISTRIBUTION: DatasetUseDecision.PROHIBITED,
-        DatasetUse.REPRODUCTION_MATERIAL_DISTRIBUTION: DatasetUseDecision.PROHIBITED,
-        DatasetUse.PUBLICATION_OF_RESULTS: DatasetUseDecision.ALLOWED_WITH_CONDITIONS,
+        DatasetUse.REPRODUCTION_MATERIAL_DISTRIBUTION: (
+            DatasetUseDecision.PROHIBITED
+        ),
+        DatasetUse.PUBLICATION_OF_RESULTS: (
+            DatasetUseDecision.ALLOWED_WITH_CONDITIONS
+        ),
         DatasetUse.DERIVED_ASSET_DISTRIBUTION: DatasetUseDecision.NOT_STATED,
     }
     return tuple(
@@ -185,7 +191,10 @@ def test_evidence_rejects_insecure_local_or_credentialed_uris(uri: str) -> None:
         )
 
 
-@pytest.mark.parametrize("reviewed_on", ["", "2026/07/23", "23-07-2026", "2026-02-30"])
+@pytest.mark.parametrize(
+    "reviewed_on",
+    ["", "2026/07/23", "23-07-2026", "2026-02-30"],
+)
 def test_evidence_requires_a_real_iso_date(reviewed_on: str) -> None:
     with pytest.raises(InvalidDatasetProvenanceError):
         DatasetEvidence(
@@ -197,7 +206,12 @@ def test_evidence_requires_a_real_iso_date(reviewed_on: str) -> None:
 
 @pytest.mark.parametrize(
     "canonical_uri",
-    ["http://example.org/123", "file:///tmp/123", "https://localhost/123", "/tmp/123"],
+    [
+        "http://example.org/123",
+        "file:///tmp/123",
+        "https://localhost/123",
+        "/tmp/123",
+    ],
 )
 def test_provenance_requires_a_secure_canonical_uri(canonical_uri: str) -> None:
     with pytest.raises(InvalidDatasetProvenanceError):
@@ -206,7 +220,12 @@ def test_provenance_requires_a_secure_canonical_uri(canonical_uri: str) -> None:
 
 @pytest.mark.parametrize(
     "doi",
-    ["", "https://doi.org/10.1234/example.123", "doi:10.1234/example", "example.123"],
+    [
+        "",
+        "https://doi.org/10.1234/example.123",
+        "doi:10.1234/example",
+        "example.123",
+    ],
 )
 def test_provenance_rejects_invalid_doi_references(doi: str) -> None:
     with pytest.raises(InvalidDatasetProvenanceError):
@@ -230,7 +249,12 @@ def test_custom_and_explicit_spdx_licenses_are_distinct() -> None:
 
 @pytest.mark.parametrize(
     "terms_uri",
-    ["http://example.org/terms", "file:///tmp/terms", "https://localhost/terms", "../terms"],
+    [
+        "http://example.org/terms",
+        "file:///tmp/terms",
+        "https://localhost/terms",
+        "../terms",
+    ],
 )
 def test_license_requires_an_https_terms_uri(terms_uri: str) -> None:
     with pytest.raises(InvalidDatasetProvenanceError):
@@ -247,7 +271,9 @@ def test_attribution_and_terms_change_flags_are_strict() -> None:
 
 
 @pytest.mark.parametrize("bad_conditions", [[], ("",), ("valid", "   ")])
-def test_use_rule_requires_a_tuple_of_non_empty_conditions(bad_conditions: object) -> None:
+def test_use_rule_requires_a_tuple_of_non_empty_conditions(
+    bad_conditions: object,
+) -> None:
     with pytest.raises(InvalidDatasetProvenanceError):
         DatasetUseRule(
             use=DatasetUse.DOWNLOAD,
