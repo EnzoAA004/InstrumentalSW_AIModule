@@ -53,17 +53,11 @@ def valid_license() -> DatasetLicense:
 def valid_use_rules() -> tuple[DatasetUseRule, ...]:
     decisions = {
         DatasetUse.DOWNLOAD: DatasetUseDecision.REQUIRES_PERMISSION,
-        DatasetUse.INTERNAL_NONCOMMERCIAL_RESEARCH: (
-            DatasetUseDecision.ALLOWED_WITH_CONDITIONS
-        ),
+        DatasetUse.INTERNAL_NONCOMMERCIAL_RESEARCH: DatasetUseDecision.ALLOWED_WITH_CONDITIONS,
         DatasetUse.COMMERCIAL_USE: DatasetUseDecision.PROHIBITED,
         DatasetUse.REDISTRIBUTION: DatasetUseDecision.PROHIBITED,
-        DatasetUse.REPRODUCTION_MATERIAL_DISTRIBUTION: (
-            DatasetUseDecision.PROHIBITED
-        ),
-        DatasetUse.PUBLICATION_OF_RESULTS: (
-            DatasetUseDecision.ALLOWED_WITH_CONDITIONS
-        ),
+        DatasetUse.REPRODUCTION_MATERIAL_DISTRIBUTION: DatasetUseDecision.PROHIBITED,
+        DatasetUse.PUBLICATION_OF_RESULTS: DatasetUseDecision.ALLOWED_WITH_CONDITIONS,
         DatasetUse.DERIVED_ASSET_DISTRIBUTION: DatasetUseDecision.NOT_STATED,
     }
     return tuple(
@@ -273,9 +267,7 @@ def test_attribution_and_terms_change_flags_are_strict() -> None:
 
 
 @pytest.mark.parametrize("bad_conditions", [[], ("",), ("valid", "   ")])
-def test_use_rule_requires_a_tuple_of_non_empty_conditions(
-    bad_conditions: object,
-) -> None:
+def test_use_rule_requires_a_tuple_of_non_empty_conditions(bad_conditions: object) -> None:
     with pytest.raises(InvalidDatasetProvenanceError):
         DatasetUseRule(
             use=DatasetUse.DOWNLOAD,
