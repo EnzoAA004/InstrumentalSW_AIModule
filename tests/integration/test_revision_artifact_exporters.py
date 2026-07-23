@@ -1,16 +1,13 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from hashlib import sha256
-from typing import cast
 from uuid import UUID
 
 import pytest
+from tests.review_helpers import build_job
 from tests.score_render_helpers import long_musicxml_result, midi_result
 
-from saxo_ai.application.ports import (
-    TranscriptionJobRepository,
-    TranscriptionRevisionRepository,
-)
 from saxo_ai.application.revision_artifacts import RegisterRevisionArtifacts
 from saxo_ai.application.score_rendering import RenderMusicXmlToSvg
 from saxo_ai.domain.revision_artifacts import (
@@ -20,27 +17,18 @@ from saxo_ai.domain.revision_artifacts import (
     RevisionArtifactDescriptor,
 )
 from saxo_ai.domain.score_rendering import ScoreRenderSettings
-from saxo_ai.infrastructure.repositories import InMemoryRevisionArtifactRepository
+from saxo_ai.domain.transcription_revisions import DerivedArtifactsStatus, TranscriptionRevision
+from saxo_ai.infrastructure.repositories import (
+    InMemoryRevisionArtifactRepository,
+    InMemoryTranscriptionJobRepository,
+    InMemoryTranscriptionRevisionRepository,
+)
 from saxo_ai.infrastructure.verovio_svg import VerovioSvgScoreRenderer
 
 pytestmark = [pytest.mark.integration, pytest.mark.score_render_integration]
 
 JOB_ID = UUID("11111111-1111-1111-1111-111111111111")
-
-
-class ExistingJobs:
-    def get(self, job_id: UUID) -> object | None:
-        return object() if job_id == JOB_ID else None
-
-
-class ExistingRevision:
-    job_id = JOB_ID
-    revision_number = 7
-
-
-class ExistingRevisions:
-    def get(self, job_id: UUID, revision_number: int) -> object | None:
-        return ExistingRevision() if (job_id, revision_number) == (JOB_ID, 7) else None
+NOW = datetime(2026, 7, 22, 12, 0, tzinfo=UTC)
 
 
 def descriptor(
@@ -64,6 +52,38 @@ def descriptor(
         order=order,
     )
     return RevisionArtifact(metadata, content)
+
+
+def existing_repositories() -> tuple[
+    InMemoryTranscriptionJobRepository,
+    InMemoryTranscriptionRevisionRepository,
+]:
+    job = build_job()
+    jobs = InMemoryTranscriptionJobRepository()
+    jobs.save(job)
+    revisions = InMemoryTranscriptionRevisionRepository()
+    revision_zero = TranscriptionRevision(
+        job_id=JOB_ID,
+        revision_number=0,
+        parent_revision_number=None,
+        created_at=NOW,
+        saxophone_type=job.saxophone_type,
+        events=(),
+        derived_artifacts_status=DerivedArtifactsStatus.CURRENT,
+    )
+    revisions.initialize(JOB_ID, revision_zero)
+    for revision_number in range(1, 8):
+        revision = TranscriptionRevision(
+            job_id=JOB_ID,
+            revision_number=revision_number,
+            parent_revision_number=revision_number - 1,
+            created_at=NOW,
+            saxophone_type=job.saxophone_type,
+            events=(),
+            derived_artifacts_status=DerivedArtifactsStatus.CURRENT,
+        )
+        revisions.append(JOB_ID, revision_number - 1, revision)
+    return jobs, revisions
 
 
 def test_real_exporters_register_midi_musicxml_and_multiple_svg_pages() -> None:
@@ -109,12 +129,9 @@ def test_real_exporters_register_midi_musicxml_and_multiple_svg_pages() -> None:
     )
     bundle = RevisionArtifactBundle(JOB_ID, 7, tuple(artifacts))
     repository = InMemoryRevisionArtifactRepository()
+    jobs, revisions = existing_repositories()
 
-    registered = RegisterRevisionArtifacts(
-        cast(TranscriptionJobRepository, ExistingJobs()),
-        cast(TranscriptionRevisionRepository, ExistingRevisions()),
-        repository,
-    ).execute(bundle)
+    registered = RegisterRevisionArtifacts(jobs, revisions, repository).execute(bundle)
 
     assert registered is bundle
     midi_artifact = repository.get_artifact(JOB_ID, 7, "midi")
