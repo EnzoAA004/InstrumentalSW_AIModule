@@ -67,5 +67,9 @@ def test_catalog_load_is_offline_and_contains_no_dataset_payload_files() -> None
     registry = load_dataset_registry(REGISTRY_PATH)
 
     assert registry.datasets[0].dataset_id == "filosax"
-    tracked_suffixes = {path.suffix.lower() for path in REGISTRY_PATH.parent.rglob("*") if path.is_file()}
+    tracked_suffixes = {
+        path.suffix.lower()
+        for path in REGISTRY_PATH.parent.rglob("*")
+        if path.is_file()
+    }
     assert tracked_suffixes == {".json"}
