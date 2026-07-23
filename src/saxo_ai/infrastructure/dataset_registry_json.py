@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from enum import StrEnum
 from pathlib import Path
-from typing import TypeVar
+from typing import Any, TypeVar, cast
 
 from saxo_ai.domain.dataset_provenance import (
     DATASET_REGISTRY_SCHEMA_VERSION,
@@ -69,7 +69,10 @@ def load_dataset_registry(path: Path) -> DatasetRegistry:
             "registry file could not be read as UTF-8"
         ) from error
     try:
-        parsed: object = json.loads(text, object_pairs_hook=_reject_duplicate_keys)
+        parsed = cast(
+            object,
+            json.loads(text, object_pairs_hook=_reject_duplicate_keys),
+        )
     except json.JSONDecodeError as error:
         raise InvalidDatasetRegistryJsonError(
             "registry file must contain valid JSON"
@@ -80,7 +83,9 @@ def load_dataset_registry(path: Path) -> DatasetRegistry:
         raise InvalidDatasetRegistryJsonError(str(error)) from error
 
 
-def _reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:
+def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, object]:
+    """Reject duplicates at the only boundary where stdlib JSON exposes dynamic values."""
+
     result: dict[str, object] = {}
     for key, value in pairs:
         if key in result:
