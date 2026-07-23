@@ -63,9 +63,11 @@ def valid_use_rules() -> tuple[DatasetUseRule, ...]:
         DatasetUseRule(
             use=dataset_use,
             decision=decisions[dataset_use],
-            conditions=()
-            if decisions[dataset_use] is DatasetUseDecision.NOT_STATED
-            else ("Follow the official terms.",),
+            conditions=(
+                ()
+                if decisions[dataset_use] is DatasetUseDecision.NOT_STATED
+                else ("Follow the official terms.",)
+            ),
         )
         for dataset_use in DatasetUse
     )
@@ -144,23 +146,21 @@ def test_valid_provenance_is_frozen_slotted_and_tuple_based() -> None:
         record.title = "Changed"  # type: ignore[misc]
 
 
-@pytest.mark.parametrize(
-    ("field_name", "value"),
-    [
-        ("creators", ()),
-        ("creators", ("Researcher One", "Researcher One")),
-        ("creators", ("Researcher One", "")),
-        ("publisher", ""),
-        ("release_reference", ""),
-        ("title", ""),
-        ("evidence", ()),
-    ],
-)
-def test_provenance_rejects_missing_or_duplicate_identity_fields(
-    field_name: str, value: object
-) -> None:
+def test_provenance_rejects_missing_or_duplicate_identity_fields() -> None:
     with pytest.raises(InvalidDatasetProvenanceError):
-        replace(valid_record(), **{field_name: value})
+        replace(valid_record(), creators=())
+    with pytest.raises(InvalidDatasetProvenanceError):
+        replace(valid_record(), creators=("Researcher One", "Researcher One"))
+    with pytest.raises(InvalidDatasetProvenanceError):
+        replace(valid_record(), creators=("Researcher One", ""))
+    with pytest.raises(InvalidDatasetProvenanceError):
+        replace(valid_record(), publisher="")
+    with pytest.raises(InvalidDatasetProvenanceError):
+        replace(valid_record(), release_reference="")
+    with pytest.raises(InvalidDatasetProvenanceError):
+        replace(valid_record(), title="")
+    with pytest.raises(InvalidDatasetProvenanceError):
+        replace(valid_record(), evidence=())
 
 
 @pytest.mark.parametrize(
