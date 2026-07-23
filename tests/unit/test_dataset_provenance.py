@@ -150,7 +150,8 @@ def test_valid_provenance_is_frozen_slotted_and_tuple_based() -> None:
     assert not hasattr(record, "__dict__")
     assert not hasattr(registry, "__dict__")
     with pytest.raises(FrozenInstanceError):
-        setattr(record, "title", "Changed")
+        # Deliberate assignment exercises the frozen dataclass runtime guard.
+        record.title = "Changed"  # type: ignore[misc]
 
 
 def test_provenance_rejects_missing_or_duplicate_identity_fields() -> None:
