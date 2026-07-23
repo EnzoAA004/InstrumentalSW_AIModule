@@ -47,9 +47,7 @@ def use_rules_payload() -> list[object]:
         {
             "use": use,
             "decision": decision,
-            "conditions": (
-                [] if decision == "not_stated" else ["Follow official terms."]
-            ),
+            "conditions": [] if decision == "not_stated" else ["Follow official terms."],
         }
         for use, decision in decisions.items()
     ]
@@ -115,9 +113,7 @@ def test_loader_builds_immutable_domain_contracts_from_exact_versioned_json(
     assert registry.datasets[0].dataset_id == "example-dataset"
     assert registry.datasets[0].creators == ("Researcher One", "Researcher Two")
     assert isinstance(registry.datasets[0].creators, tuple)
-    assert tuple(rule.use for rule in registry.datasets[0].use_rules) == tuple(
-        DatasetUse
-    )
+    assert tuple(rule.use for rule in registry.datasets[0].use_rules) == tuple(DatasetUse)
     assert registry.datasets[0].use_rules[-1].decision is DatasetUseDecision.NOT_STATED
 
 
@@ -173,9 +169,7 @@ def test_loader_rejects_missing_dataset_and_nested_fields(tmp_path: Path) -> Non
         load_dataset_registry(write_payload(tmp_path, missing_rule))
 
     missing_evidence = registry_payload()
-    evidence = require_object(
-        nested_list(first_dataset(missing_evidence), "evidence")[0]
-    )
+    evidence = require_object(nested_list(first_dataset(missing_evidence), "evidence")[0])
     evidence.pop("reviewed_on")
     with pytest.raises(InvalidDatasetRegistryJsonError):
         load_dataset_registry(write_payload(tmp_path, missing_evidence))
@@ -188,17 +182,13 @@ def test_loader_rejects_unknown_nested_fields_and_enum_values(tmp_path: Path) ->
         load_dataset_registry(write_payload(tmp_path, unknown_license))
 
     unknown_evidence = registry_payload()
-    evidence = require_object(
-        nested_list(first_dataset(unknown_evidence), "evidence")[0]
-    )
+    evidence = require_object(nested_list(first_dataset(unknown_evidence), "evidence")[0])
     evidence["kind"] = "blog"
     with pytest.raises(InvalidDatasetRegistryJsonError):
         load_dataset_registry(write_payload(tmp_path, unknown_evidence))
 
     unknown_decision = registry_payload()
-    rule = require_object(
-        nested_list(first_dataset(unknown_decision), "use_rules")[0]
-    )
+    rule = require_object(nested_list(first_dataset(unknown_decision), "use_rules")[0])
     rule["decision"] = "maybe"
     with pytest.raises(InvalidDatasetRegistryJsonError):
         load_dataset_registry(write_payload(tmp_path, unknown_decision))
@@ -216,9 +206,7 @@ def test_loader_rejects_incorrect_scalar_and_collection_types(tmp_path: Path) ->
         load_dataset_registry(write_payload(tmp_path, wrong_boolean))
 
     wrong_conditions = registry_payload()
-    rule = require_object(
-        nested_list(first_dataset(wrong_conditions), "use_rules")[0]
-    )
+    rule = require_object(nested_list(first_dataset(wrong_conditions), "use_rules")[0])
     rule["conditions"] = "permission required"
     with pytest.raises(InvalidDatasetRegistryJsonError):
         load_dataset_registry(write_payload(tmp_path, wrong_conditions))
