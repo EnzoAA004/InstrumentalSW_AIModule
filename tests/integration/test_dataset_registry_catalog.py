@@ -16,9 +16,7 @@ from saxo_ai.infrastructure.dataset_registry_json import load_dataset_registry
 
 pytestmark = pytest.mark.integration
 
-REGISTRY_PATH = (
-    Path(__file__).resolve().parents[2] / "dataset-registry" / "registry-v1.json"
-)
+REGISTRY_PATH = Path(__file__).resolve().parents[2] / "dataset-registry" / "registry-v1.json"
 
 
 def test_tracked_registry_contains_only_restricted_filosax_governance_metadata() -> None:
@@ -44,23 +42,15 @@ def test_tracked_registry_contains_only_restricted_filosax_governance_metadata()
     decisions = {rule.use: rule.decision for rule in filosax.use_rules}
     assert decisions == {
         DatasetUse.DOWNLOAD: DatasetUseDecision.REQUIRES_PERMISSION,
-        DatasetUse.INTERNAL_NONCOMMERCIAL_RESEARCH: (
-            DatasetUseDecision.ALLOWED_WITH_CONDITIONS
-        ),
+        DatasetUse.INTERNAL_NONCOMMERCIAL_RESEARCH: DatasetUseDecision.ALLOWED_WITH_CONDITIONS,
         DatasetUse.COMMERCIAL_USE: DatasetUseDecision.PROHIBITED,
         DatasetUse.REDISTRIBUTION: DatasetUseDecision.PROHIBITED,
-        DatasetUse.REPRODUCTION_MATERIAL_DISTRIBUTION: (
-            DatasetUseDecision.PROHIBITED
-        ),
-        DatasetUse.PUBLICATION_OF_RESULTS: (
-            DatasetUseDecision.ALLOWED_WITH_CONDITIONS
-        ),
+        DatasetUse.REPRODUCTION_MATERIAL_DISTRIBUTION: DatasetUseDecision.PROHIBITED,
+        DatasetUse.PUBLICATION_OF_RESULTS: DatasetUseDecision.ALLOWED_WITH_CONDITIONS,
         DatasetUse.DERIVED_ASSET_DISTRIBUTION: DatasetUseDecision.NOT_STATED,
     }
     derived = next(
-        rule
-        for rule in filosax.use_rules
-        if rule.use is DatasetUse.DERIVED_ASSET_DISTRIBUTION
+        rule for rule in filosax.use_rules if rule.use is DatasetUse.DERIVED_ASSET_DISTRIBUTION
     )
     assert derived.conditions == ()
 
@@ -70,9 +60,7 @@ def test_tracked_registry_contains_only_restricted_filosax_governance_metadata()
         DatasetEvidenceKind.REPOSITORY_RECORD,
         DatasetEvidenceKind.PAPER,
     }
-    assert {evidence.reviewed_on for evidence in filosax.evidence} == {
-        "2026-07-23"
-    }
+    assert {evidence.reviewed_on for evidence in filosax.evidence} == {"2026-07-23"}
 
 
 def test_catalog_load_is_offline_and_contains_no_dataset_payload_files() -> None:
