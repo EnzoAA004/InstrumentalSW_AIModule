@@ -299,13 +299,24 @@ See [`docs/baselines/hf-saxophone-v1.md`](docs/baselines/hf-saxophone-v1.md).
 
 SAX-050 adds the versioned dataset-level registry `dataset-registry/registry-v1.json` with schema version `1.0`. FiloSax is registered as `restricted` under custom terms, with official evidence and conservative use decisions.
 
-The registry records governance metadata only. Its conditions do not grant legal permission or replace official terms, and no dataset content is stored. SAX-051 file-level preparation remains pending.
+The registry records governance metadata only. Its conditions do not grant legal permission or replace official terms, and no dataset content is stored. File-level preparation (manifest/checksums, SAX-051) and leakage-safe splits (SAX-052) are implemented in `scripts/prepare_filosax_dataset.py` and `scripts/split_filosax_dataset.py`; acquiring the restricted files themselves remains a manual, operator-side step.
 
 See [`docs/contracts/dataset-provenance-license-v1.md`](docs/contracts/dataset-provenance-license-v1.md). Validate the complete repository with:
 
 ```bash
 python scripts/check_quality.py
 ```
+
+## Postgres persistence
+
+SAX-070 adds a real, migrated Postgres-backed `TranscriptionJobRepository`. It is opt-in: `create_app()` still defaults every repository to its in-memory implementation, so nothing requires a database to boot.
+
+```bash
+export SAXO_DATABASE_URL=postgresql+psycopg://user:pass@localhost:5432/saxo
+python -m alembic upgrade head
+```
+
+Only the job repository is migrated so far; reviews, revisions, regeneration requests, and revision artifacts remain in-memory. See [`docs/contracts/postgres-transcription-job-repository-v1.md`](docs/contracts/postgres-transcription-job-repository-v1.md).
 
 ## Quality
 
