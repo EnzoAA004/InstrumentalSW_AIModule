@@ -89,3 +89,13 @@ class RevisionArtifactRepository(Protocol):
     def get_artifact(
         self, job_id: UUID, revision_number: int, artifact_id: str
     ) -> RevisionArtifact | None: ...
+
+
+class ObjectStorage(Protocol):
+    """Private, key-addressed binary storage. No public URL is ever exposed to callers."""
+
+    def put(self, key: str, content: bytes, *, content_type: str) -> None: ...
+
+    def get(self, key: str) -> bytes | None: ...
+
+    def generate_presigned_get_url(self, key: str, *, expires_in_seconds: int) -> str: ...
