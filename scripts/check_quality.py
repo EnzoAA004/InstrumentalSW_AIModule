@@ -28,7 +28,7 @@ QUALITY_CHECKS: tuple[QualityCheck, ...] = (
     ),
     QualityCheck(
         "Ruff lint",
-        (sys.executable, "-m", "ruff", "check", "src", "tests", "scripts"),
+        (sys.executable, "-m", "ruff", "check", "src", "tests", "scripts", "migrations"),
     ),
     QualityCheck(
         "Ruff format check",
@@ -41,6 +41,7 @@ QUALITY_CHECKS: tuple[QualityCheck, ...] = (
             "src",
             "tests",
             "scripts",
+            "migrations",
         ),
     ),
     QualityCheck("mypy strict type analysis", (sys.executable, "-m", "mypy")),
