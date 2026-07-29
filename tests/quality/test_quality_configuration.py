@@ -73,8 +73,8 @@ def test_cross_platform_runner_contains_all_required_checks() -> None:
 
     assert commands_from(module) == [
         ("pytest", "--cov=saxo_ai", "--cov-report=term-missing", "--cov-report=xml"),
-        ("ruff", "check", "src", "tests", "scripts"),
-        ("ruff", "format", "--check", "src", "tests", "scripts"),
+        ("ruff", "check", "src", "tests", "scripts", "migrations"),
+        ("ruff", "format", "--check", "src", "tests", "scripts", "migrations"),
         ("mypy",),
     ]
 
