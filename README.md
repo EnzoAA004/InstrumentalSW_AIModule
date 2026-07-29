@@ -316,7 +316,20 @@ export SAXO_DATABASE_URL=postgresql+psycopg://user:pass@localhost:5432/saxo
 python -m alembic upgrade head
 ```
 
-Only the job repository is migrated so far; reviews, revisions, regeneration requests, and revision artifacts remain in-memory. See [`docs/contracts/postgres-transcription-job-repository-v1.md`](docs/contracts/postgres-transcription-job-repository-v1.md).
+Reviews, revisions, and regeneration requests remain in-memory; revision artifacts now have their own persistence (below). See [`docs/contracts/postgres-transcription-job-repository-v1.md`](docs/contracts/postgres-transcription-job-repository-v1.md).
+
+## Private object storage for revision artifacts
+
+SAX-071 adds a real, S3-compatible (private MinIO or AWS S3) `RevisionArtifactRepository`: artifact bytes live in object storage, metadata lives in Postgres. Also opt-in; `create_app()` still defaults to the in-memory implementation.
+
+```bash
+export SAXO_OBJECT_STORAGE_ENDPOINT_URL=http://minio.internal:9000
+export SAXO_OBJECT_STORAGE_BUCKET=saxo-artifacts
+export SAXO_OBJECT_STORAGE_ACCESS_KEY=...
+export SAXO_OBJECT_STORAGE_SECRET_KEY=...
+```
+
+No public storage URL is ever exposed to the browser; downloads still go through the existing FastAPI artifact endpoint via the Backend gateway (SAX-045). See [`docs/contracts/object-storage-revision-artifacts-v1.md`](docs/contracts/object-storage-revision-artifacts-v1.md).
 
 ## Quality
 

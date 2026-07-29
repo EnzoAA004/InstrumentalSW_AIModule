@@ -10,6 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11,<3.14"
 dependencies = [
   "alembic>=1.13,<2",
+  "boto3>=1.34,<2",
   "fastapi>=0.115,<0.139",
   "mido==1.3.3",
   "psycopg[binary]>=3.1,<4",
@@ -21,6 +22,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+  "boto3-stubs[s3]>=1.34,<2",
   "hatchling>=1.25,<2",
   "httpx2>=2,<3",
   "mypy>=1.13,<2",
@@ -50,6 +52,7 @@ markers = [
   "musicxml_integration: real MusicXML import and external reader validation",
   "score_render_integration: real in-memory Verovio SVG score page rendering",
   "postgres_integration: real Postgres instance via testcontainers/Docker",
+  "object_storage_integration: real S3-compatible (MinIO) instance via Docker",
 ]
 
 [tool.coverage.run]
