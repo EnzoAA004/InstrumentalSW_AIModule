@@ -65,15 +65,11 @@ def load_dataset_registry(path: Path) -> DatasetRegistry:
     try:
         text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeError) as error:
-        raise InvalidDatasetRegistryJsonError(
-            "registry file could not be read as UTF-8"
-        ) from error
+        raise InvalidDatasetRegistryJsonError("registry file could not be read as UTF-8") from error
     try:
         parsed = cast(object, json.loads(text, object_pairs_hook=_reject_duplicate_keys))
     except json.JSONDecodeError as error:
-        raise InvalidDatasetRegistryJsonError(
-            "registry file must contain valid JSON"
-        ) from error
+        raise InvalidDatasetRegistryJsonError("registry file must contain valid JSON") from error
     try:
         return _decode_registry(parsed)
     except InvalidDatasetProvenanceError as error:
@@ -136,9 +132,7 @@ def _decode_dataset(value: object, index: int) -> DatasetProvenanceRecord:
         release_reference=_require_string(
             payload["release_reference"], f"{context}.release_reference"
         ),
-        canonical_uri=_require_string(
-            payload["canonical_uri"], f"{context}.canonical_uri"
-        ),
+        canonical_uri=_require_string(payload["canonical_uri"], f"{context}.canonical_uri"),
         doi=_require_string(payload["doi"], f"{context}.doi"),
         access_mode=_decode_enum(
             DatasetAccessMode,
@@ -167,9 +161,7 @@ def _decode_license(value: object, context: str) -> DatasetLicense:
             f"{context}.required_citation",
             allow_empty=True,
         ),
-        terms_may_change=_require_bool(
-            payload["terms_may_change"], f"{context}.terms_may_change"
-        ),
+        terms_may_change=_require_bool(payload["terms_may_change"], f"{context}.terms_may_change"),
     )
 
 
@@ -199,9 +191,7 @@ def _decode_evidence(value: object, context: str) -> DatasetEvidence:
     return DatasetEvidence(
         kind=_decode_enum(DatasetEvidenceKind, payload["kind"], f"{context}.kind"),
         uri=_require_string(payload["uri"], f"{context}.uri"),
-        reviewed_on=_require_string(
-            payload["reviewed_on"], f"{context}.reviewed_on"
-        ),
+        reviewed_on=_require_string(payload["reviewed_on"], f"{context}.reviewed_on"),
     )
 
 
@@ -222,9 +212,7 @@ def _require_list(value: object, context: str) -> list[object]:
     return list(value)
 
 
-def _require_string(
-    value: object, context: str, *, allow_empty: bool = False
-) -> str:
+def _require_string(value: object, context: str, *, allow_empty: bool = False) -> str:
     if not isinstance(value, str) or (not allow_empty and not value.strip()):
         qualifier = "a string" if allow_empty else "a non-empty string"
         raise InvalidDatasetRegistryJsonError(f"{context} must be {qualifier}")
@@ -253,13 +241,9 @@ def _require_exact_fields(
         )
 
 
-def _decode_enum(
-    enum_type: type[_EnumValue], value: object, context: str
-) -> _EnumValue:
+def _decode_enum(enum_type: type[_EnumValue], value: object, context: str) -> _EnumValue:
     text = _require_string(value, context)
     try:
         return enum_type(text)
     except ValueError as error:
-        raise InvalidDatasetRegistryJsonError(
-            f"{context} contains an unknown value"
-        ) from error
+        raise InvalidDatasetRegistryJsonError(f"{context} contains an unknown value") from error

@@ -98,9 +98,7 @@ def _require_iso_date(field_name: str, value: object) -> str:
             f"{field_name} must be an ISO date in YYYY-MM-DD form"
         ) from error
     if parsed.isoformat() != text:
-        raise InvalidDatasetProvenanceError(
-            f"{field_name} must be an ISO date in YYYY-MM-DD form"
-        )
+        raise InvalidDatasetProvenanceError(f"{field_name} must be an ISO date in YYYY-MM-DD form")
     return text
 
 
@@ -140,10 +138,14 @@ class DatasetUseRule:
             raise InvalidDatasetProvenanceError(
                 "not_stated must remain empty and must not imply permission"
             )
-        if self.decision in {
-            DatasetUseDecision.ALLOWED_WITH_CONDITIONS,
-            DatasetUseDecision.REQUIRES_PERMISSION,
-        } and not self.conditions:
+        if (
+            self.decision
+            in {
+                DatasetUseDecision.ALLOWED_WITH_CONDITIONS,
+                DatasetUseDecision.REQUIRES_PERMISSION,
+            }
+            and not self.conditions
+        ):
             raise InvalidDatasetProvenanceError(
                 "conditional and permission decisions must preserve their conditions"
             )
@@ -163,11 +165,7 @@ class DatasetLicense:
         if not isinstance(self.kind, DatasetLicenseKind):
             raise InvalidDatasetProvenanceError("license kind must be spdx or custom")
         identifier = _require_non_empty("license identifier", self.identifier)
-        pattern = (
-            _SPDX_IDENTIFIER
-            if self.kind is DatasetLicenseKind.SPDX
-            else _CUSTOM_LICENSE_ID
-        )
+        pattern = _SPDX_IDENTIFIER if self.kind is DatasetLicenseKind.SPDX else _CUSTOM_LICENSE_ID
         if pattern.fullmatch(identifier) is None:
             raise InvalidDatasetProvenanceError(
                 "license identifier is incompatible with the declared license kind"
