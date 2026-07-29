@@ -47,7 +47,7 @@ class TestDatasetSplitProportions:
 
     def test_rejects_boolean_proportion(self) -> None:
         with pytest.raises(InvalidDatasetSplitPlanError):
-            DatasetSplitProportions(train=True, validation=0.15, test=0.15)  # type: ignore[arg-type]
+            DatasetSplitProportions(train=True, validation=0.15, test=0.15)
 
 
 class TestDatasetSplitAssignment:
