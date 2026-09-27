@@ -51,6 +51,13 @@ the private object path depends only on the server-generated UUID.
 
 No public URL or browser route was added. The existing SAX-071 configuration is reused.
 
+## CI infrastructure repair
+
+The first full GREEN run exposed a latent SAX-071 fixture failure rather than a product-code
+regression: Docker Hub no longer served `minio/minio:latest`, so all S3-compatible integration
+tests failed before MinIO could start. The fixture now pins the official Quay release
+`quay.io/minio/minio:RELEASE.2025-07-23T15-54-02Z` instead of a mutable `latest` tag.
+
 ## Traceability
 
 ```text
