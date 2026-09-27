@@ -3,10 +3,10 @@ name: Quality
 on:
   pull_request:
     branches:
-      - main
+      - component/frontend
   push:
     branches:
-      - main
+      - component/frontend
   workflow_dispatch:
 
 env:
