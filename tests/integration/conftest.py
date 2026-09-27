@@ -16,6 +16,7 @@ from testcontainers.core.container import DockerContainer
 from saxo_ai.infrastructure.object_storage_configuration import ObjectStorageSettings
 from saxo_ai.infrastructure.postgres_engine import build_postgres_engine
 
+_MINIO_IMAGE = "quay.io/minio/minio:RELEASE.2025-07-23T15-54-02Z"
 _MINIO_PORT = 9000
 _ACCESS_KEY = "saxo-test-access"
 _SECRET_KEY = "saxo-test-secret"
@@ -42,7 +43,7 @@ def postgres_engine() -> Iterator[Engine]:
 
 @pytest.fixture(scope="module")
 def object_storage_settings() -> Iterator[ObjectStorageSettings]:
-    container = DockerContainer("minio/minio:latest")
+    container = DockerContainer(_MINIO_IMAGE)
     container.with_exposed_ports(_MINIO_PORT)
     container.with_env("MINIO_ROOT_USER", _ACCESS_KEY)
     container.with_env("MINIO_ROOT_PASSWORD", _SECRET_KEY)
