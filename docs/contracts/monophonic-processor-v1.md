@@ -80,9 +80,15 @@ A controlled score-rendering failure does not invalidate already-valid MIDI or M
 
 Unexpected programming errors are not swallowed.
 
+## Diagnostics
+
+The processor may receive an optional diagnostics observer for integration and operational visibility. The observer records stage counts and artifact sizes after a successful run, including canonical audio bytes, raw baseline events, post-processed events, confidence annotations, written-pitch events, tempo, quantized notes/timeline items, MIDI bytes, MusicXML bytes and SVG page count.
+
+Diagnostics are read-only. They do not change validation, retries, review registration, artifact registration, or public API behavior.
+
 ## Real integration coverage
 
-The integration test creates a generated, license-safe saxophone-like WAV and executes the real chain with:
+The baseline integration test and full processor E2E share a generated, license-safe saxophone-like WAV fixture from `tests/synthetic_audio.py` and execute the real chain with:
 
 - FFmpeg canonical conversion;
 - pinned FiloSax baseline when the baseline extra is installed;
@@ -93,6 +99,8 @@ The integration test creates a generated, license-safe saxophone-like WAV and ex
 - Verovio SVG rendering.
 
 Python 3.11 CI requires the real pinned baseline. Other supported Python jobs retain the existing optional-baseline skip policy.
+
+The final SAX-036 Quality run validated the real pinned-baseline E2E path in Python 3.11 and reached revision zero with MIDI, MusicXML and SVG artifacts.
 
 ## Deferred
 

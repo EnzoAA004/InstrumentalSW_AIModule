@@ -40,7 +40,18 @@ The implementation composes the existing converter, model adapter, event rules, 
 
 A separate integration test runs a generated saxophone-like WAV through the real external adapters. It is marked `baseline_integration` so Python 3.11 CI exercises the pinned FiloSax runtime while environments without the optional baseline follow the established skip policy.
 
-The fixture is generated in memory and contains no third-party audio.
+The baseline integration test and the full processor E2E now use the same fixture from `tests/synthetic_audio.py`. The fixture is generated programmatically in memory, is deterministic, and contains no third-party audio.
+
+The final integration pass validates the real pinned FiloSax baseline on CI Python 3.11 and drives the full processor to revision zero plus registered MIDI, MusicXML and SVG artifacts.
+
+`MonophonicProcessingDiagnostics` was added as a test/observability hook. It records stage counts and artifact sizes for canonical audio, raw baseline output, post-processing, confidence, written pitch, tempo, quantization, MIDI, MusicXML and SVG rendering. It is optional and does not alter product behavior.
+
+Final Quality is green:
+
+- Ruff lint;
+- Ruff format check;
+- strict mypy;
+- full protected Quality, including the Python 3.11 real-baseline integration path.
 
 ## REFACTOR constraints
 
