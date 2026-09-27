@@ -36,7 +36,7 @@ Legend:
 | SAX-021 Audio→MIDI baseline | ✅ | Pinned FiloSax/HF baseline adapter and real integration coverage exist. |
 | SAX-022 Event filtering/deduplication | ✅ | Deterministic post-processing exists. |
 | SAX-023 Low-confidence markers | ✅ | Events retain confidence and a low-confidence flag. |
-| SAX-036 End-to-end monophonic processor | 🟡 | PR #29 composes canonicalization → baseline → post-processing → transposition → tempo → quantization → MIDI/MusicXML/SVG → revision 0. Unit/integration tests mostly pass, but the real Python 3.11 E2E currently produces zero final events for the synthetic fixture and must be debugged. Ruff formatting also needs to be applied to two files. |
+| SAX-036 End-to-end monophonic processor | 🟡 | PR #29 composes canonicalization → baseline → post-processing → transposition → tempo → quantization → MIDI/MusicXML/SVG → revision 0. Ruff formatting has been applied, and the real E2E now shares the baseline fixture plus pipeline diagnostics. The real Python 3.11 baseline run still needs CI/runtime verification to confirm where notes disappear, if they still do. |
 
 ## E3 — Transposition, notation and export
 
@@ -172,8 +172,9 @@ Observed CI evidence on the latest audited commit:
 - ordinary test suite reaches more than 1200 passing tests;
 - coverage remains above 90%;
 - Ruff lint passes after the import cleanup;
-- Ruff format still reports two files needing formatting;
-- on Python 3.11 with the real pinned baseline, the new end-to-end synthetic fixture reaches a final written-pitch result with zero events.
+- Ruff formatting has been applied to the previously failing files;
+- PR #29 now emits E2E diagnostics for canonical audio, raw FiloSax output, post-processing, confidence, written pitch, tempo, quantization, MIDI, MusicXML and SVG stages;
+- on Python 3.11 with the real pinned baseline, verify whether the shared generated fixture still reaches a final written-pitch result with zero events.
 
 Do not solve the Python 3.11 failure by simply deleting the assertion or skipping the real baseline test. Determine whether:
 - FFmpeg canonicalization changes the signal enough to alter inference;
