@@ -331,6 +331,18 @@ export SAXO_OBJECT_STORAGE_SECRET_KEY=...
 
 No public storage URL is exposed to the browser. Revision downloads still go through the existing FastAPI artifact endpoint via the Backend gateway (SAX-045), while original audio remains internal worker input. See [`docs/contracts/object-storage-revision-artifacts-v1.md`](docs/contracts/object-storage-revision-artifacts-v1.md) and [`docs/contracts/original-audio-storage-v1.md`](docs/contracts/original-audio-storage-v1.md).
 
+## Durable processing queue and worker
+
+SAX-072 adds an opt-in PostgreSQL-backed `TranscriptionProcessingQueue` and a generic `TranscriptionWorker`. When a queue is configured, accepted uploads move from `UPLOADED` to `QUEUED`; workers claim them with `FOR UPDATE SKIP LOCKED`, move them to `PROCESSING`, and finish in `COMPLETED` or `FAILED`.
+
+Claims carry an incrementing attempt token. A lease allows abandoned work to be reclaimed, while stale workers cannot acknowledge or retry a newer claim. Retry count is bounded by the worker and retry delay is configured by the queue adapter.
+
+The queue intentionally reuses PostgreSQL instead of introducing Redis or RabbitMQ for the MVP. Queue ownership is durable, but queue acknowledgement/retry and the final job-state repository write are separate application operations; a later operational hardening pass may consolidate them behind a database unit-of-work if multi-worker scale requires stricter atomicity.
+
+SAX-072 does not implement the audio-to-score processor itself. The next integration step is to compose the existing canonicalization, transcription, post-processing, written-pitch, tempo/quantization and artifact use cases behind the `TranscriptionJobProcessor` port.
+
+See [`docs/contracts/postgres-processing-queue-v1.md`](docs/contracts/postgres-processing-queue-v1.md).
+
 ## Quality
 
 ```bash
