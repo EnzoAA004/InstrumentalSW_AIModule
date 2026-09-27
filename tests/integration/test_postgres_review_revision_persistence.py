@@ -243,14 +243,14 @@ def test_concurrent_revision_writers_allow_exactly_one_revision_one(
     assert revision_one.events[1].written_pitch_midi == 76
 
     with postgres_engine.connect() as connection:
-        revision_rows = connection.execute(
+        revision_rows: int = connection.execute(
             text(
                 "select count(*) from transcription_revisions "
                 "where job_id = :job_id and revision_number = 1"
             ),
             {"job_id": JOB_ID},
         ).scalar_one()
-        event_rows = connection.execute(
+        event_rows: int = connection.execute(
             text(
                 "select count(*) from transcription_revision_events "
                 "where job_id = :job_id and revision_number = 1"
