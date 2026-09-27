@@ -318,9 +318,9 @@ python -m alembic upgrade head
 
 Reviews, revisions, and regeneration requests remain in-memory; revision artifacts now have their own persistence (below). See [`docs/contracts/postgres-transcription-job-repository-v1.md`](docs/contracts/postgres-transcription-job-repository-v1.md).
 
-## Private object storage for revision artifacts
+## Private object storage
 
-SAX-071 adds a real, S3-compatible (private MinIO or AWS S3) `RevisionArtifactRepository`: artifact bytes live in object storage, metadata lives in Postgres. Also opt-in; `create_app()` still defaults to the in-memory implementation.
+SAX-071 adds a real, S3-compatible (private MinIO or AWS S3) `RevisionArtifactRepository`: artifact bytes live in object storage, metadata lives in Postgres. SAX-014 reuses the same private storage adapter for the accepted original upload, under the deterministic key `original-audio/{job_id}`, so a future worker can recover its input after the HTTP request ends. Both are opt-in; `create_app()` still boots without external storage.
 
 ```bash
 export SAXO_OBJECT_STORAGE_ENDPOINT_URL=http://minio.internal:9000
@@ -329,7 +329,7 @@ export SAXO_OBJECT_STORAGE_ACCESS_KEY=...
 export SAXO_OBJECT_STORAGE_SECRET_KEY=...
 ```
 
-No public storage URL is ever exposed to the browser; downloads still go through the existing FastAPI artifact endpoint via the Backend gateway (SAX-045). See [`docs/contracts/object-storage-revision-artifacts-v1.md`](docs/contracts/object-storage-revision-artifacts-v1.md).
+No public storage URL is exposed to the browser. Revision downloads still go through the existing FastAPI artifact endpoint via the Backend gateway (SAX-045), while original audio remains internal worker input. See [`docs/contracts/object-storage-revision-artifacts-v1.md`](docs/contracts/object-storage-revision-artifacts-v1.md) and [`docs/contracts/original-audio-storage-v1.md`](docs/contracts/original-audio-storage-v1.md).
 
 ## Quality
 

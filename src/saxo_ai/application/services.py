@@ -6,7 +6,13 @@ from saxo_ai.application.errors import (
     TranscriptionJobNotFoundError,
     UnsupportedAudioFormatError,
 )
-from saxo_ai.application.ports import AudioContentHasher, BinaryStream, TranscriptionJobRepository
+from saxo_ai.application.ports import (
+    AudioContentHasher,
+    BinaryStream,
+    OriginalAudioRepository,
+    RewindableBinaryStream,
+    TranscriptionJobRepository,
+)
 from saxo_ai.domain.models import InputMode, JobStatus, SaxophoneType, TranscriptionJob
 
 _ALLOWED_EXTENSIONS = {".mp3", ".wav"}
@@ -17,9 +23,12 @@ class CreateTranscriptionJob:
         self,
         repository: TranscriptionJobRepository,
         content_hasher: AudioContentHasher,
+        *,
+        original_audio_repository: OriginalAudioRepository | None = None,
     ) -> None:
         self._repository = repository
         self._content_hasher = content_hasher
+        self._original_audio_repository = original_audio_repository
 
     def execute(
         self,
@@ -45,8 +54,21 @@ class CreateTranscriptionJob:
             saxophone_type=saxophone_type,
             input_mode=input_mode,
         )
+        self._persist_original_audio(job, content)
         self._repository.save(job)
         return job
+
+    def _persist_original_audio(
+        self,
+        job: TranscriptionJob,
+        content: BinaryStream,
+    ) -> None:
+        if self._original_audio_repository is None:
+            return
+        if not isinstance(content, RewindableBinaryStream):
+            raise TypeError("original audio persistence requires a rewindable binary stream")
+        content.seek(0)
+        self._original_audio_repository.save(job.job_id, content)
 
 
 class GetTranscriptionJob:

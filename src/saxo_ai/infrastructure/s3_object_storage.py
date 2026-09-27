@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from typing import BinaryIO, cast
+
 import boto3
 from botocore.client import Config
 from botocore.exceptions import ClientError
 
+from saxo_ai.application.ports import BinaryStream
 from saxo_ai.infrastructure.object_storage_configuration import ObjectStorageSettings
 
 _MISSING_KEY_ERROR_CODES = frozenset({"NoSuchKey", "404"})
@@ -28,6 +31,14 @@ class S3ObjectStorage:
             Bucket=self._bucket,
             Key=key,
             Body=content,
+            ContentType=content_type,
+        )
+
+    def put_stream(self, key: str, source: BinaryStream, *, content_type: str) -> None:
+        self._client.put_object(
+            Bucket=self._bucket,
+            Key=key,
+            Body=cast(BinaryIO, source),
             ContentType=content_type,
         )
 
