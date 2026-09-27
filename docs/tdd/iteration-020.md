@@ -55,8 +55,14 @@ No public URL or browser route was added. The existing SAX-071 configuration is 
 
 The first full GREEN run exposed a latent SAX-071 fixture failure rather than a product-code
 regression: Docker Hub no longer served `minio/minio:latest`, so all S3-compatible integration
-tests failed before MinIO could start. The fixture now pins the official Quay release
-`quay.io/minio/minio:RELEASE.2025-07-23T15-54-02Z` instead of a mutable `latest` tag.
+tests failed before the service could start. An attempted pinned MinIO Quay release was also
+unavailable to the GitHub-hosted runner.
+
+The integration fixture therefore uses the verified-publisher image
+`localstack/localstack:2026.08.3` with only the S3 service enabled. Runtime production support is
+unchanged: `S3ObjectStorage` remains endpoint-agnostic and continues to support private MinIO or
+AWS S3. The test fixture now validates the S3 contract against a pinned, publicly downloadable
+implementation instead of depending on a mutable or inaccessible MinIO registry tag.
 
 ## Traceability
 
