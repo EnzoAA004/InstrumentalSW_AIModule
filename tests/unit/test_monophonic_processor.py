@@ -1,21 +1,24 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from io import BytesIO
 from uuid import UUID
 
 import pytest
 from tests.score_render_helpers import ParsingMusicXmlReader
 
 from saxo_ai.application.errors import AudioContentInvalidError
+from saxo_ai.application.midi_export import MidiFileEncoder
+from saxo_ai.application.ports import BinaryDestination, BinaryStream, CanonicalAudioConverter
 from saxo_ai.application.monophonic_processor import MonophonicTranscriptionProcessor
 from saxo_ai.application.processing import TerminalProcessingError, TranscriptionWorker
 from saxo_ai.application.revision_artifacts import RegisterRevisionArtifacts
 from saxo_ai.application.score_rendering import (
     ScoreRendererOutput,
     ScoreRendererPage,
+    ScoreRenderer,
     ScoreRenderingError,
 )
+from saxo_ai.application.transcription import TranscriptionEngine
 from saxo_ai.application.transcription_review import RegisterTranscriptionReview
 from saxo_ai.domain.audio import (
     CanonicalAudioMetadata,
@@ -113,8 +116,8 @@ class CopyCanonicalConverter:
     def convert(
         self,
         *,
-        source: object,
-        destination: object,
+        source: BinaryStream,
+        destination: BinaryDestination,
         settings: CanonicalAudioSettings,
         original: OriginalAudioReference,
     ) -> CanonicalAudioResult:
@@ -143,8 +146,8 @@ class InvalidAudioConverter(CopyCanonicalConverter):
     def convert(
         self,
         *,
-        source: object,
-        destination: object,
+        source: BinaryStream,
+        destination: BinaryDestination,
         settings: CanonicalAudioSettings,
         original: OriginalAudioReference,
     ) -> CanonicalAudioResult:
@@ -156,7 +159,7 @@ class StaticEngine:
         self.result = result
         self.received: bytes | None = None
 
-    def transcribe(self, source: object) -> TranscriptionResult:
+    def transcribe(self, source: BinaryStream) -> TranscriptionResult:
         assert hasattr(source, "read")
         self.received = source.read(-1)
         return self.result
@@ -216,10 +219,10 @@ class RecordingMidiEncoder:
 
 def _processor(
     *,
-    converter: object | None = None,
-    engine: StaticEngine | None = None,
-    midi_encoder: object | None = None,
-    renderer: object | None = None,
+    converter: CanonicalAudioConverter | None = None,
+    engine: TranscriptionEngine | None = None,
+    midi_encoder: MidiFileEncoder | None = None,
+    renderer: ScoreRenderer | None = None,
 ) -> tuple[
     MonophonicTranscriptionProcessor,
     InMemoryTranscriptionReviewRepository,
@@ -316,7 +319,9 @@ def test_invalid_audio_becomes_terminal_processing_error_with_specific_failure_c
 
 class OneMessageQueue:
     def __init__(self) -> None:
-        self.message = ProcessingQueueMessage(job_id=JOB_ID, attempt=1)
+        self.message: ProcessingQueueMessage | None = ProcessingQueueMessage(
+            job_id=JOB_ID, attempt=1
+        )
         self.acked = False
         self.retried = False
 
@@ -324,7 +329,8 @@ class OneMessageQueue:
         raise AssertionError("not used")
 
     def claim(self) -> ProcessingQueueMessage | None:
-        message, self.message = self.message, None  # type: ignore[assignment]
+        message = self.message
+        self.message = None
         return message
 
     def ack(self, message: ProcessingQueueMessage) -> bool:
@@ -337,7 +343,7 @@ class OneMessageQueue:
 
 
 class StaticOriginals:
-    def save(self, job_id: UUID, source: object) -> None:
+    def save(self, job_id: UUID, source: BinaryStream) -> None:
         raise AssertionError("not used")
 
     def get(self, job_id: UUID) -> bytes | None:
