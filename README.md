@@ -2,6 +2,8 @@
 
 Python/FastAPI module for InstrumentalSW (Saxo), developed through reproducible TDD iterations.
 
+> Repository consolidation (2026-09-27): this repository is now the canonical Saxo repository. The Spring Boot and Next.js codebases live on `component/backend` and `component/frontend`; the stable AI snapshot is also tagged by the `component/ai` branch. See [`docs/project/repository-consolidation.md`](docs/project/repository-consolidation.md), [`docs/project/implementation-checklist.md`](docs/project/implementation-checklist.md), and [`docs/project/next-agent-prompt.md`](docs/project/next-agent-prompt.md).
+
 ## Requirements
 
 - Python `>=3.11,<3.14`
