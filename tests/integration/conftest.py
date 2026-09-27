@@ -16,8 +16,8 @@ from testcontainers.core.container import DockerContainer
 from saxo_ai.infrastructure.object_storage_configuration import ObjectStorageSettings
 from saxo_ai.infrastructure.postgres_engine import build_postgres_engine
 
-_S3_TEST_IMAGE = "localstack/localstack:2026.08.3"
-_S3_TEST_PORT = 4566
+_S3_TEST_IMAGE = "adobe/s3mock:5.2.2"
+_S3_TEST_PORT = 9090
 _ACCESS_KEY = "saxo-test-access"
 _SECRET_KEY = "saxo-test-secret"
 _BUCKET = "saxo-artifacts-test"
@@ -45,7 +45,6 @@ def postgres_engine() -> Iterator[Engine]:
 def object_storage_settings() -> Iterator[ObjectStorageSettings]:
     container = DockerContainer(_S3_TEST_IMAGE)
     container.with_exposed_ports(_S3_TEST_PORT)
-    container.with_env("SERVICES", "s3")
     with container:
         host = container.get_container_host_ip()
         port = container.get_exposed_port(_S3_TEST_PORT)
