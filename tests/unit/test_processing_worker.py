@@ -5,6 +5,7 @@ from uuid import UUID
 
 import pytest
 
+from saxo_ai.application.ports import BinaryStream
 from saxo_ai.application.processing import TranscriptionWorker
 from saxo_ai.application.services import CreateTranscriptionJob
 from saxo_ai.domain.models import (
@@ -12,6 +13,7 @@ from saxo_ai.domain.models import (
     JobFailureCode,
     JobStatus,
     SaxophoneType,
+    TranscriptionJob,
 )
 from saxo_ai.domain.processing import ProcessingQueueMessage
 from saxo_ai.infrastructure.hashing import Sha256AudioContentHasher
@@ -22,9 +24,8 @@ class RecordingOriginalAudioRepository:
     def __init__(self) -> None:
         self.saved: dict[UUID, bytes] = {}
 
-    def save(self, job_id: UUID, source: object) -> None:
-        assert hasattr(source, "read")
-        self.saved[job_id] = source.read(-1)  # type: ignore[union-attr]
+    def save(self, job_id: UUID, source: BinaryStream) -> None:
+        self.saved[job_id] = source.read(-1)
 
     def get(self, job_id: UUID) -> bytes | None:
         return self.saved.get(job_id)
@@ -35,6 +36,7 @@ class RecordingProcessingQueue:
         self.pending: list[ProcessingQueueMessage] = []
         self.acked: list[ProcessingQueueMessage] = []
         self.retried: list[ProcessingQueueMessage] = []
+        self.accept_actions = True
 
     def enqueue(self, job_id: UUID) -> None:
         self.pending.append(ProcessingQueueMessage(job_id=job_id, attempt=0))
@@ -45,12 +47,15 @@ class RecordingProcessingQueue:
         message = self.pending.pop(0)
         return ProcessingQueueMessage(job_id=message.job_id, attempt=message.attempt + 1)
 
-    def ack(self, message: ProcessingQueueMessage) -> None:
+    def ack(self, message: ProcessingQueueMessage) -> bool:
         self.acked.append(message)
+        return self.accept_actions
 
-    def retry(self, message: ProcessingQueueMessage) -> None:
+    def retry(self, message: ProcessingQueueMessage) -> bool:
         self.retried.append(message)
-        self.pending.append(message)
+        if self.accept_actions:
+            self.pending.append(message)
+        return self.accept_actions
 
 
 class RecordingProcessor:
@@ -58,9 +63,8 @@ class RecordingProcessor:
         self.calls: list[tuple[UUID, bytes]] = []
         self.error = error
 
-    def process(self, job: object, source: bytes) -> None:
-        job_id = job.job_id  # type: ignore[attr-defined]
-        self.calls.append((job_id, source))
+    def process(self, job: TranscriptionJob, source: bytes) -> None:
+        self.calls.append((job.job_id, source))
         if self.error is not None:
             raise self.error
 
@@ -179,6 +183,24 @@ def test_worker_marks_missing_original_audio_as_terminal_failure() -> None:
     assert job.status is JobStatus.FAILED
     assert job.failure_code is JobFailureCode.SOURCE_AUDIO_MISSING
     assert queue.acked == [ProcessingQueueMessage(job_id=job_id, attempt=1)]
+
+
+def test_stale_claim_cannot_overwrite_job_state() -> None:
+    jobs, originals, queue, job_id = _create_queued_job()
+    queue.accept_actions = False
+    worker = TranscriptionWorker(
+        jobs=jobs,
+        originals=originals,
+        queue=queue,
+        processor=RecordingProcessor(),
+        max_attempts=3,
+    )
+
+    worker.run_once()
+
+    job = jobs.get(job_id)
+    assert job is not None
+    assert job.status is JobStatus.PROCESSING
 
 
 def test_worker_returns_false_when_queue_is_empty() -> None:

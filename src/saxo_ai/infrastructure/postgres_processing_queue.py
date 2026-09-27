@@ -84,15 +84,16 @@ class PostgresTranscriptionProcessingQueue:
             )
         return ProcessingQueueMessage(job_id=row["job_id"], attempt=attempt)
 
-    def ack(self, message: ProcessingQueueMessage) -> None:
+    def ack(self, message: ProcessingQueueMessage) -> bool:
         statement = delete(transcription_processing_queue).where(
             transcription_processing_queue.c.job_id == message.job_id,
             transcription_processing_queue.c.attempt_count == message.attempt,
         )
         with self._engine.begin() as connection:
-            connection.execute(statement)
+            result = connection.execute(statement)
+        return result.rowcount == 1
 
-    def retry(self, message: ProcessingQueueMessage) -> None:
+    def retry(self, message: ProcessingQueueMessage) -> bool:
         statement = (
             update(transcription_processing_queue)
             .where(
@@ -105,4 +106,5 @@ class PostgresTranscriptionProcessingQueue:
             )
         )
         with self._engine.begin() as connection:
-            connection.execute(statement)
+            result = connection.execute(statement)
+        return result.rowcount == 1

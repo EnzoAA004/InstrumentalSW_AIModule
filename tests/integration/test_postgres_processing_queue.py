@@ -45,7 +45,7 @@ def test_queue_enqueue_is_idempotent_and_ack_removes_claimed_message(
     assert message == ProcessingQueueMessage(job_id=job.job_id, attempt=1)
     assert queue.claim() is None
 
-    queue.ack(message)
+    assert queue.ack(message) is True
     assert queue.claim() is None
 
 
@@ -56,14 +56,16 @@ def test_retry_releases_message_and_increments_attempt(postgres_engine: Engine) 
 
     first = queue.claim()
     assert first == ProcessingQueueMessage(job_id=job.job_id, attempt=1)
-    queue.retry(first)
+    assert queue.retry(first) is True
 
     second = queue.claim()
     assert second == ProcessingQueueMessage(job_id=job.job_id, attempt=2)
-    queue.ack(second)
+    assert queue.ack(second) is True
 
 
-def test_expired_lease_can_be_reclaimed(postgres_engine: Engine) -> None:
+def test_expired_lease_rejects_stale_owner_and_allows_current_owner(
+    postgres_engine: Engine,
+) -> None:
     job = _save_job(postgres_engine)
     now = [datetime(2026, 9, 27, 17, 0, tzinfo=UTC)]
     queue = PostgresTranscriptionProcessingQueue(
@@ -80,4 +82,6 @@ def test_expired_lease_can_be_reclaimed(postgres_engine: Engine) -> None:
     second = queue.claim()
 
     assert second == ProcessingQueueMessage(job_id=job.job_id, attempt=2)
-    queue.ack(second)
+    assert queue.ack(first) is False
+    assert queue.retry(first) is False
+    assert queue.ack(second) is True

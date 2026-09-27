@@ -39,8 +39,8 @@ class TranscriptionWorker:
 
         source = self._originals.get(message.job_id)
         if source is None:
-            self._jobs.save(job.mark_failed(JobFailureCode.SOURCE_AUDIO_MISSING))
-            self._queue.ack(message)
+            if self._queue.ack(message):
+                self._jobs.save(job.mark_failed(JobFailureCode.SOURCE_AUDIO_MISSING))
             return True
 
         processing_job = job.mark_processing()
@@ -49,13 +49,12 @@ class TranscriptionWorker:
             self._processor.process(processing_job, source)
         except Exception:
             if message.attempt < self._max_attempts:
-                self._jobs.save(processing_job.mark_queued())
-                self._queue.retry(message)
-            else:
+                if self._queue.retry(message):
+                    self._jobs.save(processing_job.mark_queued())
+            elif self._queue.ack(message):
                 self._jobs.save(processing_job.mark_failed(JobFailureCode.PROCESSING_FAILED))
-                self._queue.ack(message)
             return True
 
-        self._jobs.save(processing_job.mark_completed())
-        self._queue.ack(message)
+        if self._queue.ack(message):
+            self._jobs.save(processing_job.mark_completed())
         return True

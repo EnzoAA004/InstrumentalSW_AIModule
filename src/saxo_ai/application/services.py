@@ -58,12 +58,18 @@ class CreateTranscriptionJob:
             input_mode=input_mode,
         )
         self._persist_original_audio(job, content)
-        self._repository.save(job)
-        if self._processing_queue is not None:
-            self._processing_queue.enqueue(job.job_id)
-            job = job.mark_queued()
+        if self._processing_queue is None:
             self._repository.save(job)
-        return job
+            return job
+
+        queued_job = job.mark_queued()
+        self._repository.save(queued_job)
+        try:
+            self._processing_queue.enqueue(job.job_id)
+        except Exception:
+            self._repository.save(job)
+            raise
+        return queued_job
 
     def _persist_original_audio(
         self,
