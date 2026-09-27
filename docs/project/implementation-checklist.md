@@ -107,7 +107,10 @@ These are required before calling the first product flow operational across sepa
 
 ### SAX-076 — Persist review/revision/regeneration state in PostgreSQL — P0/P1 boundary
 
-Status: ⬜
+Status: 🟡
+
+Current branch:
+- `feature/SAX-076-postgres-review-revision-persistence` adds the PostgreSQL adapter, schema migration, integration contract tests and durability contract docs for review, immutable revisions and regeneration requests.
 
 Required:
 - PostgreSQL repositories for source review, immutable revision history and regeneration requests;
