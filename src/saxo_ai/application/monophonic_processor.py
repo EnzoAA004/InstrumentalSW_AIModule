@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from dataclasses import dataclass
 from io import BytesIO
 
 from saxo_ai.application.errors import (
@@ -42,9 +44,24 @@ from saxo_ai.domain.revision_artifacts import (
     RevisionArtifactBundle,
     RevisionArtifactDescriptor,
 )
-from saxo_ai.domain.rhythm_quantization import RhythmQuantizationSettings
+from saxo_ai.domain.rhythm_quantization import QuantizedNoteEvent, RhythmQuantizationSettings
 from saxo_ai.domain.score_rendering import ScoreRenderResult, ScoreRenderSettings
 from saxo_ai.domain.tempo import TempoEstimationSettings, TempoEstimationUnavailableError
+
+
+@dataclass(frozen=True, slots=True)
+class MonophonicProcessingDiagnostics:
+    canonical_audio_bytes: int
+    raw_event_count: int
+    postprocessed_event_count: int
+    confidence_event_count: int
+    written_event_count: int
+    tempo_bpm: float
+    quantized_note_count: int
+    quantized_timeline_item_count: int
+    midi_bytes: int
+    musicxml_bytes: int
+    svg_page_count: int
 
 
 class MonophonicTranscriptionProcessor:
@@ -68,6 +85,7 @@ class MonophonicTranscriptionProcessor:
         rhythm_settings: RhythmQuantizationSettings | None = None,
         musicxml_settings: MusicXmlExportSettings | None = None,
         score_settings: ScoreRenderSettings | None = None,
+        diagnostics_observer: Callable[[MonophonicProcessingDiagnostics], None] | None = None,
     ) -> None:
         self._canonical_converter = canonical_converter
         self._transcribe = TranscribeCanonicalAudio(transcription_engine)
@@ -88,6 +106,7 @@ class MonophonicTranscriptionProcessor:
         self._rhythm_settings = rhythm_settings or RhythmQuantizationSettings()
         self._musicxml_settings = musicxml_settings or MusicXmlExportSettings()
         self._score_settings = score_settings or ScoreRenderSettings()
+        self._diagnostics_observer = diagnostics_observer
 
     def process(self, job: TranscriptionJob, source: bytes) -> None:
         canonical = BytesIO()
@@ -106,11 +125,10 @@ class MonophonicTranscriptionProcessor:
         except AudioContentInvalidError as error:
             raise TerminalProcessingError(JobFailureCode.AUDIO_CONTENT_INVALID) from error
         except AudioDurationLimitExceededError as error:
-            raise TerminalProcessingError(
-                JobFailureCode.AUDIO_DURATION_LIMIT_EXCEEDED
-            ) from error
+            raise TerminalProcessingError(JobFailureCode.AUDIO_DURATION_LIMIT_EXCEEDED) from error
 
-        raw = self._transcribe.execute(BytesIO(canonical.getvalue()))
+        canonical_bytes = canonical.getvalue()
+        raw = self._transcribe.execute(BytesIO(canonical_bytes))
         processed = self._postprocess.execute(raw)
         confidence = self._confidence.execute(processed)
         written = self._transpose.execute(confidence, job.saxophone_type)
@@ -146,6 +164,24 @@ class MonophonicTranscriptionProcessor:
         )
         self._register_review.execute(job.job_id, written)
         self._register_artifacts.execute(bundle)
+        if self._diagnostics_observer is not None:
+            self._diagnostics_observer(
+                MonophonicProcessingDiagnostics(
+                    canonical_audio_bytes=len(canonical_bytes),
+                    raw_event_count=len(raw.notes.events),
+                    postprocessed_event_count=len(processed.notes.events),
+                    confidence_event_count=len(confidence.annotated_events),
+                    written_event_count=len(written.events),
+                    tempo_bpm=tempo.effective_tempo_bpm,
+                    quantized_note_count=sum(
+                        isinstance(item, QuantizedNoteEvent) for item in quantized.timeline
+                    ),
+                    quantized_timeline_item_count=len(quantized.timeline),
+                    midi_bytes=len(midi.artifact.content),
+                    musicxml_bytes=len(musicxml.artifact.content),
+                    svg_page_count=0 if rendered is None else len(rendered.pages),
+                )
+            )
 
 
 def _revision_zero_bundle(
@@ -190,8 +226,7 @@ def _revision_zero_bundle(
                 artifact_id=f"svg-page-{page.page_number:03d}",
                 artifact_type=ArtifactType.SVG,
                 filename=(
-                    f"transcription-r{revision}-page-{page.page_number:03d}"
-                    f"{page.file_extension}"
+                    f"transcription-r{revision}-page-{page.page_number:03d}{page.file_extension}"
                 ),
                 media_type=page.media_type,
                 extension=page.file_extension,

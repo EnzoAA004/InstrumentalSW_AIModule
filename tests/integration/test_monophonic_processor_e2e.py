@@ -1,24 +1,27 @@
 from __future__ import annotations
 
 import hashlib
-import io
-import math
 import os
 import shutil
-import struct
-import wave
 from datetime import UTC, datetime
 from importlib.util import find_spec
 from uuid import UUID
 
 import pytest
+from tests.synthetic_audio import synthetic_saxophone_phrase_wav
 
-from saxo_ai.application.monophonic_processor import MonophonicTranscriptionProcessor
+from saxo_ai.application.monophonic_processor import (
+    MonophonicProcessingDiagnostics,
+    MonophonicTranscriptionProcessor,
+)
 from saxo_ai.application.revision_artifacts import RegisterRevisionArtifacts
 from saxo_ai.application.transcription_review import RegisterTranscriptionReview
 from saxo_ai.domain.models import InputMode, JobStatus, SaxophoneType, TranscriptionJob
 from saxo_ai.infrastructure.ffmpeg import FfmpegCanonicalAudioConverter
-from saxo_ai.infrastructure.hf_saxophone import HfSaxophoneTranscriptionEngine
+from saxo_ai.infrastructure.hf_saxophone import (
+    BaselineExecutionDiagnostics,
+    HfSaxophoneTranscriptionEngine,
+)
 from saxo_ai.infrastructure.mido_midi import MidoMidiFileEncoder
 from saxo_ai.infrastructure.musicxml_encoder import StandardLibraryMusicXmlEncoder
 from saxo_ai.infrastructure.onset_interval_tempo import OnsetIntervalTempoEstimator
@@ -38,37 +41,6 @@ JOB_ID = UUID("22222222-2222-2222-2222-222222222222")
 NOW = datetime(2026, 9, 27, 18, 30, tzinfo=UTC)
 
 
-def _synthetic_saxophone_like_wav() -> bytes:
-    sample_rate = 16_000
-    duration_seconds = 2.0
-    frame_count = int(sample_rate * duration_seconds)
-    frames = bytearray()
-    for index in range(frame_count):
-        time_seconds = index / sample_rate
-        fade = min(
-            1.0,
-            index / (sample_rate * 0.08),
-            (frame_count - index) / (sample_rate * 0.08),
-        )
-        vibrato = 1.0 + 0.003 * math.sin(2.0 * math.pi * 5.2 * time_seconds)
-        phase = 2.0 * math.pi * 440.0 * vibrato * time_seconds
-        sample = fade * (
-            0.70 * math.sin(phase)
-            + 0.20 * math.sin(2.0 * phase)
-            + 0.10 * math.sin(3.0 * phase)
-        )
-        integer = max(-32768, min(32767, round(sample * 24000)))
-        frames.extend(struct.pack("<h", integer))
-
-    destination = io.BytesIO()
-    with wave.open(destination, "wb") as wav:
-        wav.setnchannels(1)
-        wav.setsampwidth(2)
-        wav.setframerate(sample_rate)
-        wav.writeframes(frames)
-    return destination.getvalue()
-
-
 def _require_runtime() -> None:
     if shutil.which("ffmpeg") is None:
         if os.getenv("SAXO_REQUIRE_FFMPEG") == "1":
@@ -81,9 +53,11 @@ def _require_runtime() -> None:
         pytest.skip(reason)
 
 
-def test_real_monophonic_pipeline_creates_review_and_downloadable_artifacts() -> None:
+def test_real_monophonic_pipeline_creates_review_and_downloadable_artifacts(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     _require_runtime()
-    source = _synthetic_saxophone_like_wav()
+    source = synthetic_saxophone_phrase_wav()
     jobs = InMemoryTranscriptionJobRepository()
     reviews = InMemoryTranscriptionReviewRepository()
     revisions = InMemoryTranscriptionRevisionRepository()
@@ -100,9 +74,13 @@ def test_real_monophonic_pipeline_creates_review_and_downloadable_artifacts() ->
     )
     jobs.save(job)
 
+    baseline_diagnostics: list[BaselineExecutionDiagnostics] = []
+    processor_diagnostics: list[MonophonicProcessingDiagnostics] = []
     processor = MonophonicTranscriptionProcessor(
         canonical_converter=FfmpegCanonicalAudioConverter(),
-        transcription_engine=HfSaxophoneTranscriptionEngine(),
+        transcription_engine=HfSaxophoneTranscriptionEngine(
+            diagnostics_observer=baseline_diagnostics.append
+        ),
         tempo_estimator=OnsetIntervalTempoEstimator(),
         midi_encoder=MidoMidiFileEncoder(),
         musicxml_encoder=StandardLibraryMusicXmlEncoder(),
@@ -114,6 +92,7 @@ def test_real_monophonic_pipeline_creates_review_and_downloadable_artifacts() ->
             clock=lambda: NOW,
         ),
         register_artifacts=RegisterRevisionArtifacts(jobs, revisions, artifacts),
+        diagnostics_observer=processor_diagnostics.append,
     )
 
     processor.process(job, source)
@@ -121,8 +100,28 @@ def test_real_monophonic_pipeline_creates_review_and_downloadable_artifacts() ->
     review = reviews.get(JOB_ID)
     revision = revisions.get(JOB_ID, 0)
     bundle = artifacts.get_bundle(JOB_ID, 0)
+    assert processor_diagnostics, "processor diagnostics were not emitted"
+    diagnostic = processor_diagnostics[0]
+    baseline_event_count = baseline_diagnostics[0].event_count if baseline_diagnostics else -1
+    with capsys.disabled():
+        print(
+            "MONOPHONIC_E2E_DIAGNOSTICS "
+            f"canonical_audio_bytes={diagnostic.canonical_audio_bytes} "
+            f"baseline_events={baseline_event_count} "
+            f"raw_events={diagnostic.raw_event_count} "
+            f"postprocessed_events={diagnostic.postprocessed_event_count} "
+            f"confidence_events={diagnostic.confidence_event_count} "
+            f"written_events={diagnostic.written_event_count} "
+            f"tempo_bpm={diagnostic.tempo_bpm:.6f} "
+            f"quantized_notes={diagnostic.quantized_note_count} "
+            f"quantized_items={diagnostic.quantized_timeline_item_count} "
+            f"midi_bytes={diagnostic.midi_bytes} "
+            f"musicxml_bytes={diagnostic.musicxml_bytes} "
+            f"svg_pages={diagnostic.svg_page_count}"
+        )
+
     assert review is not None
-    assert review.events
+    assert review.events, f"no useful review events after diagnostics: {diagnostic}"
     assert revision is not None
     assert bundle is not None
     artifact_ids = {artifact.descriptor.artifact_id for artifact in bundle.artifacts}
