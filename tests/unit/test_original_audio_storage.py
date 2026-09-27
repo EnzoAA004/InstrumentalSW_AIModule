@@ -3,6 +3,8 @@ from __future__ import annotations
 from io import BytesIO
 from uuid import UUID
 
+from fastapi.testclient import TestClient
+
 from saxo_ai.application.ports import BinaryStream
 from saxo_ai.application.services import CreateTranscriptionJob
 from saxo_ai.domain.models import InputMode, SaxophoneType
@@ -11,6 +13,7 @@ from saxo_ai.infrastructure.object_storage_original_audio_repository import (
     ObjectStorageOriginalAudioRepository,
 )
 from saxo_ai.infrastructure.repositories import InMemoryTranscriptionJobRepository
+from saxo_ai.main import create_app
 
 
 class FakeObjectStorage:
@@ -75,3 +78,18 @@ def test_create_job_rewinds_and_persists_original_audio_after_hashing() -> None:
 
     assert originals.saved[job.job_id] == b"durable-source"
     assert jobs.get(job.job_id) == job
+
+
+def test_create_app_wires_original_audio_repository_into_upload_endpoint() -> None:
+    originals = RecordingOriginalAudioRepository()
+
+    with TestClient(create_app(original_audio_repository=originals)) as client:
+        response = client.post(
+            "/api/v1/transcriptions",
+            files={"file": ("solo.wav", b"api-source", "audio/wav")},
+            data={"saxophone_type": "alto", "input_mode": "solo"},
+        )
+
+    assert response.status_code == 202
+    job_id = UUID(response.json()["job_id"])
+    assert originals.saved[job_id] == b"api-source"
