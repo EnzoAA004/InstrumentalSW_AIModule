@@ -1,0 +1,236 @@
+.review-card {
+  width: min(100%, 72rem);
+}
+
+.review-summary {
+  margin-bottom: 0.5rem;
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+.compact-details {
+  margin-block: 1.25rem;
+}
+
+.empty-review {
+  padding: 1rem;
+  border: 1px solid var(--border-soft);
+  border-radius: 0.65rem;
+  background: var(--surface-strong);
+  font-weight: 700;
+}
+
+.timeline-scroll,
+.review-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  margin-block: 1.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.note-timeline {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0,
+      transparent 6.9rem,
+      rgb(139 125 104 / 25%) 7rem
+    ),
+    var(--surface-strong);
+  list-style: none;
+}
+
+.timeline-origin {
+  position: absolute;
+  top: 0.25rem;
+  left: 0.35rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.timeline-event {
+  position: absolute;
+  display: grid;
+  min-width: 7rem;
+  min-height: 2.75rem;
+  padding: 0.35rem 0.5rem;
+  overflow: hidden;
+  border: 2px solid var(--accent-strong);
+  border-radius: 0.45rem;
+  background: var(--success-background);
+  font-size: 0.78rem;
+  line-height: 1.25;
+}
+
+.timeline-event.low-confidence {
+  border-style: dashed;
+  border-width: 3px;
+  background:
+    repeating-linear-gradient(
+      135deg,
+      transparent 0,
+      transparent 0.45rem,
+      rgb(125 47 37 / 13%) 0.45rem,
+      rgb(125 47 37 / 13%) 0.9rem
+    ),
+    var(--error-background);
+}
+
+.review-table-scroll table {
+  width: 100%;
+  min-width: 58rem;
+  border-collapse: collapse;
+  background: var(--surface-strong);
+}
+
+.review-table-scroll caption,
+.review-table-scroll th,
+.review-table-scroll td {
+  text-align: left;
+}
+
+.review-table-scroll th,
+.review-table-scroll td {
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border-soft);
+  vertical-align: top;
+}
+
+.review-table-scroll th {
+  background: #eee5d5;
+  font-size: 0.85rem;
+}
+
+.low-confidence-row {
+  border-left: 4px dashed var(--error);
+  background:
+    repeating-linear-gradient(
+      135deg,
+      transparent 0,
+      transparent 0.6rem,
+      rgb(125 47 37 / 7%) 0.6rem,
+      rgb(125 47 37 / 7%) 1.2rem
+    ),
+    var(--error-background);
+}
+
+.revision-editor-card {
+  width: min(100%, 82rem);
+}
+
+.revision-editor-card select,
+.revision-editor-table input {
+  min-height: 2.65rem;
+  border: 1px solid var(--border);
+  border-radius: 0.45rem;
+  background: var(--surface-strong);
+  color: var(--text);
+  font: inherit;
+}
+
+.revision-editor-card select {
+  width: min(100%, 24rem);
+  margin-block: 0.4rem 1rem;
+  padding-inline: 0.65rem;
+}
+
+.revision-editor-table {
+  min-width: 78rem !important;
+}
+
+.revision-editor-table input {
+  width: 7.5rem;
+  padding-inline: 0.5rem;
+}
+
+.revision-editor-table input[aria-invalid="true"] {
+  border: 2px solid var(--error);
+  background: var(--error-background);
+}
+
+.revision-editor-table input:disabled {
+  opacity: 0.8;
+  cursor: not-allowed;
+}
+
+.field-error {
+  display: block;
+  max-width: 12rem;
+  margin-top: 0.35rem;
+  color: var(--error);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.compact-error-summary {
+  margin-block: 1rem;
+}
+
+.editor-actions {
+  flex-wrap: wrap;
+  margin-block: 1rem;
+}
+
+.danger-button {
+  min-height: 2.65rem;
+  padding: 0.55rem 0.8rem;
+  border: 2px solid var(--error);
+  border-radius: 0.45rem;
+  background: var(--error-background);
+  color: var(--error);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.danger-button:focus-visible,
+.revision-editor-card input:focus-visible,
+.revision-editor-card select:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.regeneration-summary,
+.success-summary {
+  margin-block: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.65rem;
+}
+
+.success-summary {
+  background: var(--success-background);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 42rem) {
+  .review-card,
+  .revision-editor-card {
+    padding-inline: 1rem;
+  }
+
+  .timeline-scroll,
+  .review-table-scroll {
+    margin-inline: 0;
+  }
+
+  .editor-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

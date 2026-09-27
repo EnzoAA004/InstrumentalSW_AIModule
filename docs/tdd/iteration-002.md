@@ -1,158 +1,138 @@
-# TDD iteration 002 — SAX-003
+# TDD iteration 002 — SAX-041 live transcription progress
 
-## Scope
+## Story and exact base
 
-Add continuous integration and a single cross-platform quality gate for the AI module. This iteration does not change service behavior and does not implement SAX-010 or later stories.
+SAX-041 adds a dedicated read-only progress route over the existing job status contract.
+
+Frontend SAX-040 PR #1 was verified at head `f2ff639f4fcee7a7370cea38ea92b14080aaf0b9`, marked ready, and squash-merged normally with `expected_head_sha`:
+
+```text
+6af1e8a9a975687f01dacab872ccd763be2cc41e
+SAX-040: Add accessible audio upload flow
+```
+
+`feature/SAX-041-job-progress` was created exactly from that squash.
+
+## Contract source
+
+The unchanged AI service exposes GET `/api/v1/transcriptions/{job_id}`, returns the same seven job fields as POST, uses 404 for unknown identifiers, and currently defines only `UPLOADED` and `FAILED`.
+
+The Frontend calls the product Backend at port 8080. It does not know the FastAPI host or port.
 
 ## RED
 
-Quality-system contract tests were added before the workflow, runner, coverage threshold, formatting check, or documentation changes.
-
-Command:
+Tests-only commits preceded production:
 
 ```text
-python -m pytest tests/quality/test_quality_configuration.py
+a917866 test(SAX-041): define typed job status client
+100a530 test(SAX-041): define progress navigation from upload
+a0a7040 test(SAX-041): define accessible progress view and errors
+c452301 test(SAX-041): define controlled polling lifecycle
 ```
 
-Exact result:
+Normal CI evidence:
 
 ```text
-collected 8 items
-8 failed in 0.46s
-RED_EXIT_CODE=1
+Quality #29
+run: 29874075505
+job: 88780605389
+Node 24.18.0 setup: success
+npm 11.6.2 and npm ci: success
+quality: expected failure because getTranscription and TranscriptionProgress did not exist
 ```
 
-The failures demonstrated the expected missing contracts:
-
-```text
-Missing workflow: .github/workflows/quality.yml
-Missing cross-platform runner: scripts/check_quality.py
-KeyError: 'fail_under'
-Makefile did not delegate to python scripts/check_quality.py
-README did not document the single quality gate
-```
-
-The contract suite also required the future runner to invoke Ruff format checking.
-
-### Bug RED — typed YAML parsing
-
-The first complete local gate exposed a strict-mypy failure:
-
-```text
-tests/quality/test_quality_configuration.py:11: error: Library stubs not installed for "yaml"  [import-untyped]
-Found 1 error in 1 file
-```
-
-A dependency contract was written first and failed because `types-PyYAML` was missing. The stubs were added only after that reproducing test.
-
-### Bug RED — current Starlette test client
-
-The first GitHub Actions matrix failed during pytest collection on Python 3.11, 3.12, and 3.13:
-
-```text
-starlette.exceptions.StarletteDeprecationWarning:
-Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
-Quality gate stopped: pytest with statement and branch coverage failed with exit code 4.
-```
-
-Because pytest warnings are errors, a dependency contract was written before adding `httpx2`.
-
-### Bug RED — response typing compatibility
-
-After installing `httpx2`, tests, coverage, and Ruff passed remotely, but strict mypy reproduced a concrete incompatibility:
-
-```text
-tests/api/test_transcriptions.py:113: error:
-Incompatible return value type
-(got "httpx2._models.Response", expected "httpx._models.Response")  [return-value]
-Found 1 error in 1 file (checked 20 source files)
-```
-
-A contract was added first to reject direct `httpx` or `httpx2` response imports in API test helpers and to reject the legacy `httpx` development dependency.
+Dependency installation was not used as RED.
 
 ## GREEN
 
-The minimum implementation added:
+Production was introduced only after the behavioral tests:
 
-- `.github/workflows/quality.yml` for pull requests to `main`, pushes to `main`, and manual dispatch;
-- Python 3.11, 3.12, and 3.13 matrix jobs;
-- `actions/checkout@v6` and `actions/setup-python@v6` with pip caching;
-- minimum `contents: read` permissions;
-- concurrency cancellation and a 15-minute timeout;
-- `scripts/check_quality.py` as the single Windows/Unix entry point;
-- pytest statement and branch coverage with XML output and an explicit 90% threshold;
-- Ruff lint and Ruff format checking;
-- strict mypy checking;
-- explicit YAML runtime and typing dependencies;
-- the current Starlette `httpx2` test dependency;
-- a structural `ResponseLike` protocol that avoids coupling tests to either HTTP client implementation.
+- `getTranscription` validates the UUID, sends an exact Backend GET, accepts only 200, checks response identity, and maps safe failures;
+- the SAX-040 result gains `View job progress` while retaining `Upload another audio file`;
+- `src/app/transcriptions/[jobId]/page.tsx` supports direct reload from the URL;
+- `TranscriptionProgress` renders complete metadata and explicit states;
+- `UPLOADED` continues polling, `FAILED` stops, and unknown status stops with a warning;
+- recursive `setTimeout` schedules the next request only after successful completion;
+- pause, resume, refresh, retry, abort, and stale-response protection are implemented;
+- responsive CSS extends the existing warm neutral visual language.
 
 ## REFACTOR
 
-Quality configuration is centralized instead of duplicated:
+Diagnostics exposed and corrected:
 
-- CI installs the project and invokes `python scripts/check_quality.py`;
-- `make check` delegates to the same Python runner;
-- coverage threshold and warning policy remain in `pyproject.toml`;
-- the runner uses `sys.executable`, avoids `shell=True`, prints each control, stops on the first failure, and propagates its exit code;
-- temporary diagnostic artifact steps were removed from the final workflow;
-- API test helpers depend only on the response behavior they consume.
+1. fake-timer tests originally waited through utilities driven by fake timers; they now resolve controlled promises directly;
+2. automatic-update text was split from last-request text for accessible, precise assertions;
+3. valid-but-different response UUID and abort propagation received explicit tests instead of lowering branch coverage;
+4. recursive polling uses a stable callback reference to satisfy React Hook immutability;
+5. the first GET is queued in the mount microtask, avoiding a synchronous state update inside the effect while remaining immediate;
+6. the dynamic route keys the client component by `jobId` so each URL receives isolated state;
+7. a temporary read-only workflow applied the pinned Prettier output to four files and was deleted before the final tree.
 
-## Final local verification
+## Tests
 
-Environment: Python 3.13.5.
+Coverage includes:
 
-```text
-python -m pip install -e ".[dev]"
-Successfully built instrumentalsw-ai-module
-Successfully installed instrumentalsw-ai-module-0.1.0
+- valid and invalid UUIDs;
+- exact Backend URL, GET method, `encodeURIComponent`, and absence of FastAPI URL;
+- HTTP 200, 400, 404, 502, network failure, abort, malformed JSON, incompatible response, and UUID mismatch;
+- creation-result navigation to the exact job route and retained reset action;
+- loading, UPLOADED, FAILED, unknown status, 404, 502, and network error UI;
+- last valid job preserved after a refresh failure;
+- manual refresh, pause, resume, retry, back navigation, and accessibility;
+- immediate first request and 3000 ms delay after completion;
+- no request before the interval and no overlapping requests;
+- no scheduling while a request is pending;
+- timer cancellation, request abort on unmount, terminal/error stop, and obsolete-response suppression;
+- all previous SAX-040 upload and accessibility regressions.
 
-python scripts/check_quality.py
-28 passed in 1.06s
-TOTAL: 123 statements, 0 missed; 8 branches, 0 partial; 100%
-Required test coverage of 90.0% reached
-All checks passed!
-20 files already formatted
-Success: no issues found in 20 source files
-Quality gate passed.
+Tests query visible roles, labels, links, status text, and controls rather than relying primarily on snapshots.
 
-python -m pytest
-28 passed in 0.49s
-
-python -m pytest --cov=saxo_ai --cov-report=term-missing --cov-report=xml
-28 passed in 0.91s
-Coverage XML written to file coverage.xml
-Required test coverage of 90.0% reached. Total coverage: 100.00%
-
-python -m ruff check src tests scripts
-All checks passed!
-
-python -m ruff format --check src tests scripts
-20 files already formatted
-
-python -m mypy
-Success: no issues found in 20 source files
-
-python -m uvicorn saxo_ai.main:app
-GET /health -> HTTP 200 {"status":"ok"}
-```
-
-## Final GitHub Actions verification
-
-Final clean workflow run: `29695369050`.
+## Functional quality evidence
 
 ```text
-Python 3.11 — success
-Python 3.12 — success
-Python 3.13 — success
+head: cd221cd4c1b39dcfe936e6f6e73c4ab3e59bf19d
+Quality: #48
+run: 29875367757
+job: 88784681110
+status: success
+Node: 24.18.0
+npm: 11.6.2
+command: npm run quality
+permissions: contents read
 ```
 
-A superseded intermediate execution was cancelled by the configured concurrency group, confirming `cancel-in-progress` behavior.
+Results:
 
-## Repository administration notes
+```text
+7 test files passed
+62 tests passed
+94.01% statements
+91.08% branches
+97.72% functions
+94.42% lines
+ESLint passed
+Prettier passed
+TypeScript strict passed
+Next.js production build passed
+```
 
-- SAX-000 PR #1 was marked ready and squash-merged into `main` as commit `e4217afac821d141bc095709148b4756949e2eae`.
-- The SAX-000 remote branch still resolves. The GitHub connector exposes no delete-ref action, `gh` is unavailable, and direct GitHub network access is blocked, so it could not be deleted safely from this environment.
-- The available connector exposes no branch-protection or ruleset write action. Protection of `main` therefore remains a documented manual step rather than a simulated success.
-- Exact required check names are `Python 3.11`, `Python 3.12`, and `Python 3.13`.
-- Recommended ruleset: target `main`; require a pull request; require all three checks; require the branch to be up to date when GitHub permits it; do not enable auto-merge; keep an owner bypass to avoid an impossible permanent lockout.
+All global coverage dimensions remain above 90%. No coverage output or quality log is committed.
+
+## Cross-repository contract trace
+
+```text
+Frontend getTranscription(job_id)
+→ GET Spring /api/v1/transcriptions/{same job_id}
+→ Spring GET FastAPI /api/v1/transcriptions/{same job_id}
+→ same seven fields returned to the page
+```
+
+Evidence is distributed across the Frontend client tests, Backend controller tests, real Backend-to-FastAPI HTTP-server test, and documented comparison with the unchanged AI `routes.py` and `schemas.py`. No shared package was introduced.
+
+## Manual execution
+
+The documented local topology remains FastAPI 8000, Spring 8080, and Next.js 3000. A simultaneous three-process manual E2E was not executed or claimed in this iteration; automated contract evidence is used instead.
+
+## Limitations and excluded stories
+
+The real service currently reports `UPLOADED` or `FAILED`; no processing transition exists. SAX-041 therefore displays server state rather than mathematical progress. There is no percentage, ETA, simulated stage, automatic retry after error, WebSocket, SSE, long polling, persistence, background sync, model execution, SAX-042, or later product story.

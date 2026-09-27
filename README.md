@@ -1,187 +1,199 @@
-# InstrumentalSW AI Module
+# InstrumentalSW Frontend
 
-Python/FastAPI module for InstrumentalSW (Saxo), developed through reproducible TDD iterations.
+Accessible Next.js interface for InstrumentalSW (Saxo). SAX-040 creates transcription jobs, SAX-041 displays current server status, SAX-042 exposes a read-only note review, SAX-043 adds explicit editing through immutable revisions, SAX-044 reattaches the original audio locally for synchronized visual playback, and SAX-045 downloads already-materialized revision artifacts through the product API.
+
+```text
+Browser / Next.js :3000
+  → Spring Boot product API :8080
+    → internal FastAPI AI service :8000
+```
+
+The browser never calls or configures FastAPI directly.
 
 ## Requirements
 
-- Python `>=3.11,<3.14`
-- `pip`
-- FFmpeg for canonical-audio integration tests
+- Node.js 24.18.0 LTS
+- npm 11.6.2
+
+Pinned stack:
+
+```text
+Next.js:              16.2.11
+React / React DOM:    19.2.8
+TypeScript:           5.8.3
+Vitest:               4.1.10
+Testing Library:      16.3.2
+user-event:           14.6.1
+ESLint:               9.39.2
+Prettier:             3.9.6
+jsdom:                29.1.1
+```
+
+## Install and run
 
 ```bash
-ffmpeg -version
-python -m pip install -e ".[dev]"
-python -m uvicorn saxo_ai.main:app --reload
+npm ci
+npm run dev
 ```
 
-Unit tests do not require FFmpeg. CI installs FFmpeg and runs the protected quality matrix on Python 3.11, 3.12, and 3.13. The optional real FiloSax baseline is required only on Python 3.11.
+The page runs at `http://localhost:3000`. Start Spring separately at `http://localhost:8080`; Spring contacts FastAPI on port 8000.
 
-## HTTP API
+## Configuration
 
 ```text
-GET  /health
-POST /api/v1/transcriptions
-GET  /api/v1/transcriptions/{job_id}
-GET  /api/v1/transcriptions/{job_id}/review
-GET  /api/v1/transcriptions/{job_id}/revisions
-GET  /api/v1/transcriptions/{job_id}/revisions/{revision_number}
-POST /api/v1/transcriptions/{job_id}/revisions
-POST /api/v1/transcriptions/{job_id}/revisions/{revision_number}/regeneration-requests
-GET  /api/v1/transcriptions/{job_id}/revisions/{revision_number}/artifacts
-GET  /api/v1/transcriptions/{job_id}/revisions/{revision_number}/artifacts/{artifact_id}
+NEXT_PUBLIC_SAXO_API_BASE_URL=http://localhost:8080
 ```
 
-Jobs, review results, revisions, regeneration requests, and registered artifact bundles are in-memory only. A job begins with `UPLOADED`; the only current statuses are `UPLOADED` and `FAILED`.
+The local Backend URL is the fallback. Do not configure a FastAPI URL in the browser.
 
-## Upload and status
+## Quality
 
-`POST /api/v1/transcriptions` accepts MP3/WAV multipart fields:
+```bash
+npm run test
+npm run lint
+npm run format:check
+npm run typecheck
+npm run build
+npm run quality
+```
+
+`npm run quality` executes the full sequence. Vitest enforces at least 90% global coverage for statements, branches, functions, and lines. TypeScript runs in strict mode, and a production Next.js build is mandatory.
+
+## Create a job
+
+1. Select one `.mp3` or `.wav` file.
+2. Choose `soprano`, `alto`, `tenor`, or `baritone`.
+3. Choose `solo` or `mixture`.
+4. Submit manually.
+5. Next.js sends exact multipart fields to Spring Boot.
+6. HTTP 202 displays all returned job fields.
+
+The browser lets `fetch` create the multipart boundary. It does not upload automatically.
+
+## View current job status
 
 ```text
-file
-saxophone_type: soprano | alto | tenor | baritone
-input_mode:     solo | mixture
+/transcriptions/{job_id}
 ```
 
-The upload path performs bounded hashing and creates a job record. It does not run transcription or retain audio. `GET /api/v1/transcriptions/{job_id}` returns the current in-memory job state.
+The UUID is in the URL, so reload requires no localStorage, sessionStorage, or cookies. The typed client calls only the Backend and validates the complete response identity.
 
-## Transcription review API
+Polling uses one request at a time, recursive `setTimeout`, `AbortController`, cleanup, and explicit pause/resume controls. No percentage, ETA, or invented stage is shown.
 
-SAX-042 exposes an immutable note review only when a real `WrittenPitchTranscriptionResult` has already been registered through the internal application case:
+## View transcription notes
 
 ```text
-WrittenPitchTranscriptionResult
-→ RegisterTranscriptionReview
-→ TranscriptionReviewRepository
-→ GetTranscriptionReview
-→ GET /api/v1/transcriptions/{job_id}/review
+/transcriptions/{job_id}/review
 ```
 
-The GET is read-only. It never executes inference, processes the upload, loads or stores audio, creates synthetic notes, changes job status, or starts background work.
+The read-only route sends one bodyless GET to Spring, validates the complete versioned payload, and displays all notes in an accessible timeline and semantic table. Confidence remains a model signal and is never presented as calibrated accuracy.
 
-HTTP 200 preserves:
+A successful empty review is distinct from a not-ready result. The view links explicitly to both the editor and synchronized playback. SAX-045 resolves revision history and displays downloads for the latest concrete revision.
+
+## Edit transcription notes
 
 ```text
-job_id
-schema_version: 1.0
-note_event_schema_version: 1.0
-low_confidence_policy_version: 1.0
-written_pitch_policy_version: 1.0
-saxophone_type
-low_confidence_threshold
-confidence_interpretation
-confidence_method
-summary.event_count
-summary.low_confidence_count
-ordered events
+/transcriptions/{job_id}/review/edit
 ```
 
-Each source event preserves concert/written MIDI, onset, offset, velocity, confidence, and low-confidence marker. Confidence is a model signal in `0..1`, not calibrated accuracy.
+The editor loads revision history first and then loads the latest revision detail. It keeps immutable server revision, local editable draft, and validation/save state separate. Fetched responses are never mutated and stable `event_id` values remain identities and React keys.
 
-A known job without a registered result returns HTTP 409 `TRANSCRIPTION_RESULT_NOT_READY`. An unknown job returns 404. A malformed UUID returns `400 INVALID_JOB_ID`. There is no public route for registering the source review.
+The latest revision supports explicit update, addition, deletion, discard, and one-batch save. There is no autosave or request per keystroke. Historical revisions are read-only, conflicts preserve the draft, and derived-artifact regeneration is only an explicit recorded request; no worker or generated completion is claimed. SAX-045 shows download availability for the concrete revision currently displayed.
 
-See [`docs/contracts/transcription-review-api-v1.md`](docs/contracts/transcription-review-api-v1.md) and [`docs/tdd/iteration-017.md`](docs/tdd/iteration-017.md).
-
-## Immutable human revisions
-
-SAX-043 initializes the real SAX-042 review and immutable revision zero through one atomic registration boundary:
+## Play the original audio with revision events
 
 ```text
-WrittenPitchTranscriptionResult
-→ revision 0 (original)
-→ revision 1
-→ revision 2
-→ ...
+/transcriptions/{job_id}/review/playback
 ```
 
-`TranscriptionReviewRegistrationRepository.initialize(...)` validates the aggregate before swapping one in-memory snapshot containing both the source review and revision history. A preexisting identical review with no history is completed with exactly one revision zero. Re-registering the same object is idempotent; a different review instance is rejected. Readers sharing the store cannot observe only one half of the initialization, and job status is unchanged.
-
-The source object and every historical revision remain unchanged. A complete new revision is appended for each explicit operation batch.
-
-Stable IDs are:
+SAX-044 implements RF-053 with this explicit interpretation:
 
 ```text
-model source: source-{source_index}
-human added: human-{UUID}
+original audio selected locally and played by the browser
++
+visual cursor and latest-revision events synchronized to media currentTime
 ```
 
-Model events preserve source index, velocity, confidence, and low-confidence status. Human events have null model confidence and use velocity 64 when omitted.
+It does not synthesize MIDI or play MIDI, MusicXML, SVG, or any generated artifact.
 
-Editable values are written MIDI, onset, and offset. Concert MIDI is derived authoritatively:
+### Initial data
+
+The route loads only through Spring Boot by reusing:
 
 ```text
-pitch_concert_midi = written_pitch_midi - saxophone offset
+getTranscription
+getTranscriptionRevisionHistory
+getTranscriptionRevision
 ```
 
-The API validates written and concert MIDI `0..127`, finite timing, velocity, provenance, exact fields, unique IDs, summary counts, history sequence, and instrument consistency. Update retains position, delete removes a position, add appends, no implicit sorting occurs, overlaps remain valid, and zero events are allowed.
+It loads job metadata, revision history, and the latest revision detail once. There is no review polling and no direct FastAPI call.
 
-A revision request must use the current latest revision number. A stale base returns `409 REVISION_CONFLICT` and never overwrites concurrent work.
+### Reselect the original file
 
-Read endpoints expose complete immutable detail and summary history. Historical revisions cannot be updated or deleted.
+The current services do not store or expose original audio bytes. The user must select the original `.mp3` or `.wav` again after entering or reloading the playback route.
 
-See [`docs/contracts/transcription-revisions-api-v1.md`](docs/contracts/transcription-revisions-api-v1.md) and [`docs/tdd/iteration-018.md`](docs/tdd/iteration-018.md).
-
-## Derived-artifact request boundary
-
-A successful edit has `derived_artifacts_status = STALE`. The explicit regeneration endpoint records one idempotent request per revision:
+The browser verifies identity using:
 
 ```text
-status: REQUESTED
-requested_artifacts: midi, musicxml, svg
+file.size === job.size_bytes
+SHA-256(file bytes) === job.audio_sha256
 ```
 
-The read projection then reports `REGENERATION_REQUESTED`. The request creates no MIDI, MusicXML, or SVG bytes, does not call existing exporters, and does not claim completion.
+Size is checked before reading and hashing. SHA-256 is calculated with Web Crypto and converted to lowercase 64-character hexadecimal. Filename is not treated as identity: a renamed matching file is accepted, while same-name content with a different digest is rejected.
 
-Editing, validation and revision history are implemented. A regeneration request is recorded explicitly. Artifact execution remains pending.
+The verification path does not call `fetch`, create `FormData`, send a POST, or log bytes, digest material, or object URLs. Missing Web Crypto and replacement races produce controlled outcomes.
 
-There is no worker, queue, `BackgroundTasks`, percentage, ETA, completion state, object storage, or replacement artifact in SAX-043.
+### Object URL and privacy
 
-## Revision artifact downloads
+Only a verified file receives one local object URL. It is revoked on replacement, unmount, stale completion, or media failure. It is not persisted or exposed.
 
-SAX-045 exposes read-only list and binary download transport for already-materialized artifacts that have been registered internally for a concrete immutable revision.
-
-Architecture:
+The interface states:
 
 ```text
-FastAPI artifact routes
-→ ListRevisionArtifacts / GetRevisionArtifact
-→ separate RevisionArtifactRepository
-→ in-memory RevisionArtifactBundle
+The selected file stays in this browser session.
+It is used only through a local object URL.
+It is not uploaded again.
 ```
 
-The independent repository supports:
+No server is claimed to retain the audio.
+
+### Native playback and synchronization
+
+The player is native:
+
+```html
+<audio controls preload="metadata"></audio>
+```
+
+There is no autoplay. Native controls remain visible and default pitch/speed are unchanged.
+
+`HTMLMediaElement.currentTime` is authoritative. While playing, one `requestAnimationFrame` loop updates the visual cursor. Pause, ended, error, replacement, and unmount stop and cancel it. `timeupdate`, `seeking`, and `seeked` correct state immediately.
+
+An event is active exactly when:
 
 ```text
-save(bundle)
-get_bundle(job_id, revision_number)
-get_artifact(job_id, revision_number, artifact_id)
+onset_seconds <= currentTime < offset_seconds
 ```
 
-`RegisterRevisionArtifacts` is internal and has no HTTP route. It verifies that the job and revision exist, preserves exact immutable bytes, is idempotent for an exact/equal bundle, and rejects an incompatible replacement.
+All overlapping active events remain marked and API order is preserved. Active state is textual, not color-only. Human events keep confidence unavailable rather than receiving an invented value.
 
-A registered bundle is non-empty and binds every artifact to:
+Before media metadata, maximum event offset is the timeline fallback. A finite positive decoded duration replaces it after `loadedmetadata`. Events beyond the audio duration remain visible and produce a warning; source onset/offset values are not truncated.
+
+Every event exposes a keyboard-operable `Seek to note` action. It moves `audio.currentTime` to onset and updates the cursor without starting playback.
+
+`Reload latest revision` manually reloads history and detail while preserving the already verified local audio and object URL. It does not poll, autoplay, restart, or reset current time in application code. SAX-045 renders downloads for that loaded revision independently from the audio object URL.
+
+## Download revision artifacts
+
+The reusable `Revision artifact downloads` panel is mounted from:
 
 ```text
-job_id
-revision_number
-artifact_id
-artifact_type
+/transcriptions/{job_id}/review
+/transcriptions/{job_id}/review/edit
+/transcriptions/{job_id}/review/playback
 ```
 
-Descriptors contain:
-
-```text
-artifact_id
-artifact_type
-filename
-media_type
-extension
-size_bytes
-sha256
-order
-```
-
-Supported public types are exactly:
+The browser calls only Spring Boot. Supported descriptors are exactly:
 
 ```text
 MIDI     audio/midi                                  .mid
@@ -189,179 +201,83 @@ MusicXML application/vnd.recordare.musicxml+xml      .musicxml
 SVG      image/svg+xml                               .svg
 ```
 
-Stable IDs are safe identifiers such as `midi`, `musicxml`, and `svg-page-001`; paths are not IDs. IDs and filenames are unique within the revision, order is deterministic `0..N-1`, filenames are safe relative basenames, `size_bytes` equals the exact byte length, and `sha256` is the exact lowercase 64-character digest.
+`getRevisionArtifacts` validates exact fields, requested/returned job and revision identity, safe unique IDs and filenames, deterministic order, positive sizes, lowercase SHA-256, and type/media/extension compatibility. PDF descriptors are rejected and no PDF button is rendered.
 
-The list endpoint returns descriptors without bytes or base64. The binary endpoint returns exact bytes with:
+`downloadRevisionArtifact` first obtains the authoritative descriptor through Spring, then validates the binary response's status, `Content-Type`, safe exact `Content-Disposition`, optional `Content-Length`, digest header, actual `ArrayBuffer` size, and SHA-256 calculated through Web Crypto. A `Blob` is returned only when every check matches.
+
+After validation, the browser:
+
+1. creates a `Blob` with the exact media type;
+2. creates a separate temporary artifact object URL;
+3. creates a hidden temporary link with `download=filename`;
+4. clicks it;
+5. removes the link;
+6. revokes the URL in `finally`.
+
+The artifact URL is never reused as the SAX-044 audio URL. `window.open`, localStorage, IndexedDB, Cache API, cookies, and service workers are not used.
+
+States are explicit:
 
 ```text
-Content-Type
-Content-Disposition: attachment; filename="safe-name.ext"
-Content-Length
-X-Content-Type-Options: nosniff
-Cache-Control: private, no-store
-X-Content-SHA256
-ETag: "sha256-{digest}"
+loading
+available
+not_ready
+downloading
+downloaded
+error
 ```
 
-Stable errors distinguish:
+An existing revision without a registered bundle displays:
 
 ```text
-400 INVALID_JOB_ID
-404 TRANSCRIPTION_NOT_FOUND
-404 REVISION_NOT_FOUND
-404 ARTIFACT_NOT_FOUND
-409 ARTIFACTS_NOT_READY
+Artifacts are not available for this revision yet.
 ```
 
-Integration tests materialize real MIDI, MusicXML, and multiple SVG pages using the existing SAX-031, SAX-034, and SAX-035 capabilities, then register the resulting bytes. Neither GET route invokes an exporter, rhythm quantizer, MusicXML encoder, Verovio renderer, transcription model, or regeneration worker.
+Each available descriptor shows type, filename, size, abbreviated SHA, full technical SHA, and a keyboard-operable button whose accessible name includes type and filename. Loading/downloading/success use polite live status; errors use a focused alert; the initiating button retains focus after success.
 
-There is no public artifact write route, database, filesystem, object storage, signed URL, ZIP, PDF, or automatic generation.
+The interface states:
+
+```text
+Downloads are retrieved through the Saxo product API.
+No public storage URL is exposed.
+```
+
+No permanence or retention is claimed.
 
 MIDI, MusicXML and SVG download transport is implemented for registered artifacts. Artifact generation from a normal uploaded job remains pending. PDF is not implemented.
 
-See [`docs/contracts/revision-artifact-download-api-v1.md`](docs/contracts/revision-artifact-download-api-v1.md) and [`docs/tdd/iteration-019.md`](docs/tdd/iteration-019.md).
+## Accessibility and responsive layout
 
-## Internal audio capabilities
-
-The module includes bounded upload hashing, explicit size/duration limits, canonical WAV conversion through FFmpeg, stable invalid-content failures, and immutable job revisions. Canonical conversion writes only to caller-provided destinations and is not connected to the upload endpoint.
-
-Default canonical representation:
-
-```text
-container:               wav
-codec:                   pcm_s16le
-sample_rate_hz:          16000
-channels:                1
-sample_width_bits:       16
-amplitude_normalization: none
-preprocessing schema:    1.0
-```
-
-Default processing limits:
-
-```text
-max_size_bytes:        104857600
-max_duration_seconds:  900.0
-```
-
-## Note and notation contracts
-
-The internal pipeline contains immutable, model-independent contracts for:
-
-- NoteEvent schema 1.0;
-- deterministic event postprocessing;
-- low-confidence annotation;
-- written saxophone pitch;
-- concert-pitch MIDI export;
-- tempo estimation and manual revision;
-- monophonic rhythm quantization;
-- transposing MusicXML 4.0 export;
-- revision-linked SVG score rendering.
-
-The written-pitch rule is:
-
-```text
-soprano Bb   +2
-alto Eb      +9
-tenor Bb    +14
-baritone Eb +21
-```
-
-Concert and written MIDI remain distinct. Low-confidence events are never hidden or assigned to human-added notes.
-
-Contracts:
-
-- [`docs/contracts/note-event-v1.md`](docs/contracts/note-event-v1.md)
-- [`docs/contracts/note-event-postprocessing-v1.md`](docs/contracts/note-event-postprocessing-v1.md)
-- [`docs/contracts/note-confidence-v1.md`](docs/contracts/note-confidence-v1.md)
-- [`docs/contracts/written-pitch-v1.md`](docs/contracts/written-pitch-v1.md)
-- [`docs/contracts/midi-export-v1.md`](docs/contracts/midi-export-v1.md)
-- [`docs/contracts/tempo-resolution-v1.md`](docs/contracts/tempo-resolution-v1.md)
-- [`docs/contracts/rhythm-quantization-v1.md`](docs/contracts/rhythm-quantization-v1.md)
-- [`docs/contracts/musicxml-export-v1.md`](docs/contracts/musicxml-export-v1.md)
-- [`docs/contracts/score-rendering-v1.md`](docs/contracts/score-rendering-v1.md)
-
-These internal exporters are not automatically connected to uploaded jobs or SAX-043 regeneration requests. SAX-045 registers their already-produced bytes only through an internal application use case.
-
-## Optional FiloSax baseline
-
-Install the controlled Python 3.11 baseline with:
-
-```bash
-python scripts/install_baseline.py
-```
-
-The installer verifies pinned source revisions and provenance. The baseline is not instantiated by the FastAPI composition root and no HTTP GET or revision POST triggers model download or inference.
-
-See [`docs/baselines/hf-saxophone-v1.md`](docs/baselines/hf-saxophone-v1.md).
-
-## Dataset provenance and license registry
-
-SAX-050 adds the versioned dataset-level registry `dataset-registry/registry-v1.json` with schema version `1.0`. FiloSax is registered as `restricted` under custom terms, with official evidence and conservative use decisions.
-
-The registry records governance metadata only. Its conditions do not grant legal permission or replace official terms, and no dataset content is stored. File-level preparation (manifest/checksums, SAX-051) and leakage-safe splits (SAX-052) are implemented in `scripts/prepare_filosax_dataset.py` and `scripts/split_filosax_dataset.py`; acquiring the restricted files themselves remains a manual, operator-side step.
-
-See [`docs/contracts/dataset-provenance-license-v1.md`](docs/contracts/dataset-provenance-license-v1.md). Validate the complete repository with:
-
-```bash
-python scripts/check_quality.py
-```
-
-## Postgres persistence
-
-SAX-070 adds a real, migrated Postgres-backed `TranscriptionJobRepository`. It is opt-in: `create_app()` still defaults every repository to its in-memory implementation, so nothing requires a database to boot.
-
-```bash
-export SAXO_DATABASE_URL=postgresql+psycopg://user:pass@localhost:5432/saxo
-python -m alembic upgrade head
-```
-
-Reviews, revisions, and regeneration requests remain in-memory; revision artifacts now have their own persistence (below). See [`docs/contracts/postgres-transcription-job-repository-v1.md`](docs/contracts/postgres-transcription-job-repository-v1.md).
-
-## Private object storage
-
-SAX-071 adds a real, S3-compatible (private MinIO or AWS S3) `RevisionArtifactRepository`: artifact bytes live in object storage, metadata lives in Postgres. SAX-014 reuses the same private storage adapter for the accepted original upload, under the deterministic key `original-audio/{job_id}`, so a future worker can recover its input after the HTTP request ends. Both are opt-in; `create_app()` still boots without external storage.
-
-```bash
-export SAXO_OBJECT_STORAGE_ENDPOINT_URL=http://minio.internal:9000
-export SAXO_OBJECT_STORAGE_BUCKET=saxo-artifacts
-export SAXO_OBJECT_STORAGE_ACCESS_KEY=...
-export SAXO_OBJECT_STORAGE_SECRET_KEY=...
-```
-
-No public storage URL is exposed to the browser. Revision downloads still go through the existing FastAPI artifact endpoint via the Backend gateway (SAX-045), while original audio remains internal worker input. See [`docs/contracts/object-storage-revision-artifacts-v1.md`](docs/contracts/object-storage-revision-artifacts-v1.md) and [`docs/contracts/original-audio-storage-v1.md`](docs/contracts/original-audio-storage-v1.md).
-
-## Durable processing queue and worker
-
-SAX-072 adds an opt-in PostgreSQL-backed `TranscriptionProcessingQueue` and a generic `TranscriptionWorker`. When a queue is configured, accepted uploads move from `UPLOADED` to `QUEUED`; workers claim them with `FOR UPDATE SKIP LOCKED`, move them to `PROCESSING`, and finish in `COMPLETED` or `FAILED`.
-
-Claims carry an incrementing attempt token. A lease allows abandoned work to be reclaimed, while stale workers cannot acknowledge or retry a newer claim. Retry count is bounded by the worker and retry delay is configured by the queue adapter.
-
-The queue intentionally reuses PostgreSQL instead of introducing Redis or RabbitMQ for the MVP. Queue ownership is durable, but queue acknowledgement/retry and the final job-state repository write are separate application operations; a later operational hardening pass may consolidate them behind a database unit-of-work if multi-worker scale requires stricter atomicity.
-
-SAX-072 does not implement the audio-to-score processor itself. The next integration step is to compose the existing canonicalization, transcription, post-processing, written-pitch, tempo/quantization and artifact use cases behind the `TranscriptionJobProcessor` port.
-
-See [`docs/contracts/postgres-processing-queue-v1.md`](docs/contracts/postgres-processing-queue-v1.md).
-
-## Quality
-
-```bash
-python scripts/check_quality.py
-python -m pytest
-python -m pytest -m "not integration"
-python -m pytest -m integration
-python -m pytest -m midi_integration
-python -m pytest -m musicxml_integration
-python -m pytest -m score_render_integration
-python -m pytest -m baseline_integration
-python -m pytest --cov=saxo_ai --cov-report=term-missing --cov-report=xml
-python -m ruff check src tests scripts
-python -m ruff format --check src tests scripts
-python -m mypy
-```
-
-The protected quality command enforces pytest coverage of at least 90%, Ruff lint, Ruff format, and strict mypy. Any failed stage stops the quality gate and returns a non-zero exit code.
+- one route `h1`;
+- semantic tables, visible labels, native audio controls, and a clear downloads landmark;
+- polite live regions for loading, verification, download, and success;
+- `role="alert"` and programmatic focus for errors and conflicts;
+- accessible seek and download button names;
+- active/download state communicated with text and structure, not color alone;
+- keyboard operation and visible focus;
+- horizontally scrollable tables and timelines;
+- responsive actions, file selection, and artifact rows;
+- no autoplay or mandatory animation;
+- reduced-motion styles;
+- no emoji or blue primary treatment.
 
 ## Boundaries
 
-SAX-050 does not download or prepare FiloSax, create file-level manifests, reconstruct backing tracks, define splits, run metrics or training, expose dataset APIs, or begin SAX-051. It does not modify automatic upload processing, baseline runtime, checkpoint resolution, inference, tempo, quantization, MusicXML, SVG, revision history, artifact downloads, workers, queues, persistence, authentication, Backend or Frontend.
+SAX-044 does not include direct FastAPI calls, audio upload from playback, server audio endpoints, audio persistence, PostgreSQL, object storage, signed URLs, localStorage, IndexedDB, cookies, service workers, offline cache, MIDI player or synthesis, Web Audio synthesizer, SoundFont, waveform, spectrogram, artifact playback, audio editing, speed/pitch controls, loops, metronome, score following, MusicXML/SVG interaction, worker, queue, BackgroundTasks, WebSocket, SSE, review polling, authentication, or analytics.
+
+SAX-045 does not include PDF, ZIP, bulk download, artifact generation from GET, regeneration execution, automatic upload processing, artifact persistence, public storage URLs, authentication/authorization, retention, artifact playback, WebSocket, SSE, polling, or SAX-050.
+
+Documentation:
+
+- [`docs/contracts/audio-upload-ui-v1.md`](docs/contracts/audio-upload-ui-v1.md)
+- [`docs/contracts/job-progress-ui-v1.md`](docs/contracts/job-progress-ui-v1.md)
+- [`docs/contracts/transcription-review-ui-v1.md`](docs/contracts/transcription-review-ui-v1.md)
+- [`docs/contracts/transcription-revision-editor-v1.md`](docs/contracts/transcription-revision-editor-v1.md)
+- [`docs/contracts/synchronized-local-playback-v1.md`](docs/contracts/synchronized-local-playback-v1.md)
+- [`docs/contracts/revision-artifact-download-ui-v1.md`](docs/contracts/revision-artifact-download-ui-v1.md)
+- [`docs/tdd/iteration-001.md`](docs/tdd/iteration-001.md)
+- [`docs/tdd/iteration-002.md`](docs/tdd/iteration-002.md)
+- [`docs/tdd/iteration-003.md`](docs/tdd/iteration-003.md)
+- [`docs/tdd/iteration-004.md`](docs/tdd/iteration-004.md)
+- [`docs/tdd/iteration-005.md`](docs/tdd/iteration-005.md)
+- [`docs/tdd/iteration-006.md`](docs/tdd/iteration-006.md)

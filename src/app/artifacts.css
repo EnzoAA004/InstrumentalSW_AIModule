@@ -1,0 +1,49 @@
+.artifact-downloads {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-strong, #8a7967);
+}
+
+.artifact-downloads h2 {
+  margin-bottom: 0.5rem;
+}
+
+.artifact-download-list {
+  display: grid;
+  gap: 0.9rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.artifact-download-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border-soft, #b9aa99);
+  border-radius: 0.75rem;
+  background: rgba(255, 252, 246, 0.75);
+}
+
+.artifact-download-item > div {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.artifact-download-item .technical-line {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 42rem) {
+  .artifact-download-item {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .artifact-download-item button {
+    width: 100%;
+  }
+}

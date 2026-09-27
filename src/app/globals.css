@@ -1,0 +1,273 @@
+:root {
+  --background: #f5efe3;
+  --surface: #fffaf0;
+  --surface-strong: #fffdf7;
+  --text: #292823;
+  --muted: #665f53;
+  --accent: #3f6945;
+  --accent-strong: #2f5134;
+  --amber: #aa6f19;
+  --border: #8b7d68;
+  --border-soft: #c9bda9;
+  --error: #7d2f25;
+  --error-background: #fff0eb;
+  --success-background: #eef6ec;
+  --focus: #8a5711;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--background);
+  color: var(--text);
+  font-family: Arial, Helvetica, sans-serif;
+  line-height: 1.5;
+}
+
+body {
+  margin: 0;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button,
+input,
+select,
+[tabindex="-1"] {
+  outline-offset: 3px;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+[tabindex="-1"]:focus-visible {
+  outline: 3px solid var(--focus);
+}
+
+.shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: clamp(1rem, 4vw, 3rem);
+}
+
+.upload-card {
+  width: min(100%, 48rem);
+  padding: clamp(1.25rem, 4vw, 2.5rem);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: var(--surface);
+  box-shadow: 0 1rem 2.5rem rgb(67 51 31 / 10%);
+}
+
+.intro-block {
+  margin-bottom: 1.75rem;
+}
+
+h1,
+h2,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 0.75rem;
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  line-height: 1.08;
+}
+
+h2 {
+  margin-bottom: 0.5rem;
+  font-size: 1.2rem;
+}
+
+.eyebrow {
+  margin-bottom: 0.5rem;
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.intro-copy,
+.success-copy,
+.field-help {
+  color: var(--muted);
+}
+
+.upload-form,
+.field-group {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.upload-form {
+  gap: 1.5rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+
+label {
+  font-weight: 700;
+}
+
+input[type="file"],
+select {
+  width: 100%;
+  min-height: 3rem;
+  border: 1px solid var(--border);
+  border-radius: 0.55rem;
+  background: var(--surface-strong);
+  color: var(--text);
+}
+
+input[type="file"] {
+  padding: 0.55rem;
+}
+
+input[type="file"]::file-selector-button {
+  margin-right: 0.75rem;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid var(--accent-strong);
+  border-radius: 0.4rem;
+  background: transparent;
+  color: var(--accent-strong);
+  cursor: pointer;
+}
+
+select {
+  padding: 0 0.75rem;
+}
+
+.field-help {
+  margin-bottom: 0;
+  font-size: 0.9rem;
+}
+
+.file-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.8rem;
+  border: 1px solid var(--border-soft);
+  border-radius: 0.5rem;
+  background: #f8f1e4;
+  font-size: 0.92rem;
+}
+
+.primary-button,
+.secondary-button {
+  min-height: 3rem;
+  padding: 0.75rem 1.15rem;
+  border-radius: 0.55rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.primary-button {
+  border: 1px solid var(--accent-strong);
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.primary-button:hover:not(:disabled) {
+  background: var(--accent-strong);
+}
+
+.primary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.secondary-button {
+  border: 1px solid var(--error);
+  background: transparent;
+  color: var(--error);
+}
+
+.error-summary {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  border: 2px solid var(--error);
+  border-radius: 0.6rem;
+  background: var(--error-background);
+}
+
+.error-summary p:last-of-type {
+  margin-bottom: 0.75rem;
+}
+
+.technical-line,
+.technical-value {
+  overflow-wrap: anywhere;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 0.86rem;
+}
+
+.request-status {
+  margin-bottom: 0;
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+.result-card {
+  background: var(--success-background);
+}
+
+.job-details {
+  display: grid;
+  gap: 0;
+  margin: 1.5rem 0;
+  border: 1px solid var(--border-soft);
+  border-radius: 0.7rem;
+  overflow: hidden;
+}
+
+.detail-row {
+  display: grid;
+  grid-template-columns: minmax(8rem, 0.65fr) minmax(0, 1.35fr);
+  gap: 1rem;
+  padding: 0.8rem 1rem;
+  background: var(--surface-strong);
+}
+
+.detail-row + .detail-row {
+  border-top: 1px solid var(--border-soft);
+}
+
+.detail-row dt {
+  font-weight: 700;
+}
+
+.detail-row dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 42rem) {
+  .form-grid,
+  .detail-row {
+    grid-template-columns: 1fr;
+  }
+
+  .file-summary {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .primary-button,
+  .secondary-button {
+    width: 100%;
+  }
+}
