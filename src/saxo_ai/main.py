@@ -10,6 +10,7 @@ from saxo_ai.application.ports import (
     RegenerationRequestRepository,
     RevisionArtifactRepository,
     TranscriptionJobRepository,
+    TranscriptionProcessingQueue,
     TranscriptionReviewRegistrationRepository,
     TranscriptionReviewRepository,
     TranscriptionRevisionRepository,
@@ -54,6 +55,7 @@ def create_app(
     limits: AudioProcessingLimits | None = None,
     job_repository: TranscriptionJobRepository | None = None,
     original_audio_repository: OriginalAudioRepository | None = None,
+    processing_queue: TranscriptionProcessingQueue | None = None,
     review_repository: TranscriptionReviewRepository | None = None,
     revision_repository: TranscriptionRevisionRepository | None = None,
     review_registration_repository: TranscriptionReviewRegistrationRepository | None = None,
@@ -83,6 +85,7 @@ def create_app(
     application.state.audio_processing_limits = runtime_limits
     application.state.transcription_job_repository = jobs
     application.state.original_audio_repository = original_audio_repository
+    application.state.processing_queue = processing_queue
     application.state.transcription_review_repository = reviews
     application.state.transcription_revision_repository = revisions
     application.state.transcription_review_registration_repository = registrations
@@ -98,6 +101,7 @@ def create_app(
                     max_size_bytes=runtime_limits.max_size_bytes,
                 ),
                 original_audio_repository=original_audio_repository,
+                processing_queue=processing_queue,
             ),
             GetTranscriptionJob(jobs),
             get_review,

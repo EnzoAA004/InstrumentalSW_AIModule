@@ -3,6 +3,8 @@ from __future__ import annotations
 from sqlalchemy import (
     BigInteger,
     Column,
+    DateTime,
+    ForeignKey,
     ForeignKeyConstraint,
     Integer,
     MetaData,
@@ -25,6 +27,21 @@ transcription_jobs = Table(
     Column("saxophone_type", String(16), nullable=False),
     Column("input_mode", String(16), nullable=False),
     Column("failure_code", String(64), nullable=True),
+)
+
+transcription_processing_queue = Table(
+    "transcription_processing_queue",
+    metadata,
+    Column(
+        "job_id",
+        PostgresUUID(as_uuid=True),
+        ForeignKey("transcription_jobs.job_id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column("attempt_count", Integer, nullable=False),
+    Column("available_at", DateTime(timezone=True), nullable=False),
+    Column("claimed_at", DateTime(timezone=True), nullable=True),
+    Column("created_at", DateTime(timezone=True), nullable=False),
 )
 
 revision_artifact_bundles = Table(
