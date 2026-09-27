@@ -345,6 +345,34 @@ SAX-072 does not implement the audio-to-score processor itself. The next integra
 
 See [`docs/contracts/postgres-processing-queue-v1.md`](docs/contracts/postgres-processing-queue-v1.md).
 
+## Monophonic audio-to-score processor
+
+SAX-036 supplies the concrete `TranscriptionJobProcessor` for the solo-saxophone MVP. A claimed job now has one application-level pipeline that composes the existing components instead of duplicating their rules:
+
+```text
+original audio
+  → canonical WAV PCM
+  → pinned monophonic transcription baseline
+  → event post-processing
+  → low-confidence annotation
+  → written-pitch transposition
+  → tempo resolution
+  → rhythmic quantization
+  → MIDI + MusicXML
+  → SVG score when rendering succeeds
+  → review/revision 0 + registered artifacts
+```
+
+Automatic tempo estimation remains the preferred path. When there are too few note onsets to estimate tempo, the processor uses an explicit configurable fallback (120 BPM by default) so short valid phrases can still produce notation.
+
+Invalid/corrupt audio and duration-limit failures are terminal worker failures with their existing stable failure codes. They are acknowledged instead of consuming retries intended for transient processing failures.
+
+SVG rendering is deliberately degradable: a controlled render failure does not discard valid MIDI or MusicXML. The job can retain its review and those two artifacts even when no SVG page is available.
+
+The integration suite includes a real synthetic saxophone-like WAV path using FFmpeg, the pinned FiloSax baseline on the supported Python 3.11 CI job, MIDI encoding, MusicXML validation and Verovio rendering.
+
+See [`docs/contracts/monophonic-processor-v1.md`](docs/contracts/monophonic-processor-v1.md).
+
 ## Quality
 
 ```bash

@@ -36,7 +36,7 @@ Legend:
 | SAX-021 Audio→MIDI baseline | ✅ | Pinned FiloSax/HF baseline adapter and real integration coverage exist. |
 | SAX-022 Event filtering/deduplication | ✅ | Deterministic post-processing exists. |
 | SAX-023 Low-confidence markers | ✅ | Events retain confidence and a low-confidence flag. |
-| SAX-036 End-to-end monophonic processor | 🟡 | PR #29 composes canonicalization → baseline → post-processing → transposition → tempo → quantization → MIDI/MusicXML/SVG → revision 0. Unit/integration tests mostly pass, but the real Python 3.11 E2E currently produces zero final events for the synthetic fixture and must be debugged. Ruff formatting also needs to be applied to two files. |
+| SAX-036 End-to-end monophonic processor | ✅ | PR #29 composes canonicalization → real FiloSax baseline → post-processing → confidence → transposition → tempo → quantization → MIDI/MusicXML/SVG → revision zero. The shared generated fixture drives both baseline and processor E2E coverage, including the real Python 3.11 pinned-baseline job. Full Quality is green. |
 
 ## E3 — Transposition, notation and export
 
@@ -148,37 +148,29 @@ Required:
 
 ### Finish the usable monophonic MVP first
 
-1. SAX-036 — finish and merge the real audio-to-score processor.
-2. SAX-076 — persist review/revision/regeneration state.
-3. SAX-077 — production API + worker composition.
-4. SAX-078 — full cross-component E2E.
-5. SAX-073 — authentication/authorization.
-6. SAX-074 — logs, metrics and correlation.
-7. SAX-075 — retention/deletion.
-8. SAX-054 — objective baseline comparison on the controlled evaluation set.
-9. Decide from SAX-054 whether SAX-055 fine-tuning is justified.
-10. SAX-056 if a specialized/selected model is promoted.
+1. SAX-076 — persist review/revision/regeneration state.
+2. SAX-077 — production API + worker composition.
+3. SAX-078 — full cross-component E2E.
+4. SAX-073 — authentication/authorization.
+5. SAX-074 — logs, metrics and correlation.
+6. SAX-075 — retention/deletion.
+7. SAX-054 — objective baseline comparison on the controlled evaluation set.
+8. Decide from SAX-054 whether SAX-055 fine-tuning is justified.
+9. SAX-056 if a specialized/selected model is promoted.
 
 ### Only after that
 
-11. SAX-060 → SAX-062 source separation.
-12. SAX-080 → SAX-082 multiinstrument pipeline.
+10. SAX-060 → SAX-062 source separation.
+11. SAX-080 → SAX-082 multiinstrument pipeline.
 
-## Current immediate blocker: SAX-036
+## Completed story: SAX-036
 
-PR #29 is intentionally left as WIP.
+SAX-036 closes the first concrete monophonic audio-to-score processor story for the AI module.
 
-Observed CI evidence on the latest audited commit:
-- ordinary test suite reaches more than 1200 passing tests;
-- coverage remains above 90%;
-- Ruff lint passes after the import cleanup;
-- Ruff format still reports two files needing formatting;
-- on Python 3.11 with the real pinned baseline, the new end-to-end synthetic fixture reaches a final written-pitch result with zero events.
+Final state:
+- the processor composes canonicalization, the real FiloSax baseline, post-processing, confidence marking, written-pitch transposition, tempo resolution, rhythm quantization, MIDI export, MusicXML export, SVG rendering, revision-zero review registration and revision artifact registration;
+- the baseline integration and processor E2E use the shared generated fixture in `tests/synthetic_audio.py`;
+- `MonophonicProcessingDiagnostics` records stage counts and artifact sizes for E2E observability without changing product behavior;
+- Quality is green, including the Python 3.11 real pinned-baseline integration path.
 
-Do not solve the Python 3.11 failure by simply deleting the assertion or skipping the real baseline test. Determine whether:
-- FFmpeg canonicalization changes the signal enough to alter inference;
-- the baseline emits events that are then removed by post-processing;
-- the synthetic fixture is unsuitable for the complete pipeline;
-- a small legally usable/generative fixture with known detectable notes should replace it.
-
-The final test should exercise the actual behavior required by the product, not merely force green CI.
+The next P0 gap is SAX-076: durable PostgreSQL persistence for review, immutable revisions, revision events and regeneration requests.

@@ -9,6 +9,16 @@ from saxo_ai.application.ports import (
 from saxo_ai.domain.models import JobFailureCode
 
 
+class TerminalProcessingError(RuntimeError):
+    """A deterministic processor failure that must not be retried."""
+
+    def __init__(self, failure_code: JobFailureCode) -> None:
+        if not isinstance(failure_code, JobFailureCode):
+            raise TypeError("failure_code must be JobFailureCode")
+        super().__init__(f"terminal transcription processing failure: {failure_code.value}")
+        self.failure_code = failure_code
+
+
 class TranscriptionWorker:
     def __init__(
         self,
@@ -47,6 +57,10 @@ class TranscriptionWorker:
         self._jobs.save(processing_job)
         try:
             self._processor.process(processing_job, source)
+        except TerminalProcessingError as error:
+            if self._queue.ack(message):
+                self._jobs.save(processing_job.mark_failed(error.failure_code))
+            return True
         except Exception:
             if message.attempt < self._max_attempts:
                 if self._queue.retry(message):

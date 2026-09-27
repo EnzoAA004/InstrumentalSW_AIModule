@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 import io
-import math
 import os
-import struct
-import wave
 from importlib.util import find_spec
 from pathlib import Path
 
 import pytest
+from tests.synthetic_audio import synthetic_saxophone_phrase_wav
 
 from saxo_ai.application.note_event_serialization import serialize_note_event_batch
 from saxo_ai.infrastructure.hf_saxophone import (
@@ -30,34 +28,6 @@ def _baseline_available() -> bool:
     return find_spec("hf_midi_transcription") is not None
 
 
-def _synthetic_saxophone_like_wav() -> bytes:
-    sample_rate = 16000
-    duration_seconds = 2.0
-    frame_count = int(sample_rate * duration_seconds)
-    frames = bytearray()
-    for index in range(frame_count):
-        time_seconds = index / sample_rate
-        fade = min(
-            1.0,
-            index / (sample_rate * 0.08),
-            (frame_count - index) / (sample_rate * 0.08),
-        )
-        vibrato = 1.0 + 0.003 * math.sin(2.0 * math.pi * 5.2 * time_seconds)
-        phase = 2.0 * math.pi * 440.0 * vibrato * time_seconds
-        sample = fade * (
-            0.70 * math.sin(phase) + 0.20 * math.sin(2.0 * phase) + 0.10 * math.sin(3.0 * phase)
-        )
-        integer = max(-32768, min(32767, round(sample * 24000)))
-        frames.extend(struct.pack("<h", integer))
-    destination = io.BytesIO()
-    with wave.open(destination, "wb") as wav:
-        wav.setnchannels(1)
-        wav.setsampwidth(2)
-        wav.setframerate(sample_rate)
-        wav.writeframes(frames)
-    return destination.getvalue()
-
-
 def test_real_pinned_filosax_baseline_transcribes_generated_a4(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -73,7 +43,7 @@ def test_real_pinned_filosax_baseline_transcribes_generated_a4(
     )
     diagnostics: list[BaselineExecutionDiagnostics] = []
     engine = HfSaxophoneTranscriptionEngine(diagnostics_observer=diagnostics.append)
-    result = engine.transcribe(io.BytesIO(_synthetic_saxophone_like_wav()))
+    result = engine.transcribe(io.BytesIO(synthetic_saxophone_phrase_wav()))
 
     assert result.model.engine_version == BASELINE_PACKAGE_VERSION
     assert result.model.engine_source_revision == BASELINE_SOURCE_REVISION
