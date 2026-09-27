@@ -1,10 +1,5 @@
 from __future__ import annotations
 
-import os
-import subprocess
-import sys
-from collections.abc import Iterator
-from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -17,38 +12,11 @@ from saxo_ai.domain.models import (
     SaxophoneType,
     TranscriptionJob,
 )
-from saxo_ai.infrastructure.postgres_engine import build_postgres_engine
 from saxo_ai.infrastructure.postgres_transcription_job_repository import (
     PostgresTranscriptionJobRepository,
 )
 
 pytestmark = pytest.mark.postgres_integration
-
-ROOT = Path(__file__).resolve().parents[2]
-
-testcontainers_postgres = pytest.importorskip("testcontainers.postgres")
-
-
-def _migrated_engine(database_url: str) -> Engine:
-    env = dict(os.environ)
-    env["SAXO_DATABASE_URL"] = database_url
-    subprocess.run(
-        [sys.executable, "-m", "alembic", "upgrade", "head"],
-        cwd=ROOT,
-        env=env,
-        check=True,
-    )
-    return build_postgres_engine(database_url)
-
-
-@pytest.fixture(scope="module")
-def postgres_engine() -> Iterator[Engine]:
-    with testcontainers_postgres.PostgresContainer(
-        "postgres:16-alpine", driver="psycopg"
-    ) as container:
-        engine = _migrated_engine(container.get_connection_url())
-        yield engine
-        engine.dispose()
 
 
 def sample_job(**overrides: object) -> TranscriptionJob:
