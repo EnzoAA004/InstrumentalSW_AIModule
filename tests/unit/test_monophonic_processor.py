@@ -4,18 +4,17 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 import pytest
-from tests.score_render_helpers import ParsingMusicXmlReader
 
 from saxo_ai.application.errors import AudioContentInvalidError
 from saxo_ai.application.midi_export import MidiFileEncoder
-from saxo_ai.application.ports import BinaryDestination, BinaryStream, CanonicalAudioConverter
 from saxo_ai.application.monophonic_processor import MonophonicTranscriptionProcessor
+from saxo_ai.application.ports import BinaryDestination, BinaryStream, CanonicalAudioConverter
 from saxo_ai.application.processing import TerminalProcessingError, TranscriptionWorker
 from saxo_ai.application.revision_artifacts import RegisterRevisionArtifacts
 from saxo_ai.application.score_rendering import (
+    ScoreRenderer,
     ScoreRendererOutput,
     ScoreRendererPage,
-    ScoreRenderer,
     ScoreRenderingError,
 )
 from saxo_ai.application.transcription import TranscriptionEngine
@@ -52,6 +51,7 @@ from saxo_ai.infrastructure.repositories import (
     InMemoryTranscriptionReviewRepository,
     InMemoryTranscriptionRevisionRepository,
 )
+from tests.score_render_helpers import ParsingMusicXmlReader
 
 JOB_ID = UUID("11111111-1111-1111-1111-111111111111")
 NOW = datetime(2026, 9, 27, 18, 0, tzinfo=UTC)
@@ -273,7 +273,10 @@ def test_processor_runs_monophonic_pipeline_and_registers_revision_zero_artifact
         "svg-page-001",
     ]
     assert review.saxophone_type is SaxophoneType.ALTO
-    assert all(event.written_pitch_midi == event.source.event.pitch_concert_midi + 9 for event in review.events)
+    assert all(
+        event.written_pitch_midi == event.source.event.pitch_concert_midi + 9
+        for event in review.events
+    )
 
 
 def test_processor_uses_manual_fallback_tempo_when_automatic_estimation_is_unavailable() -> None:

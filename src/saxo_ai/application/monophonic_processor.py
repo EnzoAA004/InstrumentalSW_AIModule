@@ -14,6 +14,7 @@ from saxo_ai.application.musicxml_export import (
 )
 from saxo_ai.application.note_confidence import MarkLowConfidenceEvents
 from saxo_ai.application.note_event_postprocessing import PostProcessTranscriptionEvents
+from saxo_ai.application.ports import CanonicalAudioConverter
 from saxo_ai.application.processing import TerminalProcessingError
 from saxo_ai.application.revision_artifacts import RegisterRevisionArtifacts
 from saxo_ai.application.rhythm_quantization import QuantizeMonophonicRhythm
@@ -31,7 +32,6 @@ from saxo_ai.application.tempo_resolution import (
 from saxo_ai.application.transcription import TranscribeCanonicalAudio, TranscriptionEngine
 from saxo_ai.application.transcription_review import RegisterTranscriptionReview
 from saxo_ai.application.written_pitch import TransposeWrittenPitchEvents
-from saxo_ai.application.ports import CanonicalAudioConverter
 from saxo_ai.domain.audio import CanonicalAudioSettings, OriginalAudioReference
 from saxo_ai.domain.midi_export import MidiExportSettings
 from saxo_ai.domain.models import JobFailureCode, TranscriptionJob
