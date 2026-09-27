@@ -1,4 +1,4 @@
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 from uuid import UUID
 
 from saxo_ai.domain.audio import (
@@ -14,6 +14,11 @@ from saxo_ai.domain.written_pitch import WrittenPitchTranscriptionResult
 
 class BinaryStream(Protocol):
     def read(self, size: int) -> bytes: ...
+
+
+@runtime_checkable
+class RewindableBinaryStream(BinaryStream, Protocol):
+    def seek(self, offset: int, whence: int = 0) -> int: ...
 
 
 class BinaryDestination(Protocol):
@@ -39,6 +44,12 @@ class TranscriptionJobRepository(Protocol):
     def save(self, job: TranscriptionJob) -> None: ...
 
     def get(self, job_id: UUID) -> TranscriptionJob | None: ...
+
+
+class OriginalAudioRepository(Protocol):
+    def save(self, job_id: UUID, source: BinaryStream) -> None: ...
+
+    def get(self, job_id: UUID) -> bytes | None: ...
 
 
 class TranscriptionReviewRepository(Protocol):
@@ -95,6 +106,8 @@ class ObjectStorage(Protocol):
     """Private, key-addressed binary storage. No public URL is ever exposed to callers."""
 
     def put(self, key: str, content: bytes, *, content_type: str) -> None: ...
+
+    def put_stream(self, key: str, source: BinaryStream, *, content_type: str) -> None: ...
 
     def get(self, key: str) -> bytes | None: ...
 
