@@ -16,8 +16,8 @@ from testcontainers.core.container import DockerContainer
 from saxo_ai.infrastructure.object_storage_configuration import ObjectStorageSettings
 from saxo_ai.infrastructure.postgres_engine import build_postgres_engine
 
-_MINIO_IMAGE = "quay.io/minio/minio:RELEASE.2025-07-23T15-54-02Z"
-_MINIO_PORT = 9000
+_S3_TEST_IMAGE = "localstack/localstack:2026.08.3"
+_S3_TEST_PORT = 4566
 _ACCESS_KEY = "saxo-test-access"
 _SECRET_KEY = "saxo-test-secret"
 _BUCKET = "saxo-artifacts-test"
@@ -43,14 +43,12 @@ def postgres_engine() -> Iterator[Engine]:
 
 @pytest.fixture(scope="module")
 def object_storage_settings() -> Iterator[ObjectStorageSettings]:
-    container = DockerContainer(_MINIO_IMAGE)
-    container.with_exposed_ports(_MINIO_PORT)
-    container.with_env("MINIO_ROOT_USER", _ACCESS_KEY)
-    container.with_env("MINIO_ROOT_PASSWORD", _SECRET_KEY)
-    container.with_command("server /data")
+    container = DockerContainer(_S3_TEST_IMAGE)
+    container.with_exposed_ports(_S3_TEST_PORT)
+    container.with_env("SERVICES", "s3")
     with container:
         host = container.get_container_host_ip()
-        port = container.get_exposed_port(_MINIO_PORT)
+        port = container.get_exposed_port(_S3_TEST_PORT)
         endpoint_url = f"http://{host}:{port}"
         settings = ObjectStorageSettings(
             endpoint_url=endpoint_url,
@@ -81,4 +79,4 @@ def _wait_until_ready_and_create_bucket(
         except Exception as error:  # readiness probe against an external process
             last_error = error
             time.sleep(1)
-    raise RuntimeError(f"MinIO did not become ready in time: {last_error}")
+    raise RuntimeError(f"S3 test service did not become ready in time: {last_error}")
