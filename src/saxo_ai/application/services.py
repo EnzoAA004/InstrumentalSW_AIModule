@@ -66,9 +66,7 @@ class CreateTranscriptionJob:
         if self._original_audio_repository is None:
             return
         if not isinstance(content, RewindableBinaryStream):
-            raise TypeError(
-                "original audio persistence requires a rewindable binary stream"
-            )
+            raise TypeError("original audio persistence requires a rewindable binary stream")
         content.seek(0)
         self._original_audio_repository.save(job.job_id, content)
 
