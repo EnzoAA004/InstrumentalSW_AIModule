@@ -107,7 +107,11 @@ These are required before calling the first product flow operational across sepa
 
 ### SAX-076 — Persist review/revision/regeneration state in PostgreSQL — P0/P1 boundary
 
-Status: ⬜
+Status: ✅
+
+Current branch:
+- `feature/SAX-076-postgres-review-revision-persistence` adds the PostgreSQL adapter, schema migration, integration contract tests and durability contract docs for review, immutable revisions and regeneration requests.
+- Quality #462 is green for the SAX-076 hardening branch, including real PostgreSQL persistence and concurrent optimistic-writer coverage.
 
 Required:
 - PostgreSQL repositories for source review, immutable revision history and regeneration requests;
@@ -148,15 +152,14 @@ Required:
 
 ### Finish the usable monophonic MVP first
 
-1. SAX-076 — persist review/revision/regeneration state.
-2. SAX-077 — production API + worker composition.
-3. SAX-078 — full cross-component E2E.
-4. SAX-073 — authentication/authorization.
-5. SAX-074 — logs, metrics and correlation.
-6. SAX-075 — retention/deletion.
-7. SAX-054 — objective baseline comparison on the controlled evaluation set.
-8. Decide from SAX-054 whether SAX-055 fine-tuning is justified.
-9. SAX-056 if a specialized/selected model is promoted.
+1. SAX-077 — production API + worker composition.
+2. SAX-078 — full cross-component E2E.
+3. SAX-073 — authentication/authorization.
+4. SAX-074 — logs, metrics and correlation.
+5. SAX-075 — retention/deletion.
+6. SAX-054 — objective baseline comparison on the controlled evaluation set.
+7. Decide from SAX-054 whether SAX-055 fine-tuning is justified.
+8. SAX-056 if a specialized/selected model is promoted.
 
 ### Only after that
 
@@ -173,4 +176,4 @@ Final state:
 - `MonophonicProcessingDiagnostics` records stage counts and artifact sizes for E2E observability without changing product behavior;
 - Quality is green, including the Python 3.11 real pinned-baseline integration path.
 
-The next P0 gap is SAX-076: durable PostgreSQL persistence for review, immutable revisions, revision events and regeneration requests.
+The next P0 gap is SAX-077: production API and worker composition using the durable PostgreSQL/object-storage adapters.
