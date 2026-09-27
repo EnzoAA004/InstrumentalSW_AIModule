@@ -7,6 +7,7 @@ from saxo_ai.domain.audio import (
     OriginalAudioReference,
 )
 from saxo_ai.domain.models import AudioContentMetadata, TranscriptionJob
+from saxo_ai.domain.processing import ProcessingQueueMessage
 from saxo_ai.domain.revision_artifacts import RevisionArtifact, RevisionArtifactBundle
 from saxo_ai.domain.transcription_revisions import RegenerationRequest, TranscriptionRevision
 from saxo_ai.domain.written_pitch import WrittenPitchTranscriptionResult
@@ -50,6 +51,20 @@ class OriginalAudioRepository(Protocol):
     def save(self, job_id: UUID, source: BinaryStream) -> None: ...
 
     def get(self, job_id: UUID) -> bytes | None: ...
+
+
+class TranscriptionProcessingQueue(Protocol):
+    def enqueue(self, job_id: UUID) -> None: ...
+
+    def claim(self) -> ProcessingQueueMessage | None: ...
+
+    def ack(self, message: ProcessingQueueMessage) -> None: ...
+
+    def retry(self, message: ProcessingQueueMessage) -> None: ...
+
+
+class TranscriptionJobProcessor(Protocol):
+    def process(self, job: TranscriptionJob, source: bytes) -> None: ...
 
 
 class TranscriptionReviewRepository(Protocol):

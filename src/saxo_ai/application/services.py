@@ -12,6 +12,7 @@ from saxo_ai.application.ports import (
     OriginalAudioRepository,
     RewindableBinaryStream,
     TranscriptionJobRepository,
+    TranscriptionProcessingQueue,
 )
 from saxo_ai.domain.models import InputMode, JobStatus, SaxophoneType, TranscriptionJob
 
@@ -25,10 +26,12 @@ class CreateTranscriptionJob:
         content_hasher: AudioContentHasher,
         *,
         original_audio_repository: OriginalAudioRepository | None = None,
+        processing_queue: TranscriptionProcessingQueue | None = None,
     ) -> None:
         self._repository = repository
         self._content_hasher = content_hasher
         self._original_audio_repository = original_audio_repository
+        self._processing_queue = processing_queue
 
     def execute(
         self,
@@ -56,6 +59,10 @@ class CreateTranscriptionJob:
         )
         self._persist_original_audio(job, content)
         self._repository.save(job)
+        if self._processing_queue is not None:
+            self._processing_queue.enqueue(job.job_id)
+            job = job.mark_queued()
+            self._repository.save(job)
         return job
 
     def _persist_original_audio(
