@@ -58,11 +58,12 @@ regression: Docker Hub no longer served `minio/minio:latest`, so all S3-compatib
 tests failed before the service could start. An attempted pinned MinIO Quay release was also
 unavailable to the GitHub-hosted runner.
 
-The integration fixture therefore uses the verified-publisher image
-`localstack/localstack:2026.08.3` with only the S3 service enabled. Runtime production support is
-unchanged: `S3ObjectStorage` remains endpoint-agnostic and continues to support private MinIO or
-AWS S3. The test fixture now validates the S3 contract against a pinned, publicly downloadable
-implementation instead of depending on a mutable or inaccessible MinIO registry tag.
+The integration fixture therefore uses the lightweight verified-publisher image
+`adobe/s3mock:5.2.2`. Runtime production support is unchanged: `S3ObjectStorage` remains
+endpoint-agnostic and continues to support private MinIO or AWS S3. The test fixture validates the
+required S3 contract (bucket creation, object put/get and presigned GET URLs) against a pinned,
+publicly downloadable implementation instead of depending on a mutable or inaccessible MinIO
+registry tag.
 
 ## Traceability
 
