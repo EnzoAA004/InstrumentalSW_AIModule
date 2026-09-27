@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import urllib.request
+from io import BytesIO
 
 import pytest
 
@@ -17,6 +18,19 @@ class TestS3ObjectStorage:
         storage.put("some/key.txt", b"hello world", content_type="text/plain")
 
         assert storage.get("some/key.txt") == b"hello world"
+
+    def test_put_stream_then_get_round_trips(
+        self, object_storage_settings: ObjectStorageSettings
+    ) -> None:
+        storage = S3ObjectStorage(object_storage_settings)
+
+        storage.put_stream(
+            "stream/key.bin",
+            BytesIO(b"streamed content"),
+            content_type="application/octet-stream",
+        )
+
+        assert storage.get("stream/key.bin") == b"streamed content"
 
     def test_get_missing_key_returns_none(
         self, object_storage_settings: ObjectStorageSettings
