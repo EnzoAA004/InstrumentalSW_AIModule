@@ -1,123 +1,83 @@
-# TDD iteration 003 — SAX-010
+# TDD iteration 003 — SAX-042 review gateway
 
 ## Scope
 
-Calculate and expose a SHA-256 digest for each uploaded audio stream while preserving the current in-memory job lifecycle. This iteration does not decode, convert, persist, deduplicate, or inspect the musical validity of audio.
+Read and validate an already-produced review snapshot through Spring Boot without persistence or processing.
 
-## Design decisions
+Base and branch:
 
-- The API knows FastAPI `UploadFile` and passes its binary file object to application code.
-- `CreateTranscriptionJob` depends on the generic `BinaryStream` and `AudioContentHasher` application ports.
-- `Sha256AudioContentHasher` lives in infrastructure and is the only component that imports `hashlib`.
-- `AudioContentMetadata` and `TranscriptionJob` are immutable domain values.
-- The POST endpoint is synchronous, so FastAPI executes the blocking stream loop in its worker thread pool rather than on an async event loop.
-- Extension validation occurs before the stream is inspected.
+```text
+d6feb5e552e61842e4ac771b7054588fbc4b86c4
+feature/SAX-042-note-review-gateway
+```
 
 ## RED
 
-Tests were committed before production changes.
-
-Command:
+Tests preceded production:
 
 ```text
-python -m pytest tests/unit/test_audio_hashing.py
+1eb3aff test(SAX-042): define transcription review application contract
+a3a6caa test(SAX-042): define real FastAPI review forwarding and validation
+78df983 test(SAX-042): define public transcription review endpoint
 ```
 
-Exact result:
-
-```text
-collected 9 items
-9 failed in 0.28s
-RED_EXIT_CODE=1
-```
-
-Expected failures included:
-
-```text
-ModuleNotFoundError: No module named 'saxo_ai.infrastructure.hashing'
-KeyError: 'audio_sha256'
-create_transcription remained an AsyncFunctionDef with an awaited read
-```
+They referenced `TranscriptionReview`, `GetTranscriptionReview`, `TranscriptionReviewGateway`, `FastApiTranscriptionReviewClient`, controller/configuration, and stable not-ready behavior before those contracts existed. The branch advanced quickly enough that some intermediate workflow runs were superseded by concurrency; commit order remains the TDD trace.
 
 ## GREEN
 
-The minimum implementation added:
+Production added:
 
-- SHA-256 through the Python standard-library `hashlib` module;
-- one-pass bounded stream processing;
-- simultaneous digest and byte-count calculation;
-- `audio_sha256` storage in `TranscriptionJob`;
-- `audio_sha256` in POST and GET responses;
-- rejection of empty streams before repository save;
-- rejection of unsupported extensions before stream consumption.
+- immutable validated review aggregate, summary, and event contracts;
+- independent application port and one-call use case;
+- bodyless FastAPI GET client;
+- complete manual JSON validation and UUID identity check;
+- exact public response DTO;
+- controller and stable 400/404/409/502 mappings.
+
+No response is persisted.
 
 ## REFACTOR
 
-- The binary stream and hasher are application protocols.
-- FastAPI does not appear in application or domain.
-- `hashlib` does not appear in domain.
-- Hash and size are calculated together; the stream is traversed once.
-- The metadata result and job remain frozen dataclasses.
-- Tests verify that no `seek`, `tell`, path access, or unbounded `read()` is required.
+Validation remains in domain plus infrastructure parsing rather than the controller. Pinned Palantir formatting was applied from a temporary read-only diagnostics artifact, then its workflow was deleted. A Checkstyle regression was resolved by restructuring the JSON test fixture instead of changing the rules.
 
-## Tests created
+## Tests
 
-- known SHA-256 vector for `abc`;
-- identical content with different names;
-- different content with the same name;
-- lowercase 64-character hexadecimal contract;
-- bounded reads on a non-seekable spy stream;
-- size from the same returned chunks;
-- empty stream without repository save;
-- unsupported extension without stream consumption;
-- POST/GET response contract;
-- synchronous route without awaited upload reads;
-- non-positive chunk-size validation;
-- architectural dependency boundaries.
+Coverage includes:
 
-## Block size and memory behavior
+- exact UUID and returned-instance preservation;
+- HTTP method/path/body inspection through a real JDK HTTP server;
+- complete review response;
+- malformed route UUID;
+- FastAPI 404, 409, 422, 500, 503;
+- timeout and connection refusal;
+- malformed JSON and UUID mismatch;
+- unknown versions;
+- inconsistent indices/counts;
+- invalid event confidence;
+- safe public envelopes and no upstream leakage;
+- all prior upload/status regressions.
 
-The production constant is:
+## Quality
+
+Definitive functional head before documentation:
 
 ```text
-DEFAULT_CHUNK_SIZE = 64 * 1024
+7c2bf7cc4cf8a49f8b735e7f13aa6f91269f2c24
+Quality #88
+run 29879571671
+Java 21
+./mvnw verify
+78 tests passed
+408 / 449 lines = 90.87%
+126 / 175 branches = 72.00%
+Spotless clean
+Checkstyle clean
+JaCoCo gate passed
+BUILD SUCCESS
 ```
 
-Each iteration invokes `stream.read(65536)`. The returned chunk is immediately fed to the digest and its length is added to the total. No operation requests the full file, the stream does not need to be seekable, and audio bytes are not retained or persisted after each chunk is processed.
+The final documentation head is revalidated by the same protected workflow and recorded in the draft PR.
 
-## Local verification
+## Boundaries
 
-```text
-python -m pip install -e ".[dev]"                         PASS
-python scripts/check_quality.py                            39 passed; quality gate passed
-python -m pytest                                           39 passed
-python -m pytest --cov=saxo_ai --cov-report=term-missing --cov-report=xml
-                                                         100% (152 statements, 12 branches)
-python -m ruff check src tests scripts                      All checks passed
-python -m ruff format --check src tests scripts             22 files already formatted
-python -m mypy                                             Success: no issues found in 22 source files
-GET /health                                                HTTP 200 {"status":"ok"}
-POST synthetic abc.wav                                     HTTP 202; expected SHA-256
-GET created job                                            HTTP 200; same SHA-256
-```
-
-## CI
-
-GitHub Actions run **#14** (run ID `29699732459`) completed successfully on the draft pull request:
-
-```text
-Python 3.11  success
-Python 3.12  success
-Python 3.13  success
-```
-
-Each matrix job completed checkout, Python setup, editable installation, and `python scripts/check_quality.py` successfully. A final documentation-only execution is expected after recording this evidence and must remain green.
-
-## Limitations and stories not implemented
-
-- No comparison or automatic deduplication by hash.
-- Equal hashes do not merge jobs; every accepted POST creates a distinct job.
-- No audio content persistence.
-- No SAX-011 canonical conversion or FFmpeg.
-- No corruption detection, size/duration limits, databases, queues, object storage, models, datasets, MIDI, or MusicXML.
-- Backend and Frontend are unchanged.
+No inference, upload processing, audio storage, BackgroundTasks, worker, queue, database, new status, review polling, synthetic notes, editing, playback, score/PDF, download, SAX-043, or later story was introduced.
