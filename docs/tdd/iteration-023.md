@@ -50,3 +50,9 @@ Local PostgreSQL integration execution is blocked in this Windows sandbox by Doc
 ## REFACTOR
 
 The adapter keeps SQL serialization in infrastructure helpers and does not change application ports or the production composition root. Production wiring remains the SAX-077 boundary.
+
+Hardening added before completion:
+
+- rollback coverage now monkeypatches the internal revision insert helper to fail after the review insert, proving `engine.begin()` rolls back both writes without exposing a product-only test flag;
+- optimistic concurrency is validated with two real PostgreSQL writers on independent repository instances, synchronized by a `Barrier` immediately before append so both writers start from revision zero and race to create revision one;
+- the concurrent test asserts exactly one winner, exactly one `RevisionConflictError`, a final history of only r0/r1, and no partial revision-event rows.

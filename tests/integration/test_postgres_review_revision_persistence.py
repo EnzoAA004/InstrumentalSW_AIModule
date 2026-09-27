@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
+from threading import Barrier
+from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
@@ -27,7 +30,9 @@ from saxo_ai.domain.models import SaxophoneType
 from saxo_ai.domain.transcription_revisions import (
     DerivedArtifactsStatus,
     RegenerationRequestStatus,
+    TranscriptionRevision,
 )
+from saxo_ai.infrastructure import postgres_review_revision_repository
 from saxo_ai.infrastructure.postgres_review_revision_repository import (
     PostgresRegenerationRequestRepository,
     PostgresTranscriptionReviewRegistrationRepository,
@@ -117,17 +122,26 @@ def test_review_and_revision_zero_survive_new_repository_instances(
 
 def test_revision_zero_initialization_is_atomic_on_write_failure(
     postgres_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _save_job(postgres_engine)
     _reviews, _revisions, registrations, _requests = _repositories(postgres_engine)
     result = build_written_result()
 
-    with pytest.raises(RuntimeError, match="simulated failure"):
+    def fail_revision_insert(_connection: Any, _revision: TranscriptionRevision) -> None:
+        raise RuntimeError("simulated revision insert failure")
+
+    monkeypatch.setattr(
+        postgres_review_revision_repository,
+        "_insert_revision",
+        fail_revision_insert,
+    )
+
+    with pytest.raises(RuntimeError, match="simulated revision insert failure"):
         registrations.initialize(
             JOB_ID,
             result,
             revision_zero=build_revision_zero(JOB_ID, result, NOW),
-            fail_after_review_for_test=True,
         )
 
     reviews, revisions, _registrations, _requests = _repositories(postgres_engine)
@@ -171,6 +185,80 @@ def test_revision_history_is_immutable_sequential_and_rejects_stale_writers(
     assert GetTranscriptionRevision(revisions).execute(JOB_ID, 0).events[0].written_pitch_midi == 69
     assert GetTranscriptionRevision(revisions).execute(JOB_ID, 1).events[0].written_pitch_midi == 70
     assert GetTranscriptionRevision(revisions).execute(JOB_ID, 2).events[1].written_pitch_midi == 77
+
+
+def test_concurrent_revision_writers_allow_exactly_one_revision_one(
+    postgres_engine: Engine,
+) -> None:
+    _register_review(postgres_engine)
+    barrier = Barrier(2)
+
+    class ConcurrentPostgresTranscriptionRevisionRepository(
+        PostgresTranscriptionRevisionRepository
+    ):
+        def append(
+            self,
+            job_id: UUID,
+            expected_latest_revision: int,
+            revision: TranscriptionRevision,
+        ) -> None:
+            barrier.wait(timeout=10)
+            super().append(job_id, expected_latest_revision, revision)
+
+    def write_revision(written_pitch_midi: int) -> TranscriptionRevision | RevisionConflictError:
+        creator = CreateTranscriptionRevision(
+            ConcurrentPostgresTranscriptionRevisionRepository(postgres_engine),
+            _later_clock,
+            _human_uuid,
+        )
+        try:
+            return creator.execute(
+                JOB_ID,
+                base_revision_number=0,
+                operations=(UpdateRevisionEvent("source-0", written_pitch_midi, 0.1, 0.6),),
+            )
+        except RevisionConflictError as error:
+            return error
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = tuple(executor.map(write_revision, (70, 71)))
+
+    winners = tuple(result for result in results if isinstance(result, TranscriptionRevision))
+    conflicts = tuple(result for result in results if isinstance(result, RevisionConflictError))
+    revisions = PostgresTranscriptionRevisionRepository(postgres_engine)
+    history = revisions.list(JOB_ID)
+    revision_one = revisions.get(JOB_ID, 1)
+
+    assert len(winners) == 1
+    assert len(conflicts) == 1
+    assert [revision.revision_number for revision in history] == [0, 1]
+    assert revision_one is not None
+    assert revision_one == winners[0]
+    assert revision_one.parent_revision_number == 0
+    assert revision_one.summary.event_count == len(revision_one.events) == 2
+    assert revision_one.summary.model_event_count == 2
+    assert revision_one.summary.human_event_count == 0
+    assert {event.event_id for event in revision_one.events} == {"source-0", "source-1"}
+    assert revision_one.events[0].written_pitch_midi in {70, 71}
+    assert revision_one.events[1].written_pitch_midi == 76
+
+    with postgres_engine.connect() as connection:
+        revision_rows = connection.execute(
+            text(
+                "select count(*) from transcription_revisions "
+                "where job_id = :job_id and revision_number = 1"
+            ),
+            {"job_id": JOB_ID},
+        ).scalar_one()
+        event_rows = connection.execute(
+            text(
+                "select count(*) from transcription_revision_events "
+                "where job_id = :job_id and revision_number = 1"
+            ),
+            {"job_id": JOB_ID},
+        ).scalar_one()
+    assert revision_rows == 1
+    assert event_rows == len(revision_one.events)
 
 
 def test_regeneration_request_is_durable_and_idempotent(postgres_engine: Engine) -> None:

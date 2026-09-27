@@ -82,8 +82,6 @@ class PostgresTranscriptionReviewRegistrationRepository:
         job_id: UUID,
         result: WrittenPitchTranscriptionResult,
         revision_zero: TranscriptionRevision,
-        *,
-        fail_after_review_for_test: bool = False,
     ) -> WrittenPitchTranscriptionResult:
         if (
             revision_zero.job_id != job_id
@@ -105,8 +103,6 @@ class PostgresTranscriptionReviewRegistrationRepository:
                 return existing_review
 
             _insert_review(connection, job_id, result)
-            if fail_after_review_for_test:
-                raise RuntimeError("simulated failure")
             _insert_revision(connection, revision_zero)
         return result
 

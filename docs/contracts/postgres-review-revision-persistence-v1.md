@@ -16,7 +16,7 @@ SAX-076 stores transcription review, immutable revision history and regeneration
 - Duplicate registration of the same review and revision zero is idempotent.
 - Registering a different review for an existing job is rejected.
 - Revision numbers are sequential from zero, and non-zero revisions point to the previous revision number.
-- Appending a revision uses the caller's expected latest revision as an optimistic concurrency guard.
+- Appending a revision uses the caller's expected latest revision as an optimistic concurrency guard. Integration coverage races two independent PostgreSQL writers against the same revision zero and requires exactly one revision-one winner.
 - Revision event snapshots are immutable. Later revisions copy and change events by creating a new revision.
 - Regeneration requests are idempotent per `(job_id, revision_number)`.
 - Database foreign keys reject orphan reviews, revisions and regeneration requests.
